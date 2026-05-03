@@ -1,3 +1,10 @@
+// ── HOME-PAGE QUICK ACTIONS ──
+function startRateWith(verdictArg, starsArg) {
+  nav('rate');
+  if (verdictArg) setVerdict(verdictArg);
+  if (starsArg)   setStar(starsArg);
+}
+
 // ── NAVIGATION ──
 function nav(id) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
@@ -325,3 +332,9 @@ function formatDate(iso) {
 document.getElementById('dateIn').value = new Date().toISOString().split('T')[0];
 loadStats();
 loadOfficers();
+
+// Show the demo badge if running without a backend
+if (window.api && window.api.isStatic && window.api.isStatic()) {
+  const badge = document.getElementById('demoBadge');
+  if (badge) badge.classList.add('show');
+}

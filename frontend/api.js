@@ -1,13 +1,17 @@
 // API client for the FastAPI backend.
-// In dev: points to http://localhost:8000
-// In prod: set window.API_BASE in index.html before loading this script,
-//          or change the default below to your deployed backend URL.
+//
+// In dev (localhost): talks to http://localhost:8000
+// In prod (e.g. GitHub Pages): set window.API_BASE in index.html before this script
+//   to point at your deployed backend, OR leave it empty to run in static-demo mode
+//   using window.STATIC_DATA from static-data.js.
 
-const API_BASE = window.API_BASE || (
+const API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE : (
   location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     ? 'http://localhost:8000'
-    : ''  // same-origin in production (configure via reverse proxy or env)
+    : null  // null = static demo mode
 );
+
+const STATIC_MODE = !API_BASE;
 
 async function apiGet(path) {
   const res = await fetch(API_BASE + path);
@@ -33,16 +37,65 @@ async function apiUpload(file) {
   fd.append('file', file);
   const res = await fetch(API_BASE + '/api/uploads', { method: 'POST', body: fd });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();  // { url: "/uploads/abc.jpg" }
+  return res.json();
 }
 
+// ───── static-demo fallback (used when no backend is reachable) ─────
+
+function staticOfficers() {
+  const data = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  return data.map(({ reviews, ...summary }) => summary);
+}
+
+function staticOfficer(id) {
+  const data = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const o = data.find(o => o.id === Number(id));
+  if (!o) throw new Error('Officer not found');
+  return o;
+}
+
+function staticStats() {
+  return (window.STATIC_DATA && window.STATIC_DATA.stats) || {
+    total_reviews: 0, officer_count: 0, unfair_pct: 0, avg_ticket: null,
+  };
+}
+
+const DEMO_NOTICE = "Thanks! This is a preview build — submissions open when we go live. Stay tuned.";
+
+// ───── public API ─────
+
 const api = {
-  listOfficers: () => apiGet('/api/officers'),
-  getOfficer:   (id) => apiGet('/api/officers/' + id),
-  submitReview: (data) => apiPost('/api/reviews', data),
-  sendComplaint: (data) => apiPost('/api/complaints', data),
-  uploadFile:   apiUpload,
-  stats:        () => apiGet('/api/stats'),
+  async listOfficers() {
+    if (STATIC_MODE) return staticOfficers();
+    try { return await apiGet('/api/officers'); }
+    catch { return staticOfficers(); }
+  },
+  async getOfficer(id) {
+    if (STATIC_MODE) return staticOfficer(id);
+    try { return await apiGet('/api/officers/' + id); }
+    catch { return staticOfficer(id); }
+  },
+  async submitReview(data) {
+    if (STATIC_MODE) { alert(DEMO_NOTICE); return { id: -1, demo: true }; }
+    return apiPost('/api/reviews', data);
+  },
+  async sendComplaint(data) {
+    if (STATIC_MODE) { alert(DEMO_NOTICE); return { id: -1, demo: true }; }
+    return apiPost('/api/complaints', data);
+  },
+  async uploadFile(file) {
+    if (STATIC_MODE) {
+      // Simulate a successful upload visually
+      return { url: '#demo-upload', filename: file.name };
+    }
+    return apiUpload(file);
+  },
+  async stats() {
+    if (STATIC_MODE) return staticStats();
+    try { return await apiGet('/api/stats'); }
+    catch { return staticStats(); }
+  },
+  isStatic: () => STATIC_MODE,
 };
 
 window.api = api;

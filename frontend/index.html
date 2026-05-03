@@ -28,8 +28,9 @@
 <section id="home" class="active">
   <div class="hero">
     <div>
+      <div class="hero-eyebrow">Community accountability, on the record</div>
       <h1>Your Stop.<br>Your Voice.<br><em>On the Record.</em></h1>
-      <p>Rate your traffic stop. See how officers in your area are rated by the community. And if you got a ticket that wasn't fair — we'll help you fight it.</p>
+      <p>Rate your traffic stop. See how officers in your area are rated by the community. And if you got a ticket that wasn't fair &mdash; we'll help you fight it.</p>
       <div class="hero-btns">
         <button class="btn-gold" onclick="nav('rate')">Rate My Stop &rarr;</button>
         <button class="btn-ghost" onclick="nav('officers')">Officer Profiles</button>
@@ -41,11 +42,13 @@
         <div class="pm-lbl">Your last stop</div>
         <div class="pm-title">How was it?</div>
         <div class="pm-row">
-          <div class="pm-chip f">&#9989; Fair</div>
-          <div class="pm-chip u">&#10060; Unfair</div>
+          <div class="pm-chip f" onclick="startRateWith('fair')" role="button" tabindex="0">&#9989; Fair</div>
+          <div class="pm-chip u" onclick="startRateWith('unfair')" role="button" tabindex="0">&#10060; Unfair</div>
         </div>
-        <div class="pm-stars">&#9733;&#9733;&#9733;&#9734;&#9734;</div>
-        <button class="pm-btn">&#9889; Fight This Ticket?</button>
+        <div class="pm-stars" id="pmStars" role="radiogroup" aria-label="Rate the officer">
+          <span data-v="1" onclick="startRateWith(null, 1)">&#9733;</span><span data-v="2" onclick="startRateWith(null, 2)">&#9733;</span><span data-v="3" onclick="startRateWith(null, 3)">&#9733;</span><span data-v="4" onclick="startRateWith(null, 4)">&#9733;</span><span data-v="5" onclick="startRateWith(null, 5)">&#9733;</span>
+        </div>
+        <button class="pm-btn" onclick="nav('rate')">&#9889; Fight This Ticket?</button>
         <div class="pm-note">Free consult &mdash; no commitment</div>
       </div>
     </div>
@@ -333,7 +336,7 @@
       <div class="dh-eyebrow">Sponsorship Opportunity</div>
       <h2 class="dh-title">Why Sponsor <span>RateMyStop</span>?</h2>
       <p class="dh-body">RateMyStop puts your business in front of drivers who just got a ticket &mdash; the perfect moment they need you most. This is not an ad. It's a direct pipeline.</p>
-      <button class="btn-gold">Download Sponsor Package &darr;</button>
+      <a class="btn-gold" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Sponsor Package &darr;</a>
     </div>
 
     <div class="insight-box">
@@ -408,13 +411,16 @@
       <h3>Let's Talk</h3>
       <p>RateMyStop brings the audience. You bring the solution. Together, it's the most targeted funnel in this space.</p>
       <div class="cta-row">
-        <button class="btn-gold">Contact Us Today</button>
-        <button class="btn-ghost">Download Full Deck (PDF)</button>
+        <a class="btn-gold" href="mailto:contact@ratemystop.com?subject=RateMyStop%20Sponsorship%20Inquiry&body=Hi%20Chaya%2C%0A%0AI%27m%20interested%20in%20sponsoring%20RateMyStop.%20Please%20send%20me%20more%20information.%0A%0AThanks%2C" style="display:inline-block;text-decoration:none;">Contact Us Today</a>
+        <a class="btn-ghost" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Full Deck (PDF)</a>
       </div>
     </div>
   </div>
 </section>
 
+<div class="demo-badge" id="demoBadge">Preview Mode &mdash; submissions opening soon</div>
+
+<script src="static-data.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 </body>
