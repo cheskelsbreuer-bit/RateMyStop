@@ -23,5 +23,8 @@ backend/uploads/*
 .DS_Store
 Thumbs.db
 
+# Local server logs
+*.log
+
 # Node (in case you add tooling later)
 node_modules/
