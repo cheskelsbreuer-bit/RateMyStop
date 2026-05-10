@@ -18,6 +18,7 @@ function nav(id) {
   if (id === 'officers')  loadOfficers();
   if (id === 'home')      loadStats();
   if (id === 'complaint') renderDepartments();
+  if (id === 'rankings')  renderRankings();
 }
 
 // ── RATE FORM STATE ──
@@ -147,6 +148,12 @@ function goStep(n) {
   document.getElementById('step' + step).style.display = 'none';
   step = n;
   document.getElementById('step' + n).style.display = 'block';
+  // Show the live rating chip starting at step 2 — never visible during step-1 input
+  const chip = document.getElementById('liveRating');
+  if (chip) {
+    if (n >= 2) { refreshLiveRating(); chip.classList.add('visible'); }
+    else        { chip.classList.remove('visible'); }
+  }
   for (let i = 1; i <= 4; i++) {
     const w = document.getElementById('ws' + i);
     w.className = 'ws' + (i < n ? ' done' : i === n ? ' active' : '');
@@ -205,6 +212,7 @@ async function submitReview() {
   const longStory  = (document.getElementById('storyIn')?.value || '').trim();
   const combinedStory = [quickStory, longStory].filter(Boolean).join('\n\n') || null;
 
+  const anonymous = document.getElementById('anonToggle')?.checked !== false;
   const payload = {
     verdict,
     stars,
@@ -221,6 +229,9 @@ async function submitReview() {
     story: combinedStory,
     ticket_number: document.getElementById('ticketNumberIn').value || null,
     upload_url: uploadedFileUrl,
+    anonymous,
+    reviewer_name: anonymous ? null : (document.getElementById('reviewerName')?.value || null),
+    body_cam: bodyCamAnswer,
   };
 
   try {
@@ -235,12 +246,18 @@ async function submitReview() {
       step = 1;
       goStep(1);
       // Reset
-      verdict = ''; stars = 0; starsOverride = null; uploadedFileUrl = null;
+      verdict = ''; stars = 0; starsOverride = null; uploadedFileUrl = null; bodyCamAnswer = null;
       setVerdict('');
       document.querySelectorAll('.tag.on').forEach(t => { t.classList.remove('on', 'pos', 'neg'); });
-      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn','quickStory']
+      document.querySelectorAll('#bodyCamPills .bcp.on').forEach(p => p.classList.remove('on'));
+      const bcpHint = document.getElementById('bcpHint'); if (bcpHint) bcpHint.style.display = 'none';
+      const statHelper = document.getElementById('statuteHelper'); if (statHelper) statHelper.classList.remove('show');
+      const badgeSug = document.getElementById('badgeSuggest'); if (badgeSug) badgeSug.classList.remove('show');
+      const anonT = document.getElementById('anonToggle'); if (anonT) { anonT.checked = true; document.getElementById('reviewerNameWrap').style.display = 'none'; }
+      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn','quickStory','reviewerName']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('lrAdjustPanel').classList.remove('show');
+      document.getElementById('liveRating').classList.remove('visible');
       refreshLiveRating();
       document.getElementById('ticketType').value = '';
       document.getElementById('uploadPreview').classList.remove('show');
@@ -512,6 +529,170 @@ let _notesTimer = null;
     _notesTimer = setTimeout(refreshLiveRating, 250);
   });
 });
+
+// ─── Feature 1: Anonymous toggle ───
+const anonToggle = document.getElementById('anonToggle');
+if (anonToggle) {
+  anonToggle.addEventListener('change', () => {
+    document.getElementById('reviewerNameWrap').style.display = anonToggle.checked ? 'none' : 'block';
+  });
+}
+
+// ─── Feature 2: Body cam pill picker ───
+let bodyCamAnswer = null;
+function setBodyCam(el, value) {
+  bodyCamAnswer = value;
+  document.querySelectorAll('#bodyCamPills .bcp').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  const hint = document.getElementById('bcpHint');
+  if (value === 'yes') {
+    hint.innerHTML = '🛡️ <strong style="color:var(--accent);">Strong evidence.</strong> In NY, you have a right to request body-cam footage. We\'ll add a "Request body cam" template to your complaint.';
+    hint.style.display = 'block';
+  } else if (value === 'no') {
+    hint.innerHTML = '<strong style="color:var(--accent);">Worth noting.</strong> Most NY officers are required to wear body cams on traffic stops. This may be relevant to your complaint.';
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+// ─── Feature 3: Share button ───
+async function shareReview() {
+  const shareData = {
+    title: 'RateMyStop',
+    text: 'I just rated my traffic stop on RateMyStop — your stop, your voice, on the record. Add yours →',
+    url: window.location.origin + window.location.pathname,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await navigator.clipboard.writeText(shareData.text + ' ' + shareData.url);
+      const btn = document.getElementById('shareBtn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied to clipboard';
+      setTimeout(() => { btn.textContent = orig; }, 2500);
+    }
+  } catch (err) {
+    // User cancelled — silent
+  }
+}
+
+// ─── Feature 4: Officer badge auto-lookup ───
+function onBadgeInput() {
+  const q = document.getElementById('badgeIn').value.trim().toLowerCase();
+  const sug = document.getElementById('badgeSuggest');
+  if (!q || q.length < 1) { sug.classList.remove('show'); return; }
+
+  // Pull from whichever data source is available
+  const all = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const matches = all.filter(o =>
+    (o.badge && o.badge.toLowerCase().includes(q)) ||
+    (o.name && o.name.toLowerCase().includes(q))
+  ).slice(0, 5);
+
+  if (!matches.length) { sug.classList.remove('show'); return; }
+
+  sug.innerHTML = matches.map(o => `
+    <div class="ac-item" onmousedown="pickBadgeMatch(${o.id})">
+      <div class="ac-name">${escapeHtml(o.name || 'Unknown')}</div>
+      <div class="ac-meta">${escapeHtml(o.badge || '—')} · ${escapeHtml(o.department || 'Unknown')} · ${(o.avg_stars || 0).toFixed(1)}★ avg · ${o.review_count} review${o.review_count !== 1 ? 's' : ''}</div>
+    </div>
+  `).join('');
+  sug.classList.add('show');
+}
+
+function pickBadgeMatch(id) {
+  const all = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const o = all.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('badgeIn').value = o.badge || '';
+  document.getElementById('officerName').value = o.name || '';
+  document.getElementById('deptIn').value = o.department || '';
+  document.getElementById('badgeSuggest').classList.remove('show');
+}
+
+// ─── Feature 5: Statute code lookup ───
+function onViolationInput() {
+  const v = document.getElementById('ticketViolation').value;
+  const helper = document.getElementById('statuteHelper');
+  if (!v || !window.lookupVTL) { helper.classList.remove('show'); return; }
+  const match = window.lookupVTL(v);
+  if (!match) { helper.classList.remove('show'); return; }
+  helper.innerHTML = `
+    <div class="sh-eyebrow">NY VEHICLE & TRAFFIC LAW</div>
+    <div class="sh-code">VTL ${escapeHtml(match.code)}</div>
+    <div class="sh-desc">${escapeHtml(match.desc)}</div>
+    <div class="sh-meta">
+      <span>Typical fine: <strong>${escapeHtml(match.fine)}</strong></span>
+      <span>DMV points: <strong>${escapeHtml(String(match.points))}</strong></span>
+    </div>
+  `;
+  helper.classList.add('show');
+}
+
+// ─── Feature 7: Department Rankings ───
+let _rankSort = 'best';
+
+function switchRanking(el, kind) {
+  document.querySelectorAll('.rank-controls .pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  _rankSort = kind;
+  renderRankings();
+}
+
+function renderRankings() {
+  const wrap = document.getElementById('rankTable');
+  if (!wrap) return;
+  // Source: live cache if present, else static data
+  const officers = officerCache.length ? officerCache : ((window.STATIC_DATA && window.STATIC_DATA.officers) || []);
+  if (!officers.length) {
+    wrap.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">No data yet.</div>';
+    return;
+  }
+  // Aggregate by department
+  const byDept = {};
+  for (const o of officers) {
+    const d = o.department || 'Unknown';
+    if (!byDept[d]) byDept[d] = { name: d, total_stars: 0, review_count: 0, fair: 0, unfair: 0, officer_count: 0 };
+    byDept[d].total_stars += (o.avg_stars || 0) * (o.review_count || 0);
+    byDept[d].review_count += (o.review_count || 0);
+    byDept[d].fair += (o.fair_count || 0);
+    byDept[d].unfair += (o.unfair_count || 0);
+    byDept[d].officer_count += 1;
+  }
+  let rows = Object.values(byDept).filter(d => d.review_count >= 1).map(d => ({
+    ...d,
+    avg: d.review_count ? d.total_stars / d.review_count : 0,
+    unfair_pct: d.review_count ? Math.round((d.unfair / d.review_count) * 100) : 0,
+  }));
+  if (_rankSort === 'best')       rows.sort((a, b) => b.avg - a.avg);
+  else if (_rankSort === 'worst') rows.sort((a, b) => b.unfair - a.unfair);
+  else if (_rankSort === 'busiest') rows.sort((a, b) => b.review_count - a.review_count);
+  rows = rows.slice(0, 15);
+
+  wrap.innerHTML = `
+    <div class="rank-row head">
+      <div class="rank-pos head">#</div>
+      <div>DEPARTMENT</div>
+      <div>AVG RATING</div>
+      <div>UNFAIR</div>
+      <div>REVIEWS</div>
+    </div>
+    ${rows.map((d, i) => `
+      <div class="rank-row">
+        <div class="rank-pos">${(i + 1).toString().padStart(2, '0')}</div>
+        <div>
+          <div class="rank-name">${escapeHtml(d.name)}</div>
+          <div class="rank-name-sub">${d.officer_count} officer${d.officer_count !== 1 ? 's' : ''} reviewed</div>
+        </div>
+        <div class="rank-stars">${'★'.repeat(Math.round(d.avg)) + '☆'.repeat(5 - Math.round(d.avg))} <span style="color:var(--gray);font-size:0.78rem;">${d.avg.toFixed(1)}</span></div>
+        <div class="rank-num ${d.unfair_pct >= 50 ? 'neg' : ''}">${d.unfair}</div>
+        <div class="rank-num review-count">${d.review_count}</div>
+      </div>
+    `).join('')}
+  `;
+}
 
 // Show the demo badge if running without a backend
 if (window.api && window.api.isStatic && window.api.isStatic()) {

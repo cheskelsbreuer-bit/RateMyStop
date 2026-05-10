@@ -31,6 +31,7 @@
     <button class="active" onclick="nav('home')">Home</button>
     <button onclick="nav('rate')">Rate a Stop</button>
     <button onclick="nav('officers')">Officer Profiles</button>
+    <button onclick="nav('rankings')">Rankings</button>
     <button onclick="nav('complaint')">File a Complaint</button>
     <button onclick="nav('deck')">Sponsor Info</button>
   </nav>
@@ -159,10 +160,28 @@
 
       <!-- STEP 2 -->
       <div id="step2" style="display:none;">
+        <div class="anon-row">
+          <div class="anon-left">
+            <span class="anon-shield">&#128737;</span>
+            <div>
+              <div class="anon-title">Submit anonymously</div>
+              <div class="anon-sub">No name attached. We never share your identity with the officer or the department.</div>
+            </div>
+          </div>
+          <label class="anon-switch">
+            <input type="checkbox" id="anonToggle" checked>
+            <span class="anon-slider"></span>
+          </label>
+        </div>
+        <div class="fl" id="reviewerNameWrap" style="display:none;">
+          <label>Your Name (optional, will appear on the review)</label>
+          <input type="text" id="reviewerName" placeholder="e.g. Jane D.">
+        </div>
         <div class="fl-2">
-          <div class="fl">
+          <div class="fl" style="position:relative;">
             <label>Officer Badge / ID</label>
-            <input type="text" id="badgeIn" placeholder="e.g. Badge #4821">
+            <input type="text" id="badgeIn" placeholder="e.g. Badge #4821" autocomplete="off" oninput="onBadgeInput()" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 150)">
+            <div class="autocomplete-dropdown" id="badgeSuggest"></div>
           </div>
           <div class="fl">
             <label>Officer Name (if known)</label>
@@ -203,9 +222,10 @@
           <label>Exact Ticket Amount</label>
           <input type="number" id="ticketAmount" placeholder="e.g. 280" oninput="updateFighterPopup()">
         </div>
-        <div class="fl" id="ticketViolationWrap" style="display:none;">
+        <div class="fl" id="ticketViolationWrap" style="display:none;position:relative;">
           <label>Violation Listed on Ticket</label>
-          <input type="text" id="ticketViolation" placeholder="e.g. 1180(b) &mdash; Speeding 76 in 55">
+          <input type="text" id="ticketViolation" placeholder="e.g. 1180(b) &mdash; Speeding 76 in 55" autocomplete="off" oninput="onViolationInput()">
+          <div class="statute-helper" id="statuteHelper"></div>
         </div>
 
         <div class="fighter-popup" id="fighterPopup">
@@ -249,12 +269,22 @@
           <label>Or Enter Ticket Number</label>
           <input type="text" id="ticketNumberIn" placeholder="Found at top of ticket, e.g. T-2024-48291">
         </div>
+        <div class="fl">
+          <label>Was the officer wearing body cam?</label>
+          <div class="bodycam-pills" id="bodyCamPills">
+            <span class="bcp" data-v="yes" onclick="setBodyCam(this, 'yes')">&#127909; Yes</span>
+            <span class="bcp" data-v="no" onclick="setBodyCam(this, 'no')">&#128683; No</span>
+            <span class="bcp" data-v="unsure" onclick="setBodyCam(this, 'unsure')">&#129300; Not sure</span>
+          </div>
+          <div class="bcp-hint" id="bcpHint" style="display:none;"></div>
+        </div>
         <button class="submit-main" id="finalSubmit" onclick="submitReview()">Submit Review &rarr;</button>
         <div class="success-box" id="successBox">
           <div style="font-size:1.6rem;">&#9989;</div>
-          <div>
+          <div style="flex:1;">
             <div style="font-weight:600;">Review submitted and verified!</div>
             <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">Officer's profile has been updated. Your review is now live in the community.</div>
+            <button class="share-btn" id="shareBtn" onclick="shareReview()">&#128279; Share &mdash; tell others to add theirs</button>
           </div>
         </div>
         <div class="error-box" id="errorBox" style="display:none;background:rgba(224,82,82,0.09);border:1.5px solid rgba(224,82,82,0.3);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
@@ -293,6 +323,24 @@
     <div id="modalContent"></div>
   </div>
 </div>
+
+<!-- RANKINGS -->
+<section id="rankings">
+  <div class="wrap-wide">
+    <div class="ph">
+      <h2>Department Rankings</h2>
+      <p>Built live from community reviews. The numbers don't lie.</p>
+    </div>
+    <div class="rank-controls">
+      <button class="pill on" data-rk="best" onclick="switchRanking(this, 'best')">&#11088; Top Rated</button>
+      <button class="pill" data-rk="worst" onclick="switchRanking(this, 'worst')">&#9888;&#65039; Most Complaints</button>
+      <button class="pill" data-rk="busiest" onclick="switchRanking(this, 'busiest')">&#128202; Most Reviewed</button>
+    </div>
+    <div class="rank-table" id="rankTable">
+      <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading rankings&hellip;</div>
+    </div>
+  </div>
+</section>
 
 <!-- FILE A COMPLAINT -->
 <section id="complaint">
@@ -442,6 +490,7 @@
 
 <script src="static-data.js"></script>
 <script src="departments-data.js"></script>
+<script src="statutes-data.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 </body>
