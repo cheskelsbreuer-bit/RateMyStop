@@ -13,13 +13,15 @@ function nav(id) {
   });
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
-  if (id === 'officers') loadOfficers();
-  if (id === 'home') loadStats();
+  if (id === 'officers')  loadOfficers();
+  if (id === 'home')      loadStats();
+  if (id === 'complaint') renderDepartments();
 }
 
 // ── RATE FORM STATE ──
 let verdict = '';
 let stars = 0;
+let starsManuallySet = false;  // true if user tapped a star directly
 let step = 1;
 let uploadedFileUrl = null;
 
@@ -27,14 +29,55 @@ function setVerdict(v) {
   verdict = v;
   document.getElementById('vt-fair').className = 'vt' + (v === 'fair' ? ' fair-sel' : '');
   document.getElementById('vt-unfair').className = 'vt' + (v === 'unfair' ? ' unfair-sel' : '');
+  updateAutoRating();
 }
 
-function setStar(n) {
+// Sets the visual stars. `manual=true` means the user tapped a star themselves.
+function setStar(n, manual) {
   stars = n;
+  if (manual) starsManuallySet = true;
   document.querySelectorAll('.sr').forEach(s => s.classList.toggle('on', +s.dataset.v <= n));
+  const tag = document.getElementById('autoRatingTag');
+  const helper = document.getElementById('ratingHelper');
+  if (tag && helper) {
+    if (manual) {
+      tag.textContent = 'Manual';
+      tag.classList.add('manual');
+      helper.innerHTML = `You set <strong>${n} star${n !== 1 ? 's' : ''}</strong>. Behavior selections won't change this anymore.`;
+    } else {
+      tag.textContent = 'Auto-calculated';
+      tag.classList.remove('manual');
+      helper.innerHTML = `Calculated from your selections: <strong>${n} star${n !== 1 ? 's' : ''}</strong>. Tap any star to override.`;
+    }
+  }
 }
 
-function toggle(el) { el.classList.toggle('on'); }
+// Toggles a tag and (if behavior tag) recalculates the rating.
+function toggle(el) {
+  el.classList.toggle('on');
+  // Add color polarity for behavior tags
+  const pol = el.dataset.pol;
+  if (pol) el.classList.toggle(pol, el.classList.contains('on'));
+  // If this is a behavior tag, recalculate the auto rating
+  if (el.parentElement && el.parentElement.id === 'behaviorTags') {
+    updateAutoRating();
+  }
+}
+
+// Smart rating: 3-star baseline, shifted by verdict + behavior tag weights.
+// If the user manually picked a rating, we don't override it.
+function updateAutoRating() {
+  if (starsManuallySet) return;
+  let score = 3.0;  // baseline: getting pulled over is neutral
+  if (verdict === 'fair')   score += 1.0;
+  if (verdict === 'unfair') score -= 1.0;
+  document.querySelectorAll('#behaviorTags .tag.on').forEach(t => {
+    const w = parseFloat(t.dataset.w || '0');
+    score += w;
+  });
+  const computed = Math.max(1, Math.min(5, Math.round(score)));
+  setStar(computed, false);
+}
 
 function getSelectedTags(containerId) {
   return Array.from(document.querySelectorAll('#' + containerId + ' .tag.on'))
@@ -127,9 +170,9 @@ async function submitReview() {
       step = 1;
       goStep(1);
       // Reset
-      verdict = ''; stars = 0; uploadedFileUrl = null;
-      setVerdict(''); setStar(0);
-      document.querySelectorAll('.tag.on').forEach(t => t.classList.remove('on'));
+      verdict = ''; stars = 0; starsManuallySet = false; uploadedFileUrl = null;
+      setVerdict(''); setStar(0, false);
+      document.querySelectorAll('.tag.on').forEach(t => { t.classList.remove('on', 'pos', 'neg'); });
       ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('ticketType').value = '';
@@ -252,6 +295,64 @@ function applyFilters() {
   renderOfficers(list);
 }
 
+// ── NY DEPARTMENT DIRECTORY ──
+function renderDepartments() {
+  const grid = document.getElementById('contactGrid');
+  if (!grid) return;
+  const depts = window.NY_DEPARTMENTS || [];
+  const q = (document.getElementById('deptSearch').value || '').toLowerCase().trim();
+  const region = document.getElementById('deptRegion').value || '';
+
+  // Populate region dropdown once
+  const regionSel = document.getElementById('deptRegion');
+  if (regionSel && regionSel.options.length === 1) {
+    const regions = Array.from(new Set(depts.map(d => d.region))).sort();
+    regions.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r; opt.textContent = r;
+      regionSel.appendChild(opt);
+    });
+  }
+
+  let filtered = depts;
+  if (region) filtered = filtered.filter(d => d.region === region);
+  if (q) filtered = filtered.filter(d =>
+    d.name.toLowerCase().includes(q) ||
+    d.address.toLowerCase().includes(q) ||
+    d.region.toLowerCase().includes(q)
+  );
+
+  document.getElementById('deptCount').textContent = filtered.length;
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">No departments match. Try a broader search.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(d => {
+    const primaryContact = d.contacts && d.contacts[0] ? d.contacts[0] : null;
+    const recipientName = primaryContact && primaryContact.name ? primaryContact.name : d.name;
+    const recipientEmail = primaryContact && primaryContact.email ? primaryContact.email : '';
+    return `
+      <div class="contact-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div class="cc-role">${escapeHtml(d.region)}</div>
+          ${d.verified ? '<span class="flag-verified">&#10003; Verified</span>' : '<span style="font-size:0.7rem;color:var(--gray);">phone-only</span>'}
+        </div>
+        <div class="cc-name">${escapeHtml(d.name)}</div>
+        ${(d.contacts || []).slice(0, 2).map(c => `
+          <div class="cc-row">
+            ${c.role ? `<span style="font-size:0.7rem;color:var(--gray);width:80px;flex-shrink:0;">${escapeHtml(c.role)}:</span>` : ''}
+            ${c.email ? `&#128231; <a href="mailto:${escapeHtml(c.email)}">${escapeHtml(c.email)}</a>` : (c.phone ? `&#128222; ${escapeHtml(c.phone)}` : '')}
+          </div>
+        `).join('')}
+        <div class="cc-row" style="font-size:0.78rem;color:var(--gray);margin-top:6px;">&#128205; ${escapeHtml(d.address)}</div>
+        <button class="cc-send" onclick="openComplaintForm(${JSON.stringify(recipientName).replace(/"/g, '&quot;')}, ${JSON.stringify(recipientEmail).replace(/"/g, '&quot;')})">Send Complaint &rarr;</button>
+      </div>
+    `;
+  }).join('');
+}
+
 // ── COMPLAINTS ──
 function openComplaintForm(name, email) {
   document.getElementById('cfTitle').textContent = 'Complaint to ' + name;
@@ -337,4 +438,11 @@ loadOfficers();
 if (window.api && window.api.isStatic && window.api.isStatic()) {
   const badge = document.getElementById('demoBadge');
   if (badge) badge.classList.add('show');
+}
+
+// Register service worker (for PWA / offline / installability)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+  });
 }

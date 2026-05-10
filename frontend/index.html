@@ -2,8 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RateMyStop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RateMyStop">
+<meta name="description" content="Rate your traffic stop. See how officers are rated by the community. File complaints. On the record.">
+<meta property="og:title" content="RateMyStop — Your Stop. Your Voice. On the Record.">
+<meta property="og:description" content="Rate your traffic stop. See how officers in your area are rated.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icon-512.png">
+<title>RateMyStop &mdash; Your Stop. Your Voice. On the Record.</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&amp;family=Epilogue:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -92,14 +104,15 @@
           </div>
         </div>
         <div class="fl">
-          <label>Rate the Officer (1&ndash;5 stars)</label>
+          <label>Officer Rating <span class="auto-rating-tag" id="autoRatingTag">Auto-calculated</span></label>
           <div class="stars-row" id="starRow">
-            <span class="sr" data-v="1" onclick="setStar(1)">&#9733;</span>
-            <span class="sr" data-v="2" onclick="setStar(2)">&#9733;</span>
-            <span class="sr" data-v="3" onclick="setStar(3)">&#9733;</span>
-            <span class="sr" data-v="4" onclick="setStar(4)">&#9733;</span>
-            <span class="sr" data-v="5" onclick="setStar(5)">&#9733;</span>
+            <span class="sr" data-v="1" onclick="setStar(1, true)">&#9733;</span>
+            <span class="sr" data-v="2" onclick="setStar(2, true)">&#9733;</span>
+            <span class="sr" data-v="3" onclick="setStar(3, true)">&#9733;</span>
+            <span class="sr" data-v="4" onclick="setStar(4, true)">&#9733;</span>
+            <span class="sr" data-v="5" onclick="setStar(5, true)">&#9733;</span>
           </div>
+          <div class="rating-helper" id="ratingHelper">Stars update automatically as you make selections below. Tap any star to override.</div>
         </div>
         <div class="fl">
           <label>Reason You Were Stopped</label>
@@ -116,12 +129,15 @@
         <div class="fl">
           <label>Officer's Behavior</label>
           <div class="tags" id="behaviorTags">
-            <span class="tag" onclick="toggle(this)">&#128077; Professional</span>
-            <span class="tag" onclick="toggle(this)">&#128548; Aggressive</span>
-            <span class="tag" onclick="toggle(this)">&#129309; Respectful</span>
-            <span class="tag" onclick="toggle(this)">&#128528; Dismissive</span>
-            <span class="tag" onclick="toggle(this)">&#9889; Quick &amp; Fair</span>
-            <span class="tag" onclick="toggle(this)">&#128483;&#65039; Talked Too Much</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128077; Professional</span>
+            <span class="tag" data-w="-1"   data-pol="neg" onclick="toggle(this)">&#128548; Aggressive</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#129309; Respectful</span>
+            <span class="tag" data-w="-0.5" data-pol="neg" onclick="toggle(this)">&#128528; Dismissive</span>
+            <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#9889; Quick &amp; Fair</span>
+            <span class="tag" data-w="-0.3" data-pol="neg" onclick="toggle(this)">&#128483;&#65039; Talked Too Much</span>
+            <span class="tag" data-w="-1.5" data-pol="neg" onclick="toggle(this)">&#128545; Hostile</span>
+            <span class="tag" data-w="-1"   data-pol="neg" onclick="toggle(this)">&#128577; Rude</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128083; Calm</span>
           </div>
         </div>
         <button class="submit-main" onclick="goStep(2)">Next: Officer Info &rarr;</button>
@@ -274,29 +290,19 @@
       <div><strong style="color:var(--blue);">Smart Complaint System.</strong> Select the department below. The app will auto-fill your complaint using details from your review, and send it directly to the right contact. You can edit before sending.</div>
     </div>
 
-    <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;margin-bottom:16px;">&#128205; Spring Valley PD &mdash; Official Contacts</h3>
-    <div class="contact-grid">
-      <div class="contact-card">
-        <div class="cc-role">Police Chief</div>
-        <div class="cc-name">Richard Oleszczuk</div>
-        <div class="cc-row">&#128231; <a href="mailto:ROLESZCZUK@villagespringvalley.org">ROLESZCZUK@villagespringvalley.org</a></div>
-        <div class="cc-row">&#128222; (845) 352-1100 ext. 169</div>
-        <button class="cc-send" onclick="openComplaintForm('Chief Oleszczuk','ROLESZCZUK@villagespringvalley.org')">Send Complaint to Chief &rarr;</button>
-      </div>
-      <div class="contact-card">
-        <div class="cc-role">Lieutenant</div>
-        <div class="cc-name">Jack Bosworth</div>
-        <div class="cc-row">&#128231; <a href="mailto:JBOSWORTH@villagespringvalley.org">JBOSWORTH@villagespringvalley.org</a></div>
-        <div class="cc-row">&#128222; (845) 352-1100 ext. 166</div>
-        <button class="cc-send" onclick="openComplaintForm('Lt. Bosworth','JBOSWORTH@villagespringvalley.org')">Send Complaint to Lt. &rarr;</button>
-      </div>
-      <div class="contact-card">
-        <div class="cc-role">General Inquiries / Front Desk</div>
-        <div class="cc-name">Spring Valley PD Main Line</div>
-        <div class="cc-row">&#128222; (845) 356-7400</div>
-        <div class="cc-row">&#128205; 200 N. Main St, Spring Valley, NY 10977</div>
-        <button class="cc-send" onclick="openComplaintForm('Spring Valley PD','')">Compose General Complaint &rarr;</button>
-      </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;">&#128205; New York Department Directory</h3>
+      <div style="font-size:0.78rem;color:var(--gray);"><span id="deptCount">&mdash;</span> departments &middot; <span style="color:var(--green);">&#10003; Verified contacts</span></div>
+    </div>
+
+    <div class="search-bar-wrap" style="margin-bottom:14px;">
+      <input type="text" id="deptSearch" placeholder="Search by department name, town, or county&hellip;" oninput="renderDepartments()">
+      <select id="deptRegion" onchange="renderDepartments()" style="background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--white);font-family:'Epilogue',sans-serif;font-size:0.93rem;outline:none;cursor:pointer;">
+        <option value="">All regions</option>
+      </select>
+    </div>
+    <div class="contact-grid" id="contactGrid">
+      <div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">Loading departments&hellip;</div>
     </div>
 
     <div class="complaint-form" id="complaintFormWrap" style="display:none;">
@@ -421,6 +427,7 @@
 <div class="demo-badge" id="demoBadge">Preview Mode &mdash; submissions opening soon</div>
 
 <script src="static-data.js"></script>
+<script src="departments-data.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 </body>

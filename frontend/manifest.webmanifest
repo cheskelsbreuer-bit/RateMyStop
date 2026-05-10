@@ -1,0 +1,16 @@
+{
+  "name": "RateMyStop",
+  "short_name": "RateMyStop",
+  "description": "Rate your traffic stop. See how officers are rated by the community. File complaints. On the record.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f13",
+  "theme_color": "#0f0f13",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["lifestyle", "social", "utilities"]
+}

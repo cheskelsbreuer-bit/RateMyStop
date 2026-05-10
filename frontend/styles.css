@@ -100,6 +100,14 @@ section.active{display:block;}
 .tags{display:flex;gap:7px;flex-wrap:wrap;}
 .tag{background:rgba(255,255,255,0.04);border:1.5px solid var(--border);border-radius:20px;padding:6px 14px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;color:var(--gray);}
 .tag.on{background:rgba(232,197,71,0.09);border-color:rgba(232,197,71,0.35);color:var(--accent);}
+.tag.on.neg{background:rgba(224,82,82,0.08);border-color:rgba(224,82,82,0.3);color:var(--red);}
+.tag.on.pos{background:rgba(78,201,138,0.08);border-color:rgba(78,201,138,0.3);color:var(--green);}
+
+/* Auto-rating helper UI */
+.auto-rating-tag{display:inline-block;font-size:0.62rem;font-weight:700;letter-spacing:0.6px;color:var(--accent);background:rgba(232,197,71,0.1);border:1px solid rgba(232,197,71,0.3);border-radius:999px;padding:2px 8px;margin-left:8px;text-transform:uppercase;vertical-align:middle;}
+.auto-rating-tag.manual{color:var(--blue);background:rgba(91,138,240,0.1);border-color:rgba(91,138,240,0.3);}
+.rating-helper{font-size:0.74rem;color:var(--gray);margin-top:6px;}
+.rating-helper strong{color:var(--accent);}
 
 /* Upload zone */
 .upload-zone{border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
