@@ -1,8 +1,10 @@
 // ── HOME-PAGE QUICK ACTIONS ──
-function startRateWith(verdictArg, starsArg) {
+// Jumps to the rate form and pre-selects fair/unfair if provided.
+// (Star args from the home phone-mock are intentionally ignored — stars are
+// now suggested by the system at submit time, not entered manually upfront.)
+function startRateWith(verdictArg /*, starsArg */) {
   nav('rate');
   if (verdictArg) setVerdict(verdictArg);
-  if (starsArg)   setStar(starsArg);
 }
 
 // ── NAVIGATION ──
@@ -20,64 +22,45 @@ function nav(id) {
 
 // ── RATE FORM STATE ──
 let verdict = '';
-let stars = 0;
-let starsManuallySet = false;  // true if user tapped a star directly
+let stars = 0;             // final rating used at submission time
 let step = 1;
 let uploadedFileUrl = null;
 
 function setVerdict(v) {
   verdict = v;
-  document.getElementById('vt-fair').className = 'vt' + (v === 'fair' ? ' fair-sel' : '');
+  document.getElementById('vt-fair').className   = 'vt' + (v === 'fair' ? ' fair-sel' : '');
   document.getElementById('vt-unfair').className = 'vt' + (v === 'unfair' ? ' unfair-sel' : '');
-  updateAutoRating();
+  // No live star UI — calculation happens silently and is revealed at submit time.
 }
 
-// Sets the visual stars. `manual=true` means the user tapped a star themselves.
-function setStar(n, manual) {
-  stars = n;
-  if (manual) starsManuallySet = true;
-  document.querySelectorAll('.sr').forEach(s => s.classList.toggle('on', +s.dataset.v <= n));
-  const tag = document.getElementById('autoRatingTag');
-  const helper = document.getElementById('ratingHelper');
-  if (tag && helper) {
-    if (manual) {
-      tag.textContent = 'Manual';
-      tag.classList.add('manual');
-      helper.innerHTML = `You set <strong>${n} star${n !== 1 ? 's' : ''}</strong>. Behavior selections won't change this anymore.`;
-    } else {
-      tag.textContent = 'Auto-calculated';
-      tag.classList.remove('manual');
-      helper.innerHTML = `Calculated from your selections: <strong>${n} star${n !== 1 ? 's' : ''}</strong>. Tap any star to override.`;
-    }
-  }
-}
-
-// Toggles a tag and (if behavior tag) recalculates the rating.
+// Toggles a tag. Adds polarity styling to behavior tags. No live rating update.
 function toggle(el) {
   el.classList.toggle('on');
-  // Add color polarity for behavior tags
   const pol = el.dataset.pol;
   if (pol) el.classList.toggle(pol, el.classList.contains('on'));
-  // If this is a behavior tag, recalculate the auto rating
-  if (el.parentElement && el.parentElement.id === 'behaviorTags') {
-    updateAutoRating();
-  }
 }
 
-// Smart rating: 3-star baseline, shifted by verdict + behavior tag weights.
-// If the user manually picked a rating, we don't override it.
-function updateAutoRating() {
-  if (starsManuallySet) return;
-  let score = 3.0;  // baseline: getting pulled over is neutral
-  if (verdict === 'fair')   score += 1.0;
-  if (verdict === 'unfair') score -= 1.0;
+// Silent rating calculation — runs only when the user is ready to submit.
+// Charitable baseline: assume officers are good unless told otherwise.
+//   Fair verdict   → start at 5 stars (positive default)
+//   Unfair verdict → start at 2 stars (negative default)
+//   No verdict yet → 4 stars (charitable but acknowledging some friction)
+// Behavior tags adjust from there, clamped 1–5.
+function calculateSuggestedStars() {
+  let score;
+  if (verdict === 'fair')        score = 5.0;
+  else if (verdict === 'unfair') score = 2.0;
+  else                            score = 4.0;
   document.querySelectorAll('#behaviorTags .tag.on').forEach(t => {
     const w = parseFloat(t.dataset.w || '0');
     score += w;
   });
-  const computed = Math.max(1, Math.min(5, Math.round(score)));
-  setStar(computed, false);
+  return Math.max(1, Math.min(5, Math.round(score)));
 }
+
+// Legacy: home-page phone-mock stars / officer cards still call setStar elsewhere.
+// We keep a stub so nothing breaks. (No-op visually on the rate form now.)
+function setStar(n) { stars = n; }
 
 function getSelectedTags(containerId) {
   return Array.from(document.querySelectorAll('#' + containerId + ' .tag.on'))
@@ -85,8 +68,7 @@ function getSelectedTags(containerId) {
 }
 
 function goStep(n) {
-  if (n === 2 && !verdict) { alert('Please select whether the stop was fair or unfair.'); return; }
-  if (n === 2 && !stars)   { alert('Please give the officer a star rating.'); return; }
+  if (n === 2 && !verdict) { alert('Please tell us whether the stop was fair or unfair.'); return; }
   document.getElementById('step' + step).style.display = 'none';
   step = n;
   document.getElementById('step' + n).style.display = 'block';
@@ -133,12 +115,64 @@ async function onFileUpload(input) {
   }
 }
 
-async function submitReview() {
+// User clicked "Submit Review" — open the rating confirmation modal instead of submitting immediately.
+function submitReview() {
+  const suggested = calculateSuggestedStars();
+  stars = suggested;  // tentatively set; user can override in the modal
+  openRatingConfirm(suggested);
+}
+
+// Opens the modal with the suggested rating displayed.
+function openRatingConfirm(suggested) {
+  const starDisplay = document.getElementById('rcmStarsDisplay');
+  const number = document.getElementById('rcmNumber');
+  starDisplay.textContent = '★'.repeat(suggested) + '☆'.repeat(5 - suggested);
+  number.textContent = `${suggested} out of 5`;
+  // Reset override panel
+  document.getElementById('rcmOverridePanel').classList.remove('show');
+  document.getElementById('overrideToggle').style.display = '';
+  document.querySelectorAll('#rcmOverrideStars span').forEach(s => s.classList.remove('on'));
+  document.getElementById('rcmOverrideSubmit').disabled = true;
+  document.getElementById('ratingConfirm').classList.add('show');
+}
+
+function closeRatingConfirm() {
+  document.getElementById('ratingConfirm').classList.remove('show');
+}
+
+function toggleOverride() {
+  document.getElementById('rcmOverridePanel').classList.add('show');
+  document.getElementById('overrideToggle').style.display = 'none';
+}
+
+function pickOverrideStar(n) {
+  stars = n;
+  document.querySelectorAll('#rcmOverrideStars span').forEach(s =>
+    s.classList.toggle('on', +s.dataset.v <= n)
+  );
+  document.getElementById('rcmOverrideSubmit').disabled = false;
+  // Also update the headline display so they see their new pick
+  document.getElementById('rcmStarsDisplay').textContent = '★'.repeat(n) + '☆'.repeat(5 - n);
+  document.getElementById('rcmNumber').textContent = `${n} out of 5 (your pick)`;
+}
+
+// Called from the modal — actually submits the review now.
+async function confirmRatingAndSubmit() {
+  closeRatingConfirm();
+  await reallySubmitReview();
+}
+
+async function reallySubmitReview() {
   const btn = document.getElementById('finalSubmit');
   const errBox = document.getElementById('errorBox');
   errBox.style.display = 'none';
   btn.disabled = true;
   btn.textContent = 'Submitting…';
+
+  // Combine step 1 quick story with step 3 long story if both exist
+  const quickStory = (document.getElementById('quickStory')?.value || '').trim();
+  const longStory  = (document.getElementById('storyIn')?.value || '').trim();
+  const combinedStory = [quickStory, longStory].filter(Boolean).join('\n\n') || null;
 
   const payload = {
     verdict,
@@ -153,7 +187,7 @@ async function submitReview() {
     ticket_type: document.getElementById('ticketType').value || null,
     ticket_amount: parseFloat(document.getElementById('ticketAmount').value) || null,
     ticket_violation: document.getElementById('ticketViolation').value || null,
-    story: document.getElementById('storyIn').value || null,
+    story: combinedStory,
     ticket_number: document.getElementById('ticketNumberIn').value || null,
     upload_url: uploadedFileUrl,
   };
@@ -170,10 +204,10 @@ async function submitReview() {
       step = 1;
       goStep(1);
       // Reset
-      verdict = ''; stars = 0; starsManuallySet = false; uploadedFileUrl = null;
-      setVerdict(''); setStar(0, false);
+      verdict = ''; stars = 0; uploadedFileUrl = null;
+      setVerdict('');
       document.querySelectorAll('.tag.on').forEach(t => { t.classList.remove('on', 'pos', 'neg'); });
-      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn']
+      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn','quickStory']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       document.getElementById('ticketType').value = '';
       document.getElementById('uploadPreview').classList.remove('show');

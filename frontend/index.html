@@ -104,17 +104,6 @@
           </div>
         </div>
         <div class="fl">
-          <label>Officer Rating <span class="auto-rating-tag" id="autoRatingTag">Auto-calculated</span></label>
-          <div class="stars-row" id="starRow">
-            <span class="sr" data-v="1" onclick="setStar(1, true)">&#9733;</span>
-            <span class="sr" data-v="2" onclick="setStar(2, true)">&#9733;</span>
-            <span class="sr" data-v="3" onclick="setStar(3, true)">&#9733;</span>
-            <span class="sr" data-v="4" onclick="setStar(4, true)">&#9733;</span>
-            <span class="sr" data-v="5" onclick="setStar(5, true)">&#9733;</span>
-          </div>
-          <div class="rating-helper" id="ratingHelper">Stars update automatically as you make selections below. Tap any star to override.</div>
-        </div>
-        <div class="fl">
           <label>Reason You Were Stopped</label>
           <div class="tags" id="reasonTags">
             <span class="tag" onclick="toggle(this)">&#128678; Speeding</span>
@@ -139,6 +128,10 @@
             <span class="tag" data-w="-1"   data-pol="neg" onclick="toggle(this)">&#128577; Rude</span>
             <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128083; Calm</span>
           </div>
+        </div>
+        <div class="fl">
+          <label>In Your Own Words <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+          <textarea id="quickStory" placeholder="A sentence or two on what happened. The more detail, the better the record." style="min-height:70px;"></textarea>
         </div>
         <button class="submit-main" onclick="goStep(2)">Next: Officer Info &rarr;</button>
       </div>
@@ -423,6 +416,36 @@
     </div>
   </div>
 </section>
+
+<!-- Rating confirmation modal — shown before submitting a review -->
+<div class="rating-confirm-overlay" id="ratingConfirm">
+  <div class="rating-confirm-modal">
+    <div class="rcm-eyebrow">Before we record this</div>
+    <div class="rcm-title">Based on what you told us&hellip;</div>
+    <div class="rcm-stars" id="rcmStarsDisplay">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+    <div class="rcm-number" id="rcmNumber">4 out of 5</div>
+    <div class="rcm-question">Does this match how the stop felt to you?</div>
+
+    <div class="rcm-actions">
+      <button class="rcm-confirm" onclick="confirmRatingAndSubmit()">Yes &mdash; submit this rating</button>
+      <button class="rcm-override-toggle" onclick="toggleOverride()" id="overrideToggle">No &mdash; let me choose</button>
+    </div>
+
+    <div class="rcm-override-panel" id="rcmOverridePanel">
+      <div class="rcm-override-label">Pick a rating:</div>
+      <div class="rcm-override-stars" id="rcmOverrideStars">
+        <span data-v="1" onclick="pickOverrideStar(1)">&#9733;</span>
+        <span data-v="2" onclick="pickOverrideStar(2)">&#9733;</span>
+        <span data-v="3" onclick="pickOverrideStar(3)">&#9733;</span>
+        <span data-v="4" onclick="pickOverrideStar(4)">&#9733;</span>
+        <span data-v="5" onclick="pickOverrideStar(5)">&#9733;</span>
+      </div>
+      <button class="rcm-confirm" id="rcmOverrideSubmit" onclick="confirmRatingAndSubmit()" disabled>Submit with my rating</button>
+    </div>
+
+    <button class="rcm-close" onclick="closeRatingConfirm()" aria-label="Close">&#10005;</button>
+  </div>
+</div>
 
 <div class="demo-badge" id="demoBadge">Preview Mode &mdash; submissions opening soon</div>
 
