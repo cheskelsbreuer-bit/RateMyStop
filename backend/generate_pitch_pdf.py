@@ -410,7 +410,7 @@ def page_tiers():
 
     c.setFillColor(WHITE)
     c.setFont("BodyBold", 14)
-    c.drawString(M, bar_y, "Chaya")
+    c.drawString(M, bar_y, "Chesky")
     c.setFillColor(GRAY)
     c.setFont("Body", 11)
     c.drawString(M, bar_y - 18, "founder, RateMyStop")
