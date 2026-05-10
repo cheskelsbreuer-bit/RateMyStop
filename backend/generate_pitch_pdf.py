@@ -420,7 +420,7 @@ def page_tiers():
     c.drawString(M + 320, bar_y + 4, "EMAIL")
     c.setFillColor(WHITE)
     c.setFont("BodyBold", 13)
-    c.drawString(M + 320, bar_y - 14, "contact@ratemystop.com")
+    c.drawString(M + 320, bar_y - 14, "chesky2039@gmail.com")
 
     c.setFillColor(GRAY)
     c.setFont("Mono", 7.5)
