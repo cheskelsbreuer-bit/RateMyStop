@@ -1,6 +1,6 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'ratemystop-v2';
+const CACHE = 'ratemystop-v3';
 const ASSETS = [
   './',
   './index.html',

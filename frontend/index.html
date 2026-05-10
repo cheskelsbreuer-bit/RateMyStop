@@ -90,6 +90,27 @@
 
     <div class="rcard">
 
+      <!-- Live rating chip — shows current calculated rating, updates as user fills the form -->
+      <div class="live-rating" id="liveRating">
+        <div class="lr-left">
+          <span class="lr-label">Current rating</span>
+          <span class="lr-stars" id="lrStars">&#9734;&#9734;&#9734;&#9734;&#9734;</span>
+          <span class="lr-num" id="lrNum">&mdash;</span>
+        </div>
+        <button class="lr-adjust" type="button" onclick="toggleAdjust()">adjust</button>
+      </div>
+      <div class="lr-adjust-panel" id="lrAdjustPanel">
+        <span class="lap-label">Override:</span>
+        <div class="lap-stars" id="lapStars">
+          <span data-v="1" onclick="overrideRating(1)">&#9733;</span>
+          <span data-v="2" onclick="overrideRating(2)">&#9733;</span>
+          <span data-v="3" onclick="overrideRating(3)">&#9733;</span>
+          <span data-v="4" onclick="overrideRating(4)">&#9733;</span>
+          <span data-v="5" onclick="overrideRating(5)">&#9733;</span>
+        </div>
+        <button class="lap-clear" type="button" onclick="clearOverride()">use auto</button>
+      </div>
+
       <!-- STEP 1 -->
       <div id="step1">
         <div class="fl">
@@ -416,36 +437,6 @@
     </div>
   </div>
 </section>
-
-<!-- Rating confirmation modal — shown before submitting a review -->
-<div class="rating-confirm-overlay" id="ratingConfirm">
-  <div class="rating-confirm-modal">
-    <div class="rcm-eyebrow">Before we record this</div>
-    <div class="rcm-title">Based on what you told us&hellip;</div>
-    <div class="rcm-stars" id="rcmStarsDisplay">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
-    <div class="rcm-number" id="rcmNumber">4 out of 5</div>
-    <div class="rcm-question">Does this match how the stop felt to you?</div>
-
-    <div class="rcm-actions">
-      <button class="rcm-confirm" onclick="confirmRatingAndSubmit()">Yes &mdash; submit this rating</button>
-      <button class="rcm-override-toggle" onclick="toggleOverride()" id="overrideToggle">No &mdash; let me choose</button>
-    </div>
-
-    <div class="rcm-override-panel" id="rcmOverridePanel">
-      <div class="rcm-override-label">Pick a rating:</div>
-      <div class="rcm-override-stars" id="rcmOverrideStars">
-        <span data-v="1" onclick="pickOverrideStar(1)">&#9733;</span>
-        <span data-v="2" onclick="pickOverrideStar(2)">&#9733;</span>
-        <span data-v="3" onclick="pickOverrideStar(3)">&#9733;</span>
-        <span data-v="4" onclick="pickOverrideStar(4)">&#9733;</span>
-        <span data-v="5" onclick="pickOverrideStar(5)">&#9733;</span>
-      </div>
-      <button class="rcm-confirm" id="rcmOverrideSubmit" onclick="confirmRatingAndSubmit()" disabled>Submit with my rating</button>
-    </div>
-
-    <button class="rcm-close" onclick="closeRatingConfirm()" aria-label="Close">&#10005;</button>
-  </div>
-</div>
 
 <div class="demo-badge" id="demoBadge">Preview Mode &mdash; submissions opening soon</div>
 

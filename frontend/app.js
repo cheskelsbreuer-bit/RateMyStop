@@ -22,7 +22,8 @@ function nav(id) {
 
 // ── RATE FORM STATE ──
 let verdict = '';
-let stars = 0;             // final rating used at submission time
+let stars = 0;                // current rating (auto or overridden)
+let starsOverride = null;     // if the user manually picked, this is set 1-5
 let step = 1;
 let uploadedFileUrl = null;
 
@@ -30,36 +31,110 @@ function setVerdict(v) {
   verdict = v;
   document.getElementById('vt-fair').className   = 'vt' + (v === 'fair' ? ' fair-sel' : '');
   document.getElementById('vt-unfair').className = 'vt' + (v === 'unfair' ? ' unfair-sel' : '');
-  // No live star UI — calculation happens silently and is revealed at submit time.
+  refreshLiveRating();
 }
 
-// Toggles a tag. Adds polarity styling to behavior tags. No live rating update.
+// Toggle a tag. Adds polarity styling to behavior tags. Updates the live rating.
 function toggle(el) {
   el.classList.toggle('on');
   const pol = el.dataset.pol;
   if (pol) el.classList.toggle(pol, el.classList.contains('on'));
+  refreshLiveRating();
 }
 
-// Silent rating calculation — runs only when the user is ready to submit.
-// Charitable baseline: assume officers are good unless told otherwise.
-//   Fair verdict   → start at 5 stars (positive default)
-//   Unfair verdict → start at 2 stars (negative default)
-//   No verdict yet → 4 stars (charitable but acknowledging some friction)
-// Behavior tags adjust from there, clamped 1–5.
+// ── SENTIMENT ANALYZER for the free-text notes ──
+// Looks for explicit star mentions and clear positive/negative language.
+// Returns a numeric adjustment in [-2.5, +2.5].
+function analyzeNotes(text) {
+  if (!text) return 0;
+  const t = (' ' + text.toLowerCase() + ' ').replace(/[^\w\s/-]/g, ' ');
+  let score = 0;
+
+  // Explicit star mentions — strongest signal
+  const STAR_PHRASES = [
+    { re: /\b(five|5)[\s-]?star(s)?\b/, w: 2.0 },
+    { re: /\b5\s?\/\s?5\b/,             w: 2.0 },
+    { re: /\b(four|4)[\s-]?star(s)?\b/, w: 1.0 },
+    { re: /\b4\s?\/\s?5\b/,             w: 1.0 },
+    { re: /\b(three|3)[\s-]?star(s)?\b/, w: 0 },
+    { re: /\b3\s?\/\s?5\b/,             w: 0 },
+    { re: /\b(two|2)[\s-]?star(s)?\b/,  w: -1.2 },
+    { re: /\b2\s?\/\s?5\b/,             w: -1.2 },
+    { re: /\b(one|1)[\s-]?star(s)?\b/,  w: -2.0 },
+    { re: /\b1\s?\/\s?5\b/,             w: -2.0 },
+    { re: /\bzero[\s-]?star(s)?\b/,     w: -2.5 },
+  ];
+  for (const { re, w } of STAR_PHRASES) if (re.test(t)) score += w;
+
+  // Positive / negative descriptors
+  const POSITIVE = [
+    'great','excellent','amazing','wonderful','professional','polite','kind','respectful',
+    'helpful','fair','calm','understanding','nice','friendly','best','phenomenal','outstanding',
+    'patient','reasonable','courteous','exemplary','model','classy','perfect','good',
+  ];
+  const NEGATIVE = [
+    'horrible','terrible','awful','rude','aggressive','mean','hostile','worst','unfair',
+    'disrespectful','dismissive','arrogant','angry','abusive','threatening','racist','biased',
+    'unprofessional','harassed','intimidating','condescending','liar','lying','corrupt','bully',
+  ];
+  for (const w of POSITIVE) if (t.includes(' ' + w + ' ') || t.includes(' ' + w + 's ') || t.includes(' ' + w + 'ly ')) score += 0.3;
+  for (const w of NEGATIVE) if (t.includes(' ' + w + ' ') || t.includes(' ' + w + 's ') || t.includes(' ' + w + 'ly ')) score -= 0.4;
+
+  // Clamp so notes can't completely dominate
+  return Math.max(-2.5, Math.min(2.5, score));
+}
+
+// Compute the suggested rating from verdict + behaviors + notes sentiment.
+//   Fair  → start 5     Unfair → start 2     None → start 4 (charitable default)
 function calculateSuggestedStars() {
+  if (starsOverride != null) return starsOverride;
   let score;
   if (verdict === 'fair')        score = 5.0;
   else if (verdict === 'unfair') score = 2.0;
   else                            score = 4.0;
   document.querySelectorAll('#behaviorTags .tag.on').forEach(t => {
-    const w = parseFloat(t.dataset.w || '0');
-    score += w;
+    score += parseFloat(t.dataset.w || '0');
   });
+  const quickNotes = (document.getElementById('quickStory')?.value || '');
+  const longNotes  = (document.getElementById('storyIn')?.value || '');
+  score += analyzeNotes(quickNotes + ' ' + longNotes);
   return Math.max(1, Math.min(5, Math.round(score)));
 }
 
-// Legacy: home-page phone-mock stars / officer cards still call setStar elsewhere.
-// We keep a stub so nothing breaks. (No-op visually on the rate form now.)
+// Refresh the small live chip at the top of the form.
+function refreshLiveRating() {
+  const s = calculateSuggestedStars();
+  stars = s;
+  const lr = document.getElementById('liveRating');
+  const starsEl = document.getElementById('lrStars');
+  const numEl   = document.getElementById('lrNum');
+  if (!lr) return;
+  starsEl.textContent = '★'.repeat(s) + '☆'.repeat(5 - s);
+  numEl.textContent = starsOverride != null ? `${s}/5 · manual` : `${s}/5`;
+  numEl.classList.toggle('manual', starsOverride != null);
+  // Subtle pulse so the user notices it changed
+  lr.classList.remove('pulse');
+  void lr.offsetWidth;  // force reflow
+  lr.classList.add('pulse');
+  // Reflect override stars in the adjust panel
+  document.querySelectorAll('#lapStars span').forEach(span => {
+    span.classList.toggle('on', starsOverride != null && +span.dataset.v <= starsOverride);
+  });
+}
+
+function toggleAdjust() {
+  document.getElementById('lrAdjustPanel').classList.toggle('show');
+}
+function overrideRating(n) {
+  starsOverride = n;
+  refreshLiveRating();
+}
+function clearOverride() {
+  starsOverride = null;
+  refreshLiveRating();
+}
+
+// Legacy stub — home-page phone-mock & officer cards still call setStar.
 function setStar(n) { stars = n; }
 
 function getSelectedTags(containerId) {
@@ -115,54 +190,10 @@ async function onFileUpload(input) {
   }
 }
 
-// User clicked "Submit Review" — open the rating confirmation modal instead of submitting immediately.
-function submitReview() {
-  const suggested = calculateSuggestedStars();
-  stars = suggested;  // tentatively set; user can override in the modal
-  openRatingConfirm(suggested);
-}
-
-// Opens the modal with the suggested rating displayed.
-function openRatingConfirm(suggested) {
-  const starDisplay = document.getElementById('rcmStarsDisplay');
-  const number = document.getElementById('rcmNumber');
-  starDisplay.textContent = '★'.repeat(suggested) + '☆'.repeat(5 - suggested);
-  number.textContent = `${suggested} out of 5`;
-  // Reset override panel
-  document.getElementById('rcmOverridePanel').classList.remove('show');
-  document.getElementById('overrideToggle').style.display = '';
-  document.querySelectorAll('#rcmOverrideStars span').forEach(s => s.classList.remove('on'));
-  document.getElementById('rcmOverrideSubmit').disabled = true;
-  document.getElementById('ratingConfirm').classList.add('show');
-}
-
-function closeRatingConfirm() {
-  document.getElementById('ratingConfirm').classList.remove('show');
-}
-
-function toggleOverride() {
-  document.getElementById('rcmOverridePanel').classList.add('show');
-  document.getElementById('overrideToggle').style.display = 'none';
-}
-
-function pickOverrideStar(n) {
-  stars = n;
-  document.querySelectorAll('#rcmOverrideStars span').forEach(s =>
-    s.classList.toggle('on', +s.dataset.v <= n)
-  );
-  document.getElementById('rcmOverrideSubmit').disabled = false;
-  // Also update the headline display so they see their new pick
-  document.getElementById('rcmStarsDisplay').textContent = '★'.repeat(n) + '☆'.repeat(5 - n);
-  document.getElementById('rcmNumber').textContent = `${n} out of 5 (your pick)`;
-}
-
-// Called from the modal — actually submits the review now.
-async function confirmRatingAndSubmit() {
-  closeRatingConfirm();
-  await reallySubmitReview();
-}
-
-async function reallySubmitReview() {
+// Submit — direct, no modal. The live chip already showed the user the rating the whole time.
+async function submitReview() {
+  // Make sure the current rating reflects the latest inputs (in case of focus changes etc.)
+  refreshLiveRating();
   const btn = document.getElementById('finalSubmit');
   const errBox = document.getElementById('errorBox');
   errBox.style.display = 'none';
@@ -204,11 +235,13 @@ async function reallySubmitReview() {
       step = 1;
       goStep(1);
       // Reset
-      verdict = ''; stars = 0; uploadedFileUrl = null;
+      verdict = ''; stars = 0; starsOverride = null; uploadedFileUrl = null;
       setVerdict('');
       document.querySelectorAll('.tag.on').forEach(t => { t.classList.remove('on', 'pos', 'neg'); });
       ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn','quickStory']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      document.getElementById('lrAdjustPanel').classList.remove('show');
+      refreshLiveRating();
       document.getElementById('ticketType').value = '';
       document.getElementById('uploadPreview').classList.remove('show');
       onTicketChange();
@@ -467,6 +500,18 @@ function formatDate(iso) {
 document.getElementById('dateIn').value = new Date().toISOString().split('T')[0];
 loadStats();
 loadOfficers();
+refreshLiveRating();   // initial state: 4/5 charitable default
+
+// Live update the chip as user types in the notes (debounced ~250ms)
+let _notesTimer = null;
+['quickStory', 'storyIn'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    clearTimeout(_notesTimer);
+    _notesTimer = setTimeout(refreshLiveRating, 250);
+  });
+});
 
 // Show the demo badge if running without a backend
 if (window.api && window.api.isStatic && window.api.isStatic()) {
