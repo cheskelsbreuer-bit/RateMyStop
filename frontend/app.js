@@ -1,5 +1,18 @@
 // ── AUTH (localStorage-backed mock — real OAuth slots in here later) ──
+//
+// REAL OAUTH WIRING POINT:
+// To switch this to real Google / GitHub / Email auth, replace the body of
+// `signIn(provider)` with a call to Firebase Auth or Supabase Auth:
+//   firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+//     .then(result => _persistUser(_toCivicVoiceUser(result.user)))
+// Everything downstream (gates, handles, profile modal) keeps working as-is
+// because it only reads via getCurrentUser(). Leave the localStorage cache
+// in place as a session mirror so the UI stays responsive offline.
+
 const AUTH_KEY = 'civicvoice_user_v1';
+const REPLIES_KEY = 'civicvoice_replies_v1';
+const ORG_KEY = 'civicvoice_org_v1';
+const EMAIL_DIGEST_KEY = 'civicvoice_email_digest_v1';
 let _pendingAuthAction = null;
 
 function getCurrentUser() {
@@ -113,6 +126,8 @@ function renderAuthState() {
     }
     const anonBtn = document.getElementById('umAnonToggle');
     if (anonBtn) anonBtn.innerHTML = u.anonymous ? '👁️ Show my name instead' : '🛡️ Stay anonymous';
+    const dig = document.getElementById('umEmailDigest');
+    if (dig) dig.innerHTML = getEmailDigestPref() ? '✉️ Weekly digest: on' : '✉️ Weekly digest: off';
   } else {
     pill.style.display = 'none';
     btn.style.display = 'inline-flex';
@@ -127,7 +142,7 @@ function getAuthorDisplay() {
 }
 
 // ── NAVIGATION ──
-const NAV_IDS = ['home', 'share', 'officers', 'rankings', 'complaint', 'deck'];
+const NAV_IDS = ['home', 'share', 'officers', 'map', 'rankings', 'complaint', 'orgs', 'deck'];
 
 function nav(id) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
@@ -141,6 +156,8 @@ function nav(id) {
   if (id === 'home')      loadStats();
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')  renderRankings();
+  if (id === 'orgs')      renderOrgState();
+  if (id === 'admin')     renderModQueue();
 }
 
 // ── RATE FORM STATE ──
@@ -719,6 +736,7 @@ function renderStream(officers, q) {
         <div class="sp-foot">
           <div class="sp-actions">
             <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
+            ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)} repl${getReplyCount(o.id, r.id) === 1 ? 'y' : 'ies'}</button>` : ''}
             <button class="sp-action" onclick="event.stopPropagation(); shareTo('native')">🔗 Share</button>
             <button class="sp-action primary" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">Read full →</button>
           </div>
@@ -766,11 +784,106 @@ function openStoryDetail(officerId, reviewId) {
       <button class="sp-action" onclick="shareTo('native')">🔗 Share</button>
       <button class="sp-action primary" onclick="closeStoryDetail(); openOfficer(${o.id})">View full profile →</button>
     </div>
+    <div class="reply-thread">
+      <div class="reply-thread-head">
+        <span class="reply-thread-title">&#128172; Thread <span id="replyCountBadge" style="color:var(--gray);font-weight:500;margin-left:6px;"></span></span>
+      </div>
+      <div class="reply-list" id="replyList"></div>
+      <div class="reply-form">
+        <textarea id="replyText" placeholder="Add to this thread — share a similar moment, ask a question, or speak up."></textarea>
+        <div class="reply-form-foot">
+          <span class="reply-as" id="replyAsHint"></span>
+          <button class="rcm-confirm" style="padding:9px 18px;font-size:0.85rem;" onclick="postReply(${o.id}, ${r.id})">Post reply &rarr;</button>
+        </div>
+      </div>
+    </div>
   `;
+  // Render existing replies and update the "post as" hint
+  _renderReplies(o.id, r.id);
+  const count = getReplyCount(o.id, r.id);
+  const badge = document.getElementById('replyCountBadge');
+  if (badge) badge.textContent = count ? `· ${count} repl${count === 1 ? 'y' : 'ies'}` : '';
+  const hint = document.getElementById('replyAsHint');
+  if (hint) {
+    const user = getCurrentUser();
+    const org = getCurrentOrg();
+    if (org && org.verified) hint.innerHTML = `Posting as <strong style="color:var(--green);">&#9989; ${escapeHtml(org.agency_name)}</strong>`;
+    else if (user)            hint.innerHTML = `Posting as <strong style="color:var(--accent);">${escapeHtml(user.anonymous ? user.handle : (user.displayName || user.handle))}</strong>`;
+    else                       hint.innerHTML = `<span style="color:var(--gray);">Sign in to reply</span>`;
+  }
   document.getElementById('storyDetailModal').classList.add('show');
 }
 function closeStoryDetail() {
   document.getElementById('storyDetailModal').classList.remove('show');
+}
+
+// ── REPLIES (forum threads under each story) ──
+function _readAllReplies() {
+  try { return JSON.parse(localStorage.getItem(REPLIES_KEY) || '{}'); }
+  catch { return {}; }
+}
+function _writeAllReplies(map) {
+  localStorage.setItem(REPLIES_KEY, JSON.stringify(map));
+}
+function _storyKey(officerId, reviewId) { return `${officerId}:${reviewId}`; }
+
+function getReplies(officerId, reviewId) {
+  const all = _readAllReplies();
+  return all[_storyKey(officerId, reviewId)] || [];
+}
+function getReplyCount(officerId, reviewId) {
+  return getReplies(officerId, reviewId).length;
+}
+
+function postReply(officerId, reviewId) {
+  if (!requireAuth(() => postReply(officerId, reviewId), 'Sign in to reply')) return;
+  const ta = document.getElementById('replyText');
+  const body = (ta?.value || '').trim();
+  if (!body) { alert('Type a reply first.'); return; }
+
+  const user = getCurrentUser();
+  const org  = getCurrentOrg();
+  const map = _readAllReplies();
+  const k = _storyKey(officerId, reviewId);
+  map[k] = map[k] || [];
+  map[k].push({
+    id: 'r' + Date.now(),
+    author_handle: user.handle,
+    author_display: user.anonymous ? user.handle : (user.displayName || user.handle),
+    is_agency_response: !!(org && org.verified),
+    agency_name: org && org.verified ? org.agency_name : null,
+    body,
+    created_at: new Date().toISOString(),
+  });
+  _writeAllReplies(map);
+  ta.value = '';
+  _renderReplies(officerId, reviewId);
+}
+
+function _renderReplies(officerId, reviewId) {
+  const list = document.getElementById('replyList');
+  if (!list) return;
+  const replies = getReplies(officerId, reviewId);
+  if (!replies.length) {
+    list.innerHTML = '<div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:14px 0;">No replies yet. Be the first to add to this thread.</div>';
+    return;
+  }
+  list.innerHTML = replies.map(r => {
+    const initial = (r.author_display || 'A').charAt(0).toUpperCase();
+    return `
+      <div class="reply-item${r.is_agency_response ? ' is-agency' : ''}">
+        <div class="reply-head">
+          <span class="reply-author" onclick="openAuthorProfile('${escapeHtml(r.author_display).replace(/'/g, "\\'")}');">
+            <span class="reply-avatar">${escapeHtml(initial)}</span>
+            <strong>${escapeHtml(r.author_display)}</strong>
+            ${r.is_agency_response ? `<span class="reply-agency-badge">&#9989; Verified: ${escapeHtml(r.agency_name || 'Agency')}</span>` : ''}
+          </span>
+          <span class="reply-date">${formatDate(r.created_at)}</span>
+        </div>
+        <div class="reply-body">${escapeHtml(r.body)}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ── AUTHOR PROFILE — click any handle to see their full history ──
@@ -1082,6 +1195,11 @@ loadStats();
 loadOfficers();
 refreshLiveRating();   // initial state: 4/5 charitable default
 
+// Admin URL gate — open admin queue when ?admin=1
+if (location.search.includes('admin=1')) {
+  setTimeout(() => nav('admin'), 200);
+}
+
 // Live update the chip as user types in the notes (debounced ~250ms)
 let _notesTimer = null;
 ['quickStory'].forEach(id => {
@@ -1263,6 +1381,204 @@ function onLocationInput() {
 // Legacy aliases — keep old calls working
 function onBadgeInput() { onPersonInput('officerName'); }
 function pickBadgeMatch(id) { pickPersonMatch(id); }
+
+// ─── GEOLOCATION — fill the Where field from device GPS ───
+async function useMyLocation() {
+  const btn = document.getElementById('geoBtn');
+  const status = document.getElementById('geoStatus');
+  const input = document.getElementById('locationIn');
+  if (!navigator.geolocation) {
+    status.textContent = 'Your browser does not support location.';
+    status.style.display = 'block';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '📍 Locating…';
+  status.style.color = 'var(--gray)';
+  status.textContent = '';
+  status.style.display = 'none';
+
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    });
+    const { latitude: lat, longitude: lon } = pos.coords;
+    // Reverse-geocode via OpenStreetMap Nominatim (free, no key)
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+      headers: { 'Accept-Language': 'en' }
+    });
+    if (!res.ok) throw new Error('Lookup failed');
+    const data = await res.json();
+    // Build a human-readable location: "Main St & Route 59, Spring Valley"
+    const a = data.address || {};
+    const road = a.road || a.pedestrian || a.cycleway || a.path || '';
+    const town = a.city || a.town || a.village || a.hamlet || a.suburb || a.county || '';
+    const state = a.state_code || a.state || '';
+    const display = [road, town, state].filter(Boolean).join(', ') || data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    input.value = display;
+    status.style.color = 'var(--green)';
+    status.textContent = '✓ Filled from your location';
+    status.style.display = 'block';
+  } catch (err) {
+    status.style.color = 'var(--red)';
+    status.textContent = err.code === 1 ? 'Permission denied. Allow location in your browser to use this.' :
+                         err.code === 3 ? 'Took too long — try again or type it in.' :
+                         'Couldn\'t get location: ' + (err.message || 'unknown');
+    status.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#128205; Use my location';
+  }
+}
+
+// ─── ORG PORTAL — verified-agency sign-in for posting official responses ───
+// Email-domain mapping → verified agency. This list is the "trust root" for the demo.
+// Real deployment would use a backend table + manual admin verification.
+const ORG_DOMAINS = {
+  'villagespringvalley.org': 'Spring Valley PD',
+  'villageofspringvalleyny.gov': 'Spring Valley PD',
+  'ramapopolice.com': 'Ramapo PD',
+  'clarkstown.org': 'Clarkstown PD',
+  'orangetown.com': 'Orangetown PD',
+  'nypd.org': 'NYPD',
+  'nyc.gov': 'NYC Agency',
+  'fdny.nyc.gov': 'FDNY',
+  'troopers.ny.gov': 'NYS Police',
+  'dmv.ny.gov': 'NY DMV',
+  'rocklandgov.com': 'Rockland County Agency',
+  'westchestercountypd.com': 'Westchester County PD',
+};
+function _agencyFromEmail(email) {
+  if (!email || !email.includes('@')) return null;
+  const domain = email.split('@')[1].trim().toLowerCase();
+  return ORG_DOMAINS[domain] || null;
+}
+function getCurrentOrg() {
+  try { return JSON.parse(localStorage.getItem(ORG_KEY) || 'null'); }
+  catch { return null; }
+}
+function _persistOrg(o) {
+  if (o) localStorage.setItem(ORG_KEY, JSON.stringify(o));
+  else localStorage.removeItem(ORG_KEY);
+  renderOrgState();
+}
+function orgSignIn() {
+  const email = (document.getElementById('orgEmail')?.value || '').trim();
+  const name = (document.getElementById('orgContactName')?.value || '').trim();
+  const status = document.getElementById('orgStatus');
+  if (!email) { status.textContent = 'Please enter your work email.'; status.style.color = 'var(--red)'; return; }
+  const agency = _agencyFromEmail(email);
+  const org = {
+    email,
+    contact_name: name || null,
+    agency_name: agency || 'Pending verification',
+    verified: !!agency,
+    signedInAt: new Date().toISOString(),
+  };
+  _persistOrg(org);
+  status.style.color = agency ? 'var(--green)' : 'var(--accent)';
+  status.innerHTML = agency
+    ? `✓ Verified as <strong>${escapeHtml(agency)}</strong>. You can now post official responses to stories about your agency.`
+    : `⏳ Your email is not in our verified-domain list yet. Submit a request and our team will manually verify within 1–2 business days.`;
+}
+function orgSignOut() {
+  _persistOrg(null);
+  const s = document.getElementById('orgStatus'); if (s) s.innerHTML = '';
+  const e = document.getElementById('orgEmail'); if (e) e.value = '';
+  const n = document.getElementById('orgContactName'); if (n) n.value = '';
+}
+function renderOrgState() {
+  const o = getCurrentOrg();
+  const summary = document.getElementById('orgCurrent');
+  if (!summary) return;
+  if (o && o.verified) {
+    summary.style.display = 'block';
+    summary.innerHTML = `
+      <div style="background:rgba(31,140,95,0.06);border:1px solid rgba(31,140,95,0.3);border-radius:12px;padding:18px 22px;">
+        <div style="font-weight:700;color:var(--green);margin-bottom:4px;">&#9989; Signed in as ${escapeHtml(o.agency_name)}</div>
+        <div style="color:var(--light);font-size:0.88rem;margin-bottom:12px;">${escapeHtml(o.email)}${o.contact_name ? ' · ' + escapeHtml(o.contact_name) : ''}</div>
+        <div style="font-size:0.85rem;color:var(--gray);line-height:1.55;">Your replies on stories about <strong style="color:var(--ink);">${escapeHtml(o.agency_name)}</strong> will appear with a <strong style="color:var(--green);">✓ Verified</strong> badge.</div>
+        <button class="btn-ghost" style="margin-top:14px;" onclick="orgSignOut()">Sign out of agency account</button>
+      </div>
+    `;
+  } else if (o) {
+    summary.style.display = 'block';
+    summary.innerHTML = `
+      <div style="background:rgba(184,148,30,0.06);border:1px solid rgba(184,148,30,0.3);border-radius:12px;padding:18px 22px;">
+        <div style="font-weight:700;color:var(--accent);margin-bottom:4px;">⏳ Pending verification</div>
+        <div style="color:var(--light);font-size:0.88rem;">${escapeHtml(o.email)} is awaiting manual review. Until then, your replies appear as a regular user.</div>
+        <button class="btn-ghost" style="margin-top:14px;" onclick="orgSignOut()">Cancel</button>
+      </div>
+    `;
+  } else {
+    summary.style.display = 'none';
+  }
+}
+
+// ─── MODERATION QUEUE (admin-only, accessed via ?admin=1) ───
+function renderModQueue() {
+  const wrap = document.getElementById('modQueueList');
+  if (!wrap) return;
+  // For the demo, we treat the 3 most recently posted stories as "pending" — in production
+  // this'd be a separate queue table. The point is to demonstrate the workflow.
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const items = [];
+  for (const o of officers) {
+    for (const r of (o.reviews || [])) {
+      items.push({ officer: o, review: r, role: inferRole(o) });
+    }
+  }
+  items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
+  const pending = items.slice(0, 5);
+  wrap.innerHTML = pending.map(it => {
+    const o = it.officer, r = it.review;
+    return `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:700;font-size:0.95rem;">${ROLE_ICON[it.role] || '👤'} ${escapeHtml(o.name || 'Unknown')}</div>
+            <div style="font-size:0.82rem;color:var(--gray);">${escapeHtml(o.department || '')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
+          </div>
+          <div style="font-size:0.74rem;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(184,148,30,0.3);border-radius:999px;padding:3px 10px;font-weight:700;">PENDING</div>
+        </div>
+        <div style="font-size:0.92rem;line-height:1.65;color:var(--light);margin-bottom:14px;">${escapeHtml((r.story || '(No description)').slice(0, 320))}${(r.story || '').length > 320 ? '…' : ''}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="sp-action" style="background:rgba(31,140,95,0.1);border-color:rgba(31,140,95,0.4);color:var(--green);" onclick="_modAction(this, 'approved')">✓ Approve</button>
+          <button class="sp-action" style="background:rgba(201,52,52,0.08);border-color:rgba(201,52,52,0.4);color:var(--red);" onclick="_modAction(this, 'rejected')">✕ Reject</button>
+          <button class="sp-action" onclick="closeStoryDetail(); openStoryDetail(${o.id}, ${r.id})">👁 View full</button>
+          <span style="margin-left:auto;font-size:0.78rem;color:var(--gray);align-self:center;">submitted ${formatDate(r.created_at)}</span>
+        </div>
+      </div>
+    `;
+  }).join('') || '<div style="color:var(--gray);text-align:center;padding:40px 0;">Queue empty.</div>';
+}
+function _modAction(btn, action) {
+  const card = btn.closest('div[style*="background"]')?.parentElement?.parentElement;
+  const wrap = btn.closest('div[style*="background:var(--card)"]');
+  if (!wrap) return;
+  wrap.style.opacity = '0.5';
+  wrap.style.pointerEvents = 'none';
+  btn.closest('div[style*="display:flex"]').innerHTML =
+    `<span style="font-size:0.86rem;color:${action === 'approved' ? 'var(--green)' : 'var(--red)'};">${action === 'approved' ? '✓ Approved & published.' : '✕ Rejected.'} (demo &mdash; nothing actually saved)</span>`;
+}
+
+// ─── EMAIL DIGEST TOGGLE ───
+function getEmailDigestPref() {
+  try { return JSON.parse(localStorage.getItem(EMAIL_DIGEST_KEY) || 'false'); }
+  catch { return false; }
+}
+function setEmailDigestPref(on) {
+  localStorage.setItem(EMAIL_DIGEST_KEY, JSON.stringify(!!on));
+}
+function toggleEmailDigest() {
+  const cur = getEmailDigestPref();
+  setEmailDigestPref(!cur);
+  closeUserMenu();
+  alert((!cur)
+    ? '✓ Weekly digest enabled. (Real emails will start sending once we deploy the backend mail service.)'
+    : 'Weekly digest disabled.');
+  renderAuthState();
+}
 
 // ─── Feature 5: Statute code lookup ───
 function onViolationInput() {

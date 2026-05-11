@@ -9,9 +9,17 @@
 <meta name="apple-mobile-web-app-title" content="CivicVoice">
 <meta name="description" content="Recognize good public service. Document the rest. CivicVoice is the public record of every interaction with a police officer, EMT, firefighter, or government worker.">
 <meta property="og:title" content="CivicVoice — Your voice on every public servant.">
-<meta property="og:description" content="Recognize good public service. Document the rest. On the record.">
+<meta property="og:description" content="Recognize good public service. Document the rest. A public record of every interaction with a police officer, EMT, firefighter, DMV worker, hospital staff, or government caseworker.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="icon-512.png">
+<meta property="og:url" content="https://cheskelsbreuer-bit.github.io/RateMyStop/">
+<meta property="og:image" content="https://cheskelsbreuer-bit.github.io/RateMyStop/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:site_name" content="CivicVoice">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CivicVoice — Your voice on every public servant.">
+<meta name="twitter:description" content="A public record of every interaction with a public servant. Recognize the good. Document the rest.">
+<meta name="twitter:image" content="https://cheskelsbreuer-bit.github.io/RateMyStop/icon-512.png">
 <title>CivicVoice &mdash; Your voice on every public servant.</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -31,8 +39,10 @@
     <button class="active" onclick="nav('home')">Home</button>
     <button onclick="nav('share')">Share</button>
     <button onclick="nav('officers')">Stories</button>
+    <button onclick="nav('map')">Map</button>
     <button onclick="nav('rankings')">Rankings</button>
     <button onclick="nav('complaint')">Reach Out</button>
+    <button onclick="nav('orgs')">For Agencies</button>
     <button onclick="nav('deck')">Sponsors</button>
   </nav>
   <div class="topbar-auth">
@@ -49,6 +59,7 @@
       </div>
       <button class="um-item" onclick="toggleAnonymousMode()" id="umAnonToggle">&#128737; Stay anonymous</button>
       <button class="um-item" onclick="nav('share'); closeUserMenu();">&#9998; Share another story</button>
+      <button class="um-item" onclick="toggleEmailDigest()" id="umEmailDigest">&#9993;&#65039; Weekly digest: off</button>
       <button class="um-item" onclick="signOut(); closeUserMenu();">&#128682; Sign out</button>
     </div>
   </div>
@@ -241,8 +252,12 @@
         </div>
         <div class="fl" style="position:relative;">
           <label id="whereLabel">Where</label>
-          <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley" autocomplete="off" oninput="onLocationInput()" onblur="setTimeout(()=>document.getElementById('locationSuggest').classList.remove('show'), 200)">
-          <div class="autocomplete-dropdown" id="locationSuggest"></div>
+          <div style="display:flex;gap:8px;align-items:stretch;">
+            <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley" autocomplete="off" oninput="onLocationInput()" onblur="setTimeout(()=>document.getElementById('locationSuggest').classList.remove('show'), 200)" style="flex:1;">
+            <button type="button" class="geo-btn" id="geoBtn" onclick="useMyLocation()" title="Fill in from my device location">&#128205; Use my location</button>
+          </div>
+          <div class="autocomplete-dropdown" id="locationSuggest" style="left:0;right:auto;width:calc(100% - 152px);"></div>
+          <div id="geoStatus" style="display:none;font-size:0.78rem;color:var(--gray);margin-top:6px;"></div>
         </div>
 
         <!-- Police-only: ticket info -->
@@ -502,6 +517,77 @@
         </div>
       </div>
       <div class="error-box" id="complaintError" style="display:none;background:rgba(201,52,52,0.08);border:1.5px solid rgba(201,52,52,0.35);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- MAP — placeholder, wired for Leaflet (free, no key) -->
+<section id="map">
+  <div class="wrap-wide">
+    <div class="ph">
+      <h2>Stories on the Map</h2>
+      <p>Every story pinned to where it happened. Click a pin to read the moment.</p>
+    </div>
+    <div id="mapShell" style="position:relative;border:1px solid var(--border);border-radius:16px;overflow:hidden;height:560px;background:var(--bg2);">
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
+        <div style="font-size:3rem;margin-bottom:14px;">&#128205;</div>
+        <h3 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:10px;color:var(--ink);">Map view &mdash; coming online soon</h3>
+        <p style="max-width:520px;color:var(--gray);line-height:1.6;margin-bottom:18px;">When this turns on, every story you scroll in the feed will also have a pin here. Filter by category, zoom in on a neighborhood, click any pin to read the moment.</p>
+        <p style="font-size:0.85rem;color:var(--accent);font-weight:600;">Free to operate &mdash; runs on Leaflet + OpenStreetMap. No API costs.</p>
+        <button class="btn-ghost" style="margin-top:20px;" onclick="alert('We need lat/lng on each story. Geolocation auto-fill is live — give it 2-3 weeks of real submissions and the map switches on automatically.');">Why isn't it live yet?</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR AGENCIES -->
+<section id="orgs">
+  <div class="wrap">
+    <div class="ph">
+      <h2>For Agencies</h2>
+      <p>Are you the agency people are writing about? Sign in to post official responses, see your dashboard, and reach the public directly.</p>
+    </div>
+
+    <div id="orgCurrent" style="display:none;margin-bottom:22px;"></div>
+
+    <div class="rcard">
+      <div class="fl">
+        <label>Your work email</label>
+        <input type="email" id="orgEmail" placeholder="e.g. yourname@villagespringvalley.org">
+        <div style="font-size:0.76rem;color:var(--gray);margin-top:6px;">We verify by email domain. Agency emails like <code>@villagespringvalley.org</code>, <code>@fdny.nyc.gov</code>, <code>@dmv.ny.gov</code>, <code>@nyc.gov</code> are auto-verified.</div>
+      </div>
+      <div class="fl">
+        <label>Your name <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+        <input type="text" id="orgContactName" placeholder="e.g. Lt. Bosworth">
+      </div>
+      <button class="submit-main" onclick="orgSignIn()">Sign in &amp; verify &rarr;</button>
+      <div id="orgStatus" style="margin-top:14px;font-size:0.88rem;line-height:1.55;"></div>
+    </div>
+
+    <div style="margin-top:30px;padding:22px;background:var(--bg2);border-radius:14px;border:1px solid var(--border);">
+      <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin-bottom:10px;">What you can do once verified</h3>
+      <ul style="color:var(--light);font-size:0.9rem;line-height:1.8;padding-left:18px;">
+        <li>Reply to any story about your agency with a <strong style="color:var(--green);">&#9989; Verified [Your Agency]</strong> badge</li>
+        <li>Subscribe to alerts when new stories mention your agency</li>
+        <li>Access a sentiment dashboard (replies, recognitions, concerns) &mdash; <em style="color:var(--gray);">coming with the paid tier</em></li>
+        <li>Direct-message the contributor (anonymously routed) &mdash; <em style="color:var(--gray);">coming next</em></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ADMIN MODERATION QUEUE — hidden, accessed via ?admin=1 -->
+<section id="admin">
+  <div class="wrap-wide">
+    <div class="ph">
+      <h2>Moderation queue</h2>
+      <p>Stories pending review before they go live. Admin only.</p>
+    </div>
+    <div style="background:rgba(184,148,30,0.06);border:1px solid rgba(184,148,30,0.32);border-radius:12px;padding:16px 20px;margin-bottom:20px;font-size:0.88rem;line-height:1.55;color:var(--ink);">
+      <strong style="color:var(--accent);">&#128274; Admin access.</strong> Reach this page via <code>?admin=1</code>. Stories submitted while moderation is on go here first &mdash; approve to publish, reject with reason.
+    </div>
+    <div id="modQueueList">
+      <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading queue…</div>
     </div>
   </div>
 </section>

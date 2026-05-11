@@ -292,6 +292,30 @@ section.active{display:block;}
 .sd-byline{font-size:0.83rem;color:var(--gray);display:flex;align-items:center;gap:8px;flex:1;min-width:200px;}
 .sd-author-avatar{width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:0.7rem;display:inline-flex;align-items:center;justify-content:center;}
 
+/* Reply thread inside story detail */
+.reply-thread{margin-top:22px;padding-top:22px;border-top:1px solid var(--border);}
+.reply-thread-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.reply-thread-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;color:var(--ink);}
+.reply-list{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+.reply-item{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.reply-item.is-agency{background:rgba(31,140,95,0.06);border-color:rgba(31,140,95,0.32);}
+.reply-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap;}
+.reply-author{display:inline-flex;align-items:center;gap:8px;font-size:0.88rem;color:var(--ink);cursor:pointer;}
+.reply-author:hover strong{color:var(--accent);}
+.reply-avatar{width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:0.66rem;display:inline-flex;align-items:center;justify-content:center;}
+.reply-agency-badge{font-size:0.66rem;font-weight:700;letter-spacing:0.4px;color:var(--green);background:rgba(31,140,95,0.12);border:1px solid rgba(31,140,95,0.32);padding:2px 8px;border-radius:999px;text-transform:uppercase;}
+.reply-date{font-size:0.74rem;color:var(--gray);}
+.reply-body{font-size:0.93rem;line-height:1.65;color:var(--light);white-space:pre-wrap;}
+.reply-form{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;}
+.reply-form textarea{width:100%;background:transparent;border:none;color:var(--ink);font-family:'Epilogue',sans-serif;font-size:0.92rem;line-height:1.55;outline:none;resize:vertical;min-height:60px;}
+.reply-form-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.reply-as{font-size:0.78rem;color:var(--gray);}
+
+/* Geolocation button next to location field */
+.geo-btn{background:var(--accent-soft);border:1px solid rgba(184,148,30,0.32);color:var(--accent);font-family:'Epilogue',sans-serif;font-weight:600;font-size:0.85rem;padding:0 14px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:all 0.18s;}
+.geo-btn:hover:not(:disabled){background:rgba(184,148,30,0.14);}
+.geo-btn:disabled{opacity:0.6;cursor:wait;}
+
 /* Role pills (Recognize flow) */
 .role-pills{display:flex;flex-wrap:wrap;gap:8px;}
 .role-pill{background:rgba(15,15,19,0.03);border:1.5px solid var(--border);border-radius:999px;padding:8px 14px;font-size:0.85rem;cursor:pointer;color:var(--light);transition:all 0.2s;font-family:'Epilogue',sans-serif;}
