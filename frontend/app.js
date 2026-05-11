@@ -1,25 +1,18 @@
-// ── HOME-PAGE QUICK ACTIONS ──
-// Jumps to the rate form and pre-selects fair/unfair if provided.
-// (Star args from the home phone-mock are intentionally ignored — stars are
-// now suggested by the system at submit time, not entered manually upfront.)
-function startRateWith(verdictArg /*, starsArg */) {
-  nav('rate');
-  if (verdictArg) setVerdict(verdictArg);
-}
-
 // ── NAVIGATION ──
+const NAV_IDS = ['home', 'share', 'officers', 'rankings', 'complaint', 'deck'];
+
 function nav(id) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topnav button').forEach((b, i) => {
-    b.classList.toggle('active', ['home', 'rate', 'officers', 'complaint', 'deck'][i] === id);
+    b.classList.toggle('active', NAV_IDS[i] === id);
   });
-  document.getElementById(id).classList.add('active');
+  const section = document.getElementById(id);
+  if (section) section.classList.add('active');
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
   if (id === 'home')      loadStats();
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')  renderRankings();
-  if (id === 'recognize') initRecognize();
 }
 
 // ── RATE FORM STATE ──
@@ -98,8 +91,7 @@ function calculateSuggestedStars() {
     score += parseFloat(t.dataset.w || '0');
   });
   const quickNotes = (document.getElementById('quickStory')?.value || '');
-  const longNotes  = (document.getElementById('storyIn')?.value || '');
-  score += analyzeNotes(quickNotes + ' ' + longNotes);
+  score += analyzeNotes(quickNotes);
   return Math.max(1, Math.min(5, Math.round(score)));
 }
 
@@ -164,23 +156,22 @@ function goStep(n) {
 function onTicketChange() {
   const v = document.getElementById('ticketType').value;
   const showTicket = v && v !== 'none';
-  document.getElementById('ticketAmountWrap').style.display = showTicket ? 'block' : 'none';
+  document.getElementById('ticketAmountWrap').style.display   = showTicket ? 'block' : 'none';
   document.getElementById('ticketViolationWrap').style.display = showTicket ? 'block' : 'none';
-  if (showTicket) {
-    document.getElementById('fighterPopup').classList.add('show');
-    updateFighterPopup();
-  } else {
-    document.getElementById('fighterPopup').classList.remove('show');
-  }
 }
 
-function updateFighterPopup() {
-  const amt = document.getElementById('ticketAmount').value;
-  const type = document.getElementById('ticketType').value;
-  const labels = { minor: 'Minor ticket', mid: 'Standard ticket', major: 'Large ticket', multi: 'Multiple tickets' };
-  const label = labels[type] || 'Traffic ticket';
-  const amtStr = amt ? ` — $${amt}` : '';
-  document.getElementById('fpInfo').innerHTML = `Ticket: <strong>${label}${amtStr}</strong>`;
+// Role selection (Step 1). Currently only Police is fully live; selecting another
+// role still allows the form (lower-risk: positive-only flow expected).
+let currentRole = 'police';
+function setRole(el, role) {
+  currentRole = role;
+  document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  // Police-only contextual UI
+  const reasonRow = document.getElementById('reasonRow');
+  if (reasonRow) reasonRow.style.display = (role === 'police') ? 'block' : 'none';
+  const bodyCamWrap = document.getElementById('bodyCamWrap');
+  if (bodyCamWrap) bodyCamWrap.style.display = (role === 'police') ? 'block' : 'none';
 }
 
 async function onFileUpload(input) {
@@ -208,14 +199,25 @@ async function submitReview() {
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
-  // Combine step 1 quick story with step 3 long story if both exist
-  const quickStory = (document.getElementById('quickStory')?.value || '').trim();
-  const longStory  = (document.getElementById('storyIn')?.value || '').trim();
-  const combinedStory = [quickStory, longStory].filter(Boolean).join('\n\n') || null;
+  const story = (document.getElementById('quickStory')?.value || '').trim() || null;
+
+  // Derive verdict from selected tags if user hasn't picked one explicitly.
+  // Positive-majority → fair, negative-majority → unfair, balanced → null.
+  if (!verdict) {
+    let pos = 0, neg = 0;
+    document.querySelectorAll('#behaviorTags .tag.on').forEach(t => {
+      if (t.dataset.pol === 'pos') pos++;
+      else if (t.dataset.pol === 'neg') neg++;
+    });
+    if (pos > neg) verdict = 'fair';
+    else if (neg > pos) verdict = 'unfair';
+  }
 
   const anonymous = document.getElementById('anonToggle')?.checked !== false;
   const payload = {
-    verdict,
+    kind: 'moment',
+    role: currentRole,
+    verdict: verdict || 'fair',  // backend requires fair|unfair; default to fair for balanced/positive moments
     stars,
     reasons: getSelectedTags('reasonTags'),
     behaviors: getSelectedTags('behaviorTags'),
@@ -227,7 +229,7 @@ async function submitReview() {
     ticket_type: document.getElementById('ticketType').value || null,
     ticket_amount: parseFloat(document.getElementById('ticketAmount').value) || null,
     ticket_violation: document.getElementById('ticketViolation').value || null,
-    story: combinedStory,
+    story,
     ticket_number: document.getElementById('ticketNumberIn').value || null,
     upload_url: uploadedFileUrl,
     anonymous,
@@ -243,10 +245,10 @@ async function submitReview() {
       document.getElementById('successBox').classList.remove('show');
       btn.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = 'Submit Review →';
+      btn.textContent = 'Post this moment →';
       step = 1;
       goStep(1);
-      // Reset
+      // Full form reset
       verdict = ''; stars = 0; starsOverride = null; uploadedFileUrl = null; bodyCamAnswer = null;
       setVerdict('');
       document.querySelectorAll('.tag.on').forEach(t => { t.classList.remove('on', 'pos', 'neg'); });
@@ -254,11 +256,14 @@ async function submitReview() {
       const bcpHint = document.getElementById('bcpHint'); if (bcpHint) bcpHint.style.display = 'none';
       const statHelper = document.getElementById('statuteHelper'); if (statHelper) statHelper.classList.remove('show');
       const badgeSug = document.getElementById('badgeSuggest'); if (badgeSug) badgeSug.classList.remove('show');
-      const anonT = document.getElementById('anonToggle'); if (anonT) { anonT.checked = true; document.getElementById('reviewerNameWrap').style.display = 'none'; }
-      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','storyIn','ticketNumberIn','quickStory','reviewerName']
+      const anonT = document.getElementById('anonToggle'); if (anonT) { anonT.checked = true; const rnw = document.getElementById('reviewerNameWrap'); if (rnw) rnw.style.display = 'none'; }
+      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','ticketNumberIn','quickStory','reviewerName']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      document.getElementById('lrAdjustPanel').classList.remove('show');
-      document.getElementById('liveRating').classList.remove('visible');
+      // Reset to Police role default
+      const policePill = document.querySelector('#rolePills .role-pill[data-role="police"]');
+      if (policePill) setRole(policePill, 'police');
+      const lap = document.getElementById('lrAdjustPanel'); if (lap) lap.classList.remove('show');
+      const lr = document.getElementById('liveRating'); if (lr) lr.classList.remove('visible');
       refreshLiveRating();
       document.getElementById('ticketType').value = '';
       document.getElementById('uploadPreview').classList.remove('show');
@@ -266,7 +271,7 @@ async function submitReview() {
     }, 4000);
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Submit Review →';
+    btn.textContent = 'Post this moment →';
     errBox.textContent = `Couldn't submit: ${err.message}`;
     errBox.style.display = 'block';
   }
@@ -488,16 +493,25 @@ async function sendComplaint() {
   }
 }
 
-// ── HOMEPAGE STATS ──
+// ── HOMEPAGE STATS — neutral metrics only ──
 async function loadStats() {
   try {
+    // For "people recognized" + "departments tracked" we compute from the local static-data,
+    // since the API doesn't yet expose those aggregates.
+    let recognizedCount = 0;
+    let deptCount = 0;
+    if (window.STATIC_DATA && window.STATIC_DATA.officers) {
+      const officers = window.STATIC_DATA.officers;
+      recognizedCount = officers.filter(o => (o.avg_stars || 0) >= 4).length;
+      deptCount = new Set(officers.map(o => o.department).filter(Boolean)).size;
+    }
     const s = await api.stats();
-    document.getElementById('statStops').textContent = s.total_reviews.toLocaleString() + (s.total_reviews >= 100 ? '+' : '');
-    document.getElementById('statUnfair').textContent = (s.unfair_pct || 0) + '%';
-    document.getElementById('statAvgTicket').textContent = s.avg_ticket ? '$' + Math.round(s.avg_ticket) : '—';
-    document.getElementById('statOfficers').textContent = s.officer_count.toLocaleString();
+    const moments = s.total_reviews || 0;
+    document.getElementById('statMoments').textContent      = moments.toLocaleString() + (moments >= 100 ? '+' : '');
+    document.getElementById('statRecognized').textContent   = recognizedCount.toLocaleString();
+    document.getElementById('statDepartments').textContent  = deptCount.toLocaleString();
+    document.getElementById('statOfficers').textContent     = (s.officer_count || 0).toLocaleString();
   } catch (err) {
-    // silently fall back to placeholder dashes
     console.warn('Stats unavailable:', err.message);
   }
 }
@@ -522,7 +536,7 @@ refreshLiveRating();   // initial state: 4/5 charitable default
 
 // Live update the chip as user types in the notes (debounced ~250ms)
 let _notesTimer = null;
-['quickStory', 'storyIn'].forEach(id => {
+['quickStory'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
   el.addEventListener('input', () => {
@@ -642,91 +656,6 @@ function switchRanking(el, kind) {
   renderRankings();
 }
 
-// ─── RECOGNIZE (positive flow) ───
-let recogRole = 'police';
-let recogStep = 1;
-
-function initRecognize() {
-  // Set today's date if blank
-  const d = document.getElementById('recogDate');
-  if (d && !d.value) d.value = new Date().toISOString().split('T')[0];
-}
-
-function setRecogRole(el, role) {
-  recogRole = role;
-  document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
-  el.classList.add('on');
-}
-
-function goRecogStep(n) {
-  if (n === 2) {
-    const tags = document.querySelectorAll('#praiseTags .tag.on');
-    const story = (document.getElementById('recogStory')?.value || '').trim();
-    if (!tags.length && !story) {
-      alert('Pick at least one tag — or write a short story — so we know what made it good.');
-      return;
-    }
-  }
-  document.getElementById('rstep' + recogStep).style.display = 'none';
-  recogStep = n;
-  document.getElementById('rstep' + n).style.display = 'block';
-  ['rws1', 'rws2'].forEach((id, i) => {
-    const w = document.getElementById(id);
-    w.className = 'ws' + ((i + 1) < n ? ' done' : (i + 1) === n ? ' active' : '');
-  });
-}
-
-async function submitRecognition() {
-  const btn = document.getElementById('recogSubmit');
-  const err = document.getElementById('recogError');
-  err.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Posting…';
-
-  const praiseTags = Array.from(document.querySelectorAll('#praiseTags .tag.on'))
-    .map(t => t.textContent.trim());
-  const payload = {
-    kind: 'praise',
-    role: recogRole,
-    verdict: 'fair',          // praise is by definition "fair" in the underlying schema
-    stars: 5,                  // recognition defaults to 5★
-    reasons: [],
-    behaviors: praiseTags,
-    officer_name: document.getElementById('recogName').value || null,
-    officer_badge: document.getElementById('recogBadge').value || null,
-    department: document.getElementById('recogDept').value || null,
-    stop_date: document.getElementById('recogDate').value || null,
-    location: document.getElementById('recogLocation').value || null,
-    story: document.getElementById('recogStory').value || null,
-    upload_url: null,
-    anonymous: true,
-    body_cam: null,
-  };
-
-  try {
-    await api.submitReview(payload);
-    document.getElementById('recogSuccess').classList.add('show');
-    btn.style.display = 'none';
-    setTimeout(() => {
-      // Reset the flow
-      document.getElementById('recogSuccess').classList.remove('show');
-      btn.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Post Recognition →';
-      document.querySelectorAll('#praiseTags .tag.on').forEach(t => t.classList.remove('on', 'pos'));
-      ['recogName', 'recogBadge', 'recogDept', 'recogLocation', 'recogStory']
-        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      recogStep = 1;
-      goRecogStep(1);
-    }, 5000);
-  } catch (e) {
-    btn.disabled = false;
-    btn.textContent = 'Post Recognition →';
-    err.textContent = `Couldn't post: ${e.message}`;
-    err.style.display = 'block';
-  }
-}
-
 function renderRankings() {
   const wrap = document.getElementById('rankTable');
   if (!wrap) return;
@@ -752,28 +681,25 @@ function renderRankings() {
     avg: d.review_count ? d.total_stars / d.review_count : 0,
     unfair_pct: d.review_count ? Math.round((d.unfair / d.review_count) * 100) : 0,
   }));
-  if (_rankSort === 'best')       rows.sort((a, b) => b.avg - a.avg);
-  else if (_rankSort === 'worst') rows.sort((a, b) => b.unfair - a.unfair);
+  if (_rankSort === 'best')         rows.sort((a, b) => b.avg - a.avg);
   else if (_rankSort === 'busiest') rows.sort((a, b) => b.review_count - a.review_count);
   rows = rows.slice(0, 15);
 
   wrap.innerHTML = `
-    <div class="rank-row head">
+    <div class="rank-row head" style="grid-template-columns:60px 1fr 140px 100px;">
       <div class="rank-pos head">#</div>
       <div>DEPARTMENT</div>
       <div>AVG RATING</div>
-      <div>UNFAIR</div>
-      <div>REVIEWS</div>
+      <div>MOMENTS</div>
     </div>
     ${rows.map((d, i) => `
-      <div class="rank-row">
+      <div class="rank-row" style="grid-template-columns:60px 1fr 140px 100px;">
         <div class="rank-pos">${(i + 1).toString().padStart(2, '0')}</div>
         <div>
           <div class="rank-name">${escapeHtml(d.name)}</div>
-          <div class="rank-name-sub">${d.officer_count} officer${d.officer_count !== 1 ? 's' : ''} reviewed</div>
+          <div class="rank-name-sub">${d.officer_count} public servant${d.officer_count !== 1 ? 's' : ''} documented</div>
         </div>
         <div class="rank-stars">${'★'.repeat(Math.round(d.avg)) + '☆'.repeat(5 - Math.round(d.avg))} <span style="color:var(--gray);font-size:0.78rem;">${d.avg.toFixed(1)}</span></div>
-        <div class="rank-num ${d.unfair_pct >= 50 ? 'neg' : ''}">${d.unfair}</div>
         <div class="rank-num review-count">${d.review_count}</div>
       </div>
     `).join('')}

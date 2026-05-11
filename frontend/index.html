@@ -29,11 +29,10 @@
   </div>
   <nav class="topnav">
     <button class="active" onclick="nav('home')">Home</button>
-    <button onclick="nav('rate')">Document</button>
-    <button onclick="nav('recognize')">Recognize</button>
+    <button onclick="nav('share')">Share</button>
     <button onclick="nav('officers')">Profiles</button>
     <button onclick="nav('rankings')">Rankings</button>
-    <button onclick="nav('complaint')">Complain</button>
+    <button onclick="nav('complaint')">Complaint</button>
     <button onclick="nav('deck')">Sponsors</button>
   </nav>
 </header>
@@ -41,20 +40,11 @@
 <!-- HOME -->
 <section id="home" class="active">
   <div class="hero hero-plain">
-    <div class="hero-eyebrow">A public record of every interaction with a public servant</div>
-    <h1>Your voice.<br>On every<br><em>public servant.</em></h1>
-    <p class="hero-lead">Recognize the good. Document the rest. Built by the community, for the community.</p>
-    <div class="hero-cta-row">
-      <button class="cta-card cta-praise" onclick="nav('recognize')">
-        <span class="cta-icon">&#127942;</span>
-        <span class="cta-title">Recognize good service</span>
-        <span class="cta-sub">An EMT, officer, or worker who went above and beyond? Say thanks.</span>
-      </button>
-      <button class="cta-card cta-doc" onclick="nav('rate')">
-        <span class="cta-icon">&#128221;</span>
-        <span class="cta-title">Document a bad stop</span>
-        <span class="cta-sub">Pulled over unfairly? Treated poorly? Get it on the record.</span>
-      </button>
+    <div class="hero-eyebrow">A public record of public service</div>
+    <h1>Public service.<br><em>On the record.</em></h1>
+    <p class="hero-lead">Every day, ordinary people meet the people who serve them &mdash; police, EMTs, firefighters, government workers. Most moments are forgotten. CivicVoice is where they live.</p>
+    <div style="text-align:center;margin-bottom:36px;">
+      <button class="btn-gold" style="font-size:1rem;padding:16px 38px;border-radius:12px;" onclick="nav('share')">Share a moment &rarr;</button>
     </div>
     <div class="categories-strip">
       <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police &middot; <strong>Live</strong></span>
@@ -65,17 +55,17 @@
     </div>
   </div>
   <div class="stats-strip" id="statsStrip">
-    <div class="ss"><div class="ss-n" id="statStops">&mdash;</div><div class="ss-l">Stops Rated</div></div>
-    <div class="ss"><div class="ss-n" id="statUnfair">&mdash;</div><div class="ss-l">Rated Unfair</div></div>
-    <div class="ss"><div class="ss-n" id="statAvgTicket">&mdash;</div><div class="ss-l">Avg Ticket</div></div>
-    <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">Officer Profiles</div></div>
+    <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Moments logged</div></div>
+    <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">People recognized</div></div>
+    <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Departments tracked</div></div>
+    <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">Public servants documented</div></div>
   </div>
 </section>
 
-<!-- RATE A STOP -->
-<section id="rate">
+<!-- SHARE A MOMENT — unified civic-record flow -->
+<section id="share">
   <div class="wrap">
-    <div class="ph"><h2>Rate Your Stop</h2><p>Walk us through what happened. All reviews are anonymous.</p></div>
+    <div class="ph"><h2>Share a Moment</h2><p>Tell us what happened. Helpful, hurtful, or anywhere in between &mdash; it goes on the record. Anonymous by default.</p></div>
 
     <div class="wizard-steps" id="stepWizard">
       <div class="ws active" id="ws1">1</div>
@@ -110,60 +100,120 @@
         <button class="lap-clear" type="button" onclick="clearOverride()">use auto</button>
       </div>
 
-      <!-- STEP 1 -->
+      <!-- STEP 1: Who & what -->
       <div id="step1">
         <div class="fl">
-          <label>Was the Stop Fair?</label>
-          <div class="vt-grid">
-            <div class="vt" id="vt-fair" onclick="setVerdict('fair')">
-              <span class="vi">&#9989;</span><span class="vl">Fair Stop</span><span class="vs">Officer was professional</span>
-            </div>
-            <div class="vt" id="vt-unfair" onclick="setVerdict('unfair')">
-              <span class="vi">&#10060;</span><span class="vl">Unfair Stop</span><span class="vs">Shouldn't have happened</span>
-            </div>
+          <label>Who was it?</label>
+          <div class="role-pills" id="rolePills">
+            <span class="role-pill on" data-role="police" onclick="setRole(this, 'police')">&#128659; Police Officer</span>
+            <span class="role-pill"    data-role="emt"    onclick="setRole(this, 'emt')">&#128657; EMT / Paramedic</span>
+            <span class="role-pill"    data-role="fire"   onclick="setRole(this, 'fire')">&#128658; Firefighter</span>
+            <span class="role-pill"    data-role="dmv"    onclick="setRole(this, 'dmv')">&#129411; DMV Worker</span>
+            <span class="role-pill"    data-role="other"  onclick="setRole(this, 'other')">&#128104;&#8205;&#128188; Other</span>
           </div>
         </div>
         <div class="fl">
-          <label>Reason You Were Stopped</label>
+          <label>Tell us what happened</label>
+          <textarea id="quickStory" placeholder="In your own words. What happened, how it went, what you'll remember." style="min-height:100px;"></textarea>
+        </div>
+        <div class="fl">
+          <label>How did it feel? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;pick all that fit</span></label>
+          <div class="tags" id="behaviorTags">
+            <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#128077; Respected</span>
+            <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#129309; Helpful</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128516; Patient</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128083; Calm</span>
+            <span class="tag" data-w="0.6"  data-pol="pos" onclick="toggle(this)">&#9889; Quick &amp; efficient</span>
+            <span class="tag" data-w="1.0"  data-pol="pos" onclick="toggle(this)">&#128293; Above and beyond</span>
+            <span class="tag" data-w="0.6"  data-pol="pos" onclick="toggle(this)">&#128150; Kind</span>
+            <span class="tag" data-w="0.4"  data-pol="pos" onclick="toggle(this)">&#128221; Professional</span>
+            <span class="tag" data-w="-0.8" data-pol="neg" onclick="toggle(this)">&#128528; Rude</span>
+            <span class="tag" data-w="-1.0" data-pol="neg" onclick="toggle(this)">&#128548; Aggressive</span>
+            <span class="tag" data-w="-0.5" data-pol="neg" onclick="toggle(this)">&#128577; Dismissive</span>
+            <span class="tag" data-w="-1.0" data-pol="neg" onclick="toggle(this)">&#9878;&#65039; Felt unfair</span>
+            <span class="tag" data-w="-1.5" data-pol="neg" onclick="toggle(this)">&#128545; Hostile</span>
+            <span class="tag" data-w="-1.5" data-pol="neg" onclick="toggle(this)">&#128680; Made me feel unsafe</span>
+            <span class="tag" data-w="-0.4" data-pol="neg" onclick="toggle(this)">&#128338; Rushed me</span>
+          </div>
+        </div>
+        <div class="fl" id="reasonRow">
+          <label>What was the stop about? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional, for traffic stops</span></label>
           <div class="tags" id="reasonTags">
             <span class="tag" onclick="toggle(this)">&#128678; Speeding</span>
-            <span class="tag" onclick="toggle(this)">&#128308; Red Light</span>
-            <span class="tag" onclick="toggle(this)">&#128241; Phone Use</span>
-            <span class="tag" onclick="toggle(this)">&#128664; Equipment Issue</span>
-            <span class="tag" onclick="toggle(this)">&#128721; Stop Sign</span>
-            <span class="tag" onclick="toggle(this)">&#10067; Unclear to Me</span>
-            <span class="tag" onclick="toggle(this)">&#127919; Seemed Random</span>
+            <span class="tag" onclick="toggle(this)">&#128308; Red light</span>
+            <span class="tag" onclick="toggle(this)">&#128241; Phone use</span>
+            <span class="tag" onclick="toggle(this)">&#128664; Equipment issue</span>
+            <span class="tag" onclick="toggle(this)">&#128721; Stop sign</span>
+            <span class="tag" onclick="toggle(this)">&#10067; Not clear to me</span>
           </div>
         </div>
-        <div class="fl">
-          <label>Officer's Behavior</label>
-          <div class="tags" id="behaviorTags">
-            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128077; Professional</span>
-            <span class="tag" data-w="-1"   data-pol="neg" onclick="toggle(this)">&#128548; Aggressive</span>
-            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#129309; Respectful</span>
-            <span class="tag" data-w="-0.5" data-pol="neg" onclick="toggle(this)">&#128528; Dismissive</span>
-            <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#9889; Quick &amp; Fair</span>
-            <span class="tag" data-w="-0.3" data-pol="neg" onclick="toggle(this)">&#128483;&#65039; Talked Too Much</span>
-            <span class="tag" data-w="-1.5" data-pol="neg" onclick="toggle(this)">&#128545; Hostile</span>
-            <span class="tag" data-w="-1"   data-pol="neg" onclick="toggle(this)">&#128577; Rude</span>
-            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128083; Calm</span>
-          </div>
-        </div>
-        <div class="fl">
-          <label>In Your Own Words <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-          <textarea id="quickStory" placeholder="A sentence or two on what happened. The more detail, the better the record." style="min-height:70px;"></textarea>
-        </div>
-        <button class="submit-main" onclick="goStep(2)">Next: Officer Info &rarr;</button>
+        <button class="submit-main" onclick="goStep(2)">Next: Who &amp; where &rarr;</button>
       </div>
 
       <!-- STEP 2 -->
       <div id="step2" style="display:none;">
+        <div class="fl-2">
+          <div class="fl" style="position:relative;">
+            <label>Badge / ID <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+            <input type="text" id="badgeIn" placeholder="e.g. #4821" autocomplete="off" oninput="onBadgeInput()" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 150)">
+            <div class="autocomplete-dropdown" id="badgeSuggest"></div>
+          </div>
+          <div class="fl">
+            <label>Their Name <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+            <input type="text" id="officerName" placeholder="e.g. Officer Smith">
+          </div>
+        </div>
+        <div class="fl-2">
+          <div class="fl">
+            <label>Department / Agency</label>
+            <input type="text" id="deptIn" placeholder="e.g. Spring Valley PD">
+          </div>
+          <div class="fl">
+            <label>Date</label>
+            <input type="date" id="dateIn">
+          </div>
+        </div>
+        <div class="fl">
+          <label>Location</label>
+          <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley">
+        </div>
+        <button class="submit-main" onclick="goStep(3)">Next &rarr;</button>
+      </div>
+
+      <!-- STEP 3: Optional ticket info (relevant for traffic stops) -->
+      <div id="step3" style="display:none;">
+        <div style="font-size:0.85rem;color:var(--gray);margin-bottom:18px;">If you got a ticket, the details below help others. Skip if not relevant.</div>
+        <div class="fl">
+          <label>Did you receive a ticket? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+          <select id="ticketType" onchange="onTicketChange()">
+            <option value="">&mdash; Skip / not applicable &mdash;</option>
+            <option value="none">No ticket &mdash; just a warning</option>
+            <option value="minor">Minor (under $150)</option>
+            <option value="mid">Standard ($150&ndash;$350)</option>
+            <option value="major">Large (over $350)</option>
+            <option value="multi">Multiple tickets</option>
+          </select>
+        </div>
+        <div class="fl" id="ticketAmountWrap" style="display:none;">
+          <label>Ticket amount</label>
+          <input type="number" id="ticketAmount" placeholder="e.g. 280">
+        </div>
+        <div class="fl" id="ticketViolationWrap" style="display:none;position:relative;">
+          <label>Violation code</label>
+          <input type="text" id="ticketViolation" placeholder="e.g. 1180(b)" autocomplete="off" oninput="onViolationInput()">
+          <div class="statute-helper" id="statuteHelper"></div>
+        </div>
+        <button class="submit-main" onclick="goStep(4)">Next: Verify &rarr;</button>
+      </div>
+
+      <!-- STEP 4: Verify & post -->
+      <div id="step4" style="display:none;">
         <div class="anon-row">
           <div class="anon-left">
             <span class="anon-shield">&#128737;</span>
             <div>
-              <div class="anon-title">Submit anonymously</div>
-              <div class="anon-sub">No name attached. We never share your identity with the officer or the department.</div>
+              <div class="anon-title">Posted anonymously</div>
+              <div class="anon-sub">No name attached. We never share your identity with the person or the agency.</div>
             </div>
           </div>
           <label class="anon-switch">
@@ -172,103 +222,28 @@
           </label>
         </div>
         <div class="fl" id="reviewerNameWrap" style="display:none;">
-          <label>Your Name (optional, will appear on the review)</label>
+          <label>Your Name (optional, shown on the moment)</label>
           <input type="text" id="reviewerName" placeholder="e.g. Jane D.">
         </div>
-        <div class="fl-2">
-          <div class="fl" style="position:relative;">
-            <label>Officer Badge / ID</label>
-            <input type="text" id="badgeIn" placeholder="e.g. Badge #4821" autocomplete="off" oninput="onBadgeInput()" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 150)">
-            <div class="autocomplete-dropdown" id="badgeSuggest"></div>
-          </div>
-          <div class="fl">
-            <label>Officer Name (if known)</label>
-            <input type="text" id="officerName" placeholder="e.g. Officer Smith">
-          </div>
-        </div>
-        <div class="fl-2">
-          <div class="fl">
-            <label>Department / Precinct</label>
-            <input type="text" id="deptIn" placeholder="e.g. Spring Valley PD">
-          </div>
-          <div class="fl">
-            <label>Date of Stop</label>
-            <input type="date" id="dateIn">
-          </div>
-        </div>
         <div class="fl">
-          <label>Location of Stop (street / area)</label>
-          <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley">
-        </div>
-        <button class="submit-main" onclick="goStep(3)">Next: Ticket Info &rarr;</button>
-      </div>
-
-      <!-- STEP 3 -->
-      <div id="step3" style="display:none;">
-        <div class="fl">
-          <label>Did You Receive a Ticket?</label>
-          <select id="ticketType" onchange="onTicketChange()">
-            <option value="">&mdash; Select &mdash;</option>
-            <option value="none">No ticket &mdash; just a warning</option>
-            <option value="minor">Minor ticket (under $150)</option>
-            <option value="mid">Standard ticket ($150&ndash;$350)</option>
-            <option value="major">Large ticket (over $350)</option>
-            <option value="multi">Multiple tickets</option>
-          </select>
-        </div>
-        <div class="fl" id="ticketAmountWrap" style="display:none;">
-          <label>Exact Ticket Amount</label>
-          <input type="number" id="ticketAmount" placeholder="e.g. 280" oninput="updateFighterPopup()">
-        </div>
-        <div class="fl" id="ticketViolationWrap" style="display:none;position:relative;">
-          <label>Violation Listed on Ticket</label>
-          <input type="text" id="ticketViolation" placeholder="e.g. 1180(b) &mdash; Speeding 76 in 55" autocomplete="off" oninput="onViolationInput()">
-          <div class="statute-helper" id="statuteHelper"></div>
-        </div>
-
-        <div class="fighter-popup" id="fighterPopup">
-          <div class="fp-eyebrow">Based on your ticket</div>
-          <div class="fp-title">&#9889; You may be able to fight this.</div>
-          <div class="fp-ticket-info" id="fpInfo">Ticket: <strong>&mdash;</strong></div>
-          <div class="fp-body">A traffic ticket attorney can often get tickets reduced or dismissed &mdash; especially for first-time stops. Free consultation, no upfront cost.</div>
-          <div class="fp-row">
-            <button class="fp-btn">Yes, I Want to Fight It &rarr;</button>
-            <button class="fp-skip" onclick="document.getElementById('fighterPopup').classList.remove('show')">No thanks, continue</button>
-          </div>
-        </div>
-
-        <div class="fl">
-          <label>Tell Your Story</label>
-          <textarea id="storyIn" placeholder="What happened in your own words? The more detail the better &mdash; this helps the community and may support a complaint or legal case."></textarea>
-        </div>
-        <button class="submit-main" onclick="goStep(4)">Next: Verify Your Stop &rarr;</button>
-      </div>
-
-      <!-- STEP 4 -->
-      <div id="step4" style="display:none;">
-        <div style="background:rgba(91,138,240,0.08);border:1px solid rgba(91,138,240,0.25);border-radius:10px;padding:14px 16px;font-size:0.83rem;color:var(--light);margin-bottom:20px;display:flex;gap:10px;">
-          <span>&#128737;&#65039;</span>
-          <div><strong style="color:var(--blue);">Verification required.</strong> To keep reviews credible and prevent abuse, we ask for a photo of your ticket or the officer's card. This is not shared publicly &mdash; it's used only to verify the stop happened.</div>
-        </div>
-        <div class="fl">
-          <label>Upload Ticket or Officer Card Photo</label>
+          <label>Photo verification <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional but recommended &mdash; never shown publicly</span></label>
           <div class="upload-zone" id="uploadZone">
             <input type="file" id="uploadInput" accept="image/*,.pdf" onchange="onFileUpload(this)">
             <div class="uz-icon">&#128247;</div>
-            <div class="uz-title">Tap to upload photo</div>
-            <div class="uz-sub">JPG, PNG or PDF &middot; Max 10MB</div>
+            <div class="uz-title">Tap to add photo</div>
+            <div class="uz-sub">Ticket, badge, officer card, or any photo from the moment. JPG / PNG / PDF</div>
           </div>
           <div class="upload-preview" id="uploadPreview">
             <div class="up-icon">&#9989;</div>
-            <div class="up-name" id="uploadName">ticket.jpg uploaded</div>
+            <div class="up-name" id="uploadName">uploaded</div>
           </div>
         </div>
         <div class="fl">
-          <label>Or Enter Ticket Number</label>
-          <input type="text" id="ticketNumberIn" placeholder="Found at top of ticket, e.g. T-2024-48291">
+          <label>Ticket number <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+          <input type="text" id="ticketNumberIn" placeholder="e.g. T-2024-48291">
         </div>
-        <div class="fl">
-          <label>Was the officer wearing body cam?</label>
+        <div class="fl" id="bodyCamWrap">
+          <label>Was there body cam footage? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
           <div class="bodycam-pills" id="bodyCamPills">
             <span class="bcp" data-v="yes" onclick="setBodyCam(this, 'yes')">&#127909; Yes</span>
             <span class="bcp" data-v="no" onclick="setBodyCam(this, 'no')">&#128683; No</span>
@@ -276,13 +251,13 @@
           </div>
           <div class="bcp-hint" id="bcpHint" style="display:none;"></div>
         </div>
-        <button class="submit-main" id="finalSubmit" onclick="submitReview()">Submit Review &rarr;</button>
+        <button class="submit-main" id="finalSubmit" onclick="submitReview()">Post this moment &rarr;</button>
         <div class="success-box" id="successBox">
-          <div style="font-size:1.6rem;">&#9989;</div>
+          <div style="font-size:1.6rem;">&#127775;</div>
           <div style="flex:1;">
-            <div style="font-weight:600;">Review submitted and verified!</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">Officer's profile has been updated. Your review is now live in the community.</div>
-            <button class="share-btn" id="shareBtn" onclick="shareReview()">&#128279; Share &mdash; tell others to add theirs</button>
+            <div style="font-weight:600;">Your moment is on the record.</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">Thank you. Public service is real because of moments like this.</div>
+            <button class="share-btn" id="shareBtn" onclick="shareReview()">&#128279; Share &mdash; invite others to share theirs</button>
           </div>
         </div>
         <div class="error-box" id="errorBox" style="display:none;background:rgba(224,82,82,0.09);border:1.5px solid rgba(224,82,82,0.3);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
@@ -291,96 +266,10 @@
   </div>
 </section>
 
-<!-- RECOGNIZE — positive flow, simple 2 steps, supports any role -->
-<section id="recognize">
-  <div class="wrap">
-    <div class="ph">
-      <h2>Recognize Good Service</h2>
-      <p>Tell us about someone who helped, cared, or went above and beyond. Public service done right.</p>
-    </div>
-    <div class="wizard-steps">
-      <div class="ws active" id="rws1">1</div>
-      <div class="ws-line"></div>
-      <div class="ws" id="rws2">2</div>
-    </div>
-    <div class="rcard">
-      <!-- STEP 1 — Who & what -->
-      <div id="rstep1">
-        <div class="fl">
-          <label>Who was it?</label>
-          <div class="role-pills" id="rolePills">
-            <span class="role-pill on" data-role="police"   onclick="setRecogRole(this, 'police')">&#128659; Police Officer</span>
-            <span class="role-pill"    data-role="emt"      onclick="setRecogRole(this, 'emt')">&#128657; EMT / Paramedic</span>
-            <span class="role-pill"    data-role="fire"     onclick="setRecogRole(this, 'fire')">&#128658; Firefighter</span>
-            <span class="role-pill"    data-role="dmv"      onclick="setRecogRole(this, 'dmv')">&#129411; DMV Worker</span>
-            <span class="role-pill"    data-role="other"    onclick="setRecogRole(this, 'other')">&#128104;&#8205;&#128188; Other</span>
-          </div>
-        </div>
-        <div class="fl">
-          <label>What did they do well?</label>
-          <div class="tags" id="praiseTags">
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128293; Went above and beyond</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#129505; Showed real kindness</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128077; Stayed professional</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#129309; Treated me with respect</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#9889; Quick and efficient</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128083; Calm under pressure</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128175; Patient with me</span>
-            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128150; Saved my day</span>
-          </div>
-        </div>
-        <div class="fl">
-          <label>Tell the story <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-          <textarea id="recogStory" placeholder="What happened? How did they help? The story is what makes it real." style="min-height:90px;"></textarea>
-        </div>
-        <button class="submit-main submit-praise" onclick="goRecogStep(2)">Next: Who? &rarr;</button>
-      </div>
-
-      <!-- STEP 2 — Identify & submit -->
-      <div id="rstep2" style="display:none;">
-        <div class="fl-2">
-          <div class="fl">
-            <label>Their Name (if you know it)</label>
-            <input type="text" id="recogName" placeholder="e.g. Officer Smith / Sgt. Diaz">
-          </div>
-          <div class="fl">
-            <label>Badge / ID</label>
-            <input type="text" id="recogBadge" placeholder="e.g. #4821 (optional)">
-          </div>
-        </div>
-        <div class="fl-2">
-          <div class="fl">
-            <label>Department / Agency</label>
-            <input type="text" id="recogDept" placeholder="e.g. Spring Valley PD, FDNY EMS">
-          </div>
-          <div class="fl">
-            <label>Date</label>
-            <input type="date" id="recogDate">
-          </div>
-        </div>
-        <div class="fl">
-          <label>Where? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-          <input type="text" id="recogLocation" placeholder="e.g. Route 59, Spring Valley">
-        </div>
-        <button class="submit-main submit-praise" onclick="submitRecognition()" id="recogSubmit">Post Recognition &rarr;</button>
-        <div class="success-box" id="recogSuccess">
-          <div style="font-size:1.6rem;">&#127942;</div>
-          <div style="flex:1;">
-            <div style="font-weight:600;">Thank you for the shoutout &mdash; they earned it.</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">It's on the record. Good public service gets recognized too.</div>
-            <button class="share-btn" onclick="shareReview()" style="background:var(--green);color:var(--bg);">&#128279; Share this</button>
-          </div>
-        </div>
-        <div class="error-box" id="recogError" style="display:none;background:rgba(224,82,82,0.09);border:1.5px solid rgba(224,82,82,0.3);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- OFFICER PROFILES -->
 <section id="officers">
   <div class="wrap-wide">
-    <div class="ph"><h2>Officer Profiles</h2><p>Community-built profiles. Every review adds to the record.</p></div>
+    <div class="ph"><h2>Public Servant Profiles</h2><p>Community-built profiles. Every moment adds to the record.</p></div>
     <div class="search-bar-wrap">
       <input type="text" id="officerSearch" placeholder="Search by name, badge number, or department&hellip;" oninput="searchOfficers()">
       <button onclick="searchOfficers()">Search</button>
@@ -395,7 +284,7 @@
       <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading officers&hellip;</div>
     </div>
     <div style="text-align:center;padding:20px 0;">
-      <p style="color:var(--gray);font-size:0.85rem;">Don't see an officer? <button onclick="nav('rate')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:'Epilogue',sans-serif;font-size:0.85rem;text-decoration:underline;">Submit a review</button> and their profile will be created automatically.</p>
+      <p style="color:var(--gray);font-size:0.85rem;">Don't see a public servant? <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:'Epilogue',sans-serif;font-size:0.85rem;text-decoration:underline;">Share a moment</button> and their profile will be created automatically.</p>
     </div>
   </div>
 </section>
@@ -413,12 +302,11 @@
   <div class="wrap-wide">
     <div class="ph">
       <h2>Department Rankings</h2>
-      <p>Built live from community reviews. The numbers don't lie.</p>
+      <p>How NY agencies stack up, based on community moments. Updated as records come in.</p>
     </div>
     <div class="rank-controls">
-      <button class="pill on" data-rk="best" onclick="switchRanking(this, 'best')">&#11088; Top Rated</button>
-      <button class="pill" data-rk="worst" onclick="switchRanking(this, 'worst')">&#9888;&#65039; Most Complaints</button>
-      <button class="pill" data-rk="busiest" onclick="switchRanking(this, 'busiest')">&#128202; Most Reviewed</button>
+      <button class="pill on" data-rk="best" onclick="switchRanking(this, 'best')">&#11088; Most Recognized</button>
+      <button class="pill" data-rk="busiest" onclick="switchRanking(this, 'busiest')">&#128202; Most Active</button>
     </div>
     <div class="rank-table" id="rankTable">
       <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading rankings&hellip;</div>
