@@ -30,9 +30,9 @@
   <nav class="topnav">
     <button class="active" onclick="nav('home')">Home</button>
     <button onclick="nav('share')">Share</button>
-    <button onclick="nav('officers')">Profiles</button>
+    <button onclick="nav('officers')">Stories</button>
     <button onclick="nav('rankings')">Rankings</button>
-    <button onclick="nav('complaint')">Complaint</button>
+    <button onclick="nav('complaint')">Reach Out</button>
     <button onclick="nav('deck')">Sponsors</button>
   </nav>
 </header>
@@ -56,17 +56,17 @@
     </div>
   </div>
   <div class="stats-strip" id="statsStrip">
-    <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Moments logged</div></div>
-    <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">People recognized</div></div>
-    <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Departments tracked</div></div>
-    <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">Public servants documented</div></div>
+    <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Stories shared</div></div>
+    <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">Recognitions</div></div>
+    <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Agencies on record</div></div>
+    <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">People documented</div></div>
   </div>
 </section>
 
-<!-- SHARE A MOMENT — unified civic-record flow -->
+<!-- SHARE A MOMENT — story-first, role-adaptive civic record -->
 <section id="share">
   <div class="wrap">
-    <div class="ph"><h2>Share a Moment</h2><p>Tell us what happened. Helpful, hurtful, or anywhere in between &mdash; it goes on the record. Anonymous by default.</p></div>
+    <div class="ph"><h2>Share Your Story</h2><p>Public service is real because of moments like yours. Tell us what happened &mdash; help others understand, recognize, or learn.</p></div>
 
     <div class="wizard-steps" id="stepWizard">
       <div class="ws active" id="ws1">1</div>
@@ -80,10 +80,10 @@
 
     <div class="rcard">
 
-      <!-- Live rating chip — shows current calculated rating, updates as user fills the form -->
+      <!-- Live rating chip — appears once on Step 2+, never during the story step -->
       <div class="live-rating" id="liveRating">
         <div class="lr-left">
-          <span class="lr-label">Current rating</span>
+          <span class="lr-label">Sentiment</span>
           <span class="lr-stars" id="lrStars">&#9734;&#9734;&#9734;&#9734;&#9734;</span>
           <span class="lr-num" id="lrNum">&mdash;</span>
         </div>
@@ -101,10 +101,10 @@
         <button class="lap-clear" type="button" onclick="clearOverride()">use auto</button>
       </div>
 
-      <!-- STEP 1: Who & what -->
+      <!-- STEP 1: Pick a category -->
       <div id="step1">
         <div class="fl">
-          <label>Who was it?</label>
+          <label>Who was the moment with?</label>
           <div class="role-pills" id="rolePills">
             <span class="role-pill" data-role="police"   onclick="setRole(this, 'police')">&#128659; Police Officer</span>
             <span class="role-pill" data-role="emt"      onclick="setRole(this, 'emt')">&#128657; EMT / Paramedic</span>
@@ -113,14 +113,22 @@
             <span class="role-pill" data-role="hospital" onclick="setRole(this, 'hospital')">&#127973; Hospital Staff</span>
             <span class="role-pill" data-role="gov"      onclick="setRole(this, 'gov')">&#128104;&#8205;&#128188; Gov't Worker</span>
           </div>
-          <div style="font-size:0.75rem;color:var(--gray);margin-top:8px;">All categories are live. Share any moment with any public servant.</div>
+          <div style="font-size:0.78rem;color:var(--gray);margin-top:10px;">Every category is on the record. Pick one to continue.</div>
+        </div>
+        <button class="submit-main" onclick="goStep(2)">Next: Your story &rarr;</button>
+      </div>
+
+      <!-- STEP 2: The story (this is the heart of the app) -->
+      <div id="step2" style="display:none;">
+        <div class="fl">
+          <label id="storyLabel">What happened?</label>
+          <div style="font-size:0.83rem;color:var(--gray);margin-bottom:10px;line-height:1.55;" id="storyHelp">
+            The details are what matter. How did it start? What did they do? What did they say? What will you remember?
+          </div>
+          <textarea id="quickStory" placeholder="Tell the story. The more you share, the more it matters." style="min-height:180px;font-size:1rem;line-height:1.6;"></textarea>
         </div>
         <div class="fl">
-          <label>Tell us what happened</label>
-          <textarea id="quickStory" placeholder="In your own words. What happened, how it went, what you'll remember." style="min-height:100px;"></textarea>
-        </div>
-        <div class="fl">
-          <label>How did it feel? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;pick all that fit</span></label>
+          <label>How did the moment feel? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;pick all that fit &mdash; optional</span></label>
           <div class="tags" id="behaviorTags">
             <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#128077; Respected</span>
             <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#129309; Helpful</span>
@@ -139,74 +147,63 @@
             <span class="tag" data-w="-0.4" data-pol="neg" onclick="toggle(this)">&#128338; Rushed me</span>
           </div>
         </div>
-        <div class="fl" id="reasonRow">
-          <label>What was the stop about? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional, for traffic stops</span></label>
-          <div class="tags" id="reasonTags">
-            <span class="tag" onclick="toggle(this)">&#128678; Speeding</span>
-            <span class="tag" onclick="toggle(this)">&#128308; Red light</span>
-            <span class="tag" onclick="toggle(this)">&#128241; Phone use</span>
-            <span class="tag" onclick="toggle(this)">&#128664; Equipment issue</span>
-            <span class="tag" onclick="toggle(this)">&#128721; Stop sign</span>
-            <span class="tag" onclick="toggle(this)">&#10067; Not clear to me</span>
-          </div>
-        </div>
-        <button class="submit-main" onclick="goStep(2)">Next: Who &amp; where &rarr;</button>
+        <button class="submit-main" onclick="goStep(3)">Next &rarr;</button>
       </div>
 
-      <!-- STEP 2 -->
-      <div id="step2" style="display:none;">
+      <!-- STEP 3: Who & where — role-adaptive labels (set by JS) -->
+      <div id="step3" style="display:none;">
+        <div style="font-size:0.85rem;color:var(--gray);margin-bottom:18px;">All fields below are optional. The more context, the more the story helps others.</div>
         <div class="fl-2">
           <div class="fl" style="position:relative;">
-            <label>Badge / ID <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-            <input type="text" id="badgeIn" placeholder="e.g. #4821" autocomplete="off" oninput="onBadgeInput()" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 150)">
+            <label id="nameLabel">Their name</label>
+            <input type="text" id="officerName" placeholder="e.g. K. Williams" autocomplete="off" oninput="onBadgeInput()" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 150)">
             <div class="autocomplete-dropdown" id="badgeSuggest"></div>
           </div>
           <div class="fl">
-            <label>Their Name <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-            <input type="text" id="officerName" placeholder="e.g. Officer Smith">
+            <label id="idLabel">ID or number</label>
+            <input type="text" id="badgeIn" placeholder="e.g. #4821">
           </div>
         </div>
         <div class="fl-2">
           <div class="fl">
-            <label>Department / Agency</label>
+            <label id="agencyLabel">Agency / Department</label>
             <input type="text" id="deptIn" placeholder="e.g. Spring Valley PD">
           </div>
           <div class="fl">
-            <label>Date</label>
+            <label>When</label>
             <input type="date" id="dateIn">
           </div>
         </div>
         <div class="fl">
-          <label>Location</label>
+          <label id="whereLabel">Where</label>
           <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley">
         </div>
-        <button class="submit-main" onclick="goStep(3)">Next &rarr;</button>
-      </div>
 
-      <!-- STEP 3: Optional ticket info (relevant for traffic stops) -->
-      <div id="step3" style="display:none;">
-        <div style="font-size:0.85rem;color:var(--gray);margin-bottom:18px;">If you got a ticket, the details below help others. Skip if not relevant.</div>
-        <div class="fl">
-          <label>Did you receive a ticket? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-          <select id="ticketType" onchange="onTicketChange()">
-            <option value="">&mdash; Skip / not applicable &mdash;</option>
-            <option value="none">No ticket &mdash; just a warning</option>
-            <option value="minor">Minor (under $150)</option>
-            <option value="mid">Standard ($150&ndash;$350)</option>
-            <option value="major">Large (over $350)</option>
-            <option value="multi">Multiple tickets</option>
-          </select>
+        <!-- Police-only: ticket info -->
+        <div id="ticketSection" style="display:none;">
+          <div class="fl" style="margin-top:8px;padding-top:14px;border-top:1px solid var(--border);">
+            <label>Did you receive a ticket? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional &mdash; police only</span></label>
+            <select id="ticketType" onchange="onTicketChange()">
+              <option value="">&mdash; Skip / not applicable &mdash;</option>
+              <option value="none">No ticket &mdash; just a warning</option>
+              <option value="minor">Minor (under $150)</option>
+              <option value="mid">Standard ($150&ndash;$350)</option>
+              <option value="major">Large (over $350)</option>
+              <option value="multi">Multiple tickets</option>
+            </select>
+          </div>
+          <div class="fl" id="ticketAmountWrap" style="display:none;">
+            <label>Ticket amount</label>
+            <input type="number" id="ticketAmount" placeholder="e.g. 280">
+          </div>
+          <div class="fl" id="ticketViolationWrap" style="display:none;position:relative;">
+            <label>Violation code</label>
+            <input type="text" id="ticketViolation" placeholder="e.g. 1180(b)" autocomplete="off" oninput="onViolationInput()">
+            <div class="statute-helper" id="statuteHelper"></div>
+          </div>
         </div>
-        <div class="fl" id="ticketAmountWrap" style="display:none;">
-          <label>Ticket amount</label>
-          <input type="number" id="ticketAmount" placeholder="e.g. 280">
-        </div>
-        <div class="fl" id="ticketViolationWrap" style="display:none;position:relative;">
-          <label>Violation code</label>
-          <input type="text" id="ticketViolation" placeholder="e.g. 1180(b)" autocomplete="off" oninput="onViolationInput()">
-          <div class="statute-helper" id="statuteHelper"></div>
-        </div>
-        <button class="submit-main" onclick="goStep(4)">Next: Verify &rarr;</button>
+
+        <button class="submit-main" onclick="goStep(4)">Next: Verify &amp; share &rarr;</button>
       </div>
 
       <!-- STEP 4: Verify & post -->
@@ -225,28 +222,28 @@
           </label>
         </div>
         <div class="fl" id="reviewerNameWrap" style="display:none;">
-          <label>Your Name (optional, shown on the moment)</label>
+          <label>Your Name (optional, shown on the story)</label>
           <input type="text" id="reviewerName" placeholder="e.g. Jane D.">
         </div>
         <div class="fl">
-          <label>Photo verification <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional but recommended &mdash; never shown publicly</span></label>
+          <label id="photoLabel">Photo to verify <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional &mdash; never shown publicly</span></label>
           <div class="upload-zone" id="uploadZone">
             <input type="file" id="uploadInput" accept="image/*,.pdf" onchange="onFileUpload(this)">
             <div class="uz-icon">&#128247;</div>
-            <div class="uz-title">Tap to add photo</div>
-            <div class="uz-sub">Ticket, badge, officer card, or any photo from the moment. JPG / PNG / PDF</div>
+            <div class="uz-title">Tap to add a photo</div>
+            <div class="uz-sub" id="photoHelp">Any photo from the moment. JPG / PNG / PDF</div>
           </div>
           <div class="upload-preview" id="uploadPreview">
             <div class="up-icon">&#9989;</div>
             <div class="up-name" id="uploadName">uploaded</div>
           </div>
         </div>
-        <div class="fl">
-          <label>Ticket number <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
-          <input type="text" id="ticketNumberIn" placeholder="e.g. T-2024-48291">
+        <div class="fl" id="referenceNumberWrap">
+          <label id="referenceNumberLabel">Reference number <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+          <input type="text" id="ticketNumberIn" placeholder="A confirmation number, case ID, ticket #, etc.">
         </div>
-        <div class="fl" id="bodyCamWrap">
-          <label>Was there body cam footage? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+        <div class="fl" id="bodyCamWrap" style="display:none;">
+          <label>Was there body cam footage? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional &mdash; police only</span></label>
           <div class="bodycam-pills" id="bodyCamPills">
             <span class="bcp" data-v="yes" onclick="setBodyCam(this, 'yes')">&#127909; Yes</span>
             <span class="bcp" data-v="no" onclick="setBodyCam(this, 'no')">&#128683; No</span>
@@ -254,16 +251,25 @@
           </div>
           <div class="bcp-hint" id="bcpHint" style="display:none;"></div>
         </div>
-        <button class="submit-main" id="finalSubmit" onclick="submitReview()">Post this moment &rarr;</button>
-        <div class="success-box" id="successBox">
-          <div style="font-size:1.6rem;">&#127775;</div>
-          <div style="flex:1;">
-            <div style="font-weight:600;">Your moment is on the record.</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">Thank you. Public service is real because of moments like this.</div>
-            <button class="share-btn" id="shareBtn" onclick="shareReview()">&#128279; Share &mdash; invite others to share theirs</button>
+        <button class="submit-main" id="finalSubmit" onclick="submitReview()">Post my story &rarr;</button>
+        <div class="success-box" id="successBox" style="flex-direction:column;align-items:flex-start;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="font-size:2rem;">&#127775;</div>
+            <div>
+              <div style="font-weight:700;font-size:1.05rem;">Your story is on the record.</div>
+              <div style="font-size:0.85rem;color:var(--light);margin-top:3px;">Public service is real because of moments like this. Help others see it.</div>
+            </div>
+          </div>
+          <div class="share-strip" id="shareStrip">
+            <button class="share-pill share-twitter" onclick="shareTo('twitter')"><strong>𝕏</strong> &nbsp;Post on X</button>
+            <button class="share-pill share-linkedin" onclick="shareTo('linkedin')">in &nbsp;LinkedIn</button>
+            <button class="share-pill share-whatsapp" onclick="shareTo('whatsapp')">&#128241; WhatsApp</button>
+            <button class="share-pill share-facebook" onclick="shareTo('facebook')">f &nbsp;Facebook</button>
+            <button class="share-pill share-copy" onclick="shareTo('copy')">&#128203; Copy link</button>
+            <button class="share-pill share-more" onclick="shareTo('native')">&#8230; More</button>
           </div>
         </div>
-        <div class="error-box" id="errorBox" style="display:none;background:rgba(224,82,82,0.09);border:1.5px solid rgba(224,82,82,0.3);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
+        <div class="error-box" id="errorBox" style="display:none;background:rgba(201,52,52,0.08);border:1.5px solid rgba(201,52,52,0.35);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
       </div>
     </div>
   </div>
@@ -272,22 +278,37 @@
 <!-- OFFICER PROFILES -->
 <section id="officers">
   <div class="wrap-wide">
-    <div class="ph"><h2>Profiles</h2><p>Public servants across police, EMT, fire, DMV, hospitals, and government &mdash; built by the community. Every moment adds to the record.</p></div>
+    <div class="ph"><h2>Stories</h2><p>Real moments people had with real public servants. Read individual stories &mdash; or tap a name to see their full record.</p></div>
     <div class="search-bar-wrap">
-      <input type="text" id="officerSearch" placeholder="Search by name, badge number, or department&hellip;" oninput="searchOfficers()">
+      <input type="text" id="officerSearch" placeholder="Search by name, agency, or what happened&hellip;" oninput="searchOfficers()">
       <button onclick="searchOfficers()">Search</button>
     </div>
-    <div class="pills">
-      <span class="pill on" onclick="pillClick(this)">All Officers</span>
-      <span class="pill" onclick="pillClick(this)">Spring Valley PD</span>
-      <span class="pill" onclick="pillClick(this)">&#11088; Highest Rated</span>
-      <span class="pill" onclick="pillClick(this)">&#9888;&#65039; Most Complaints</span>
+    <div class="pills" id="rolePillFilter">
+      <span class="pill on" data-rolefilter="" onclick="pillClick(this)">All</span>
+      <span class="pill" data-rolefilter="police" onclick="pillClick(this)">&#128659; Police</span>
+      <span class="pill" data-rolefilter="emt" onclick="pillClick(this)">&#128657; EMT</span>
+      <span class="pill" data-rolefilter="fire" onclick="pillClick(this)">&#128658; Fire</span>
+      <span class="pill" data-rolefilter="dmv" onclick="pillClick(this)">&#129411; DMV</span>
+      <span class="pill" data-rolefilter="hospital" onclick="pillClick(this)">&#127973; Hospital</span>
+      <span class="pill" data-rolefilter="gov" onclick="pillClick(this)">&#128104;&#8205;&#128188; Gov't</span>
+      <span class="pill" data-rolefilter="top" onclick="pillClick(this)">&#11088; Recognitions only</span>
     </div>
-    <div class="officer-grid" id="officerGrid">
-      <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading officers&hellip;</div>
+
+    <div class="view-toggle">
+      <button class="vt-btn on" data-view="stream" onclick="setStoriesView(this, 'stream')">&#128221; Story stream</button>
+      <button class="vt-btn" data-view="grid" onclick="setStoriesView(this, 'grid')">&#128194; By person</button>
     </div>
-    <div style="text-align:center;padding:20px 0;">
-      <p style="color:var(--gray);font-size:0.85rem;">Don't see a public servant? <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:'Epilogue',sans-serif;font-size:0.85rem;text-decoration:underline;">Share a moment</button> and their profile will be created automatically.</p>
+
+    <div class="story-stream" id="storyStream">
+      <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading&hellip;</div>
+    </div>
+
+    <div class="officer-grid" id="officerGrid" style="display:none;">
+      <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading&hellip;</div>
+    </div>
+
+    <div style="text-align:center;padding:24px 0;">
+      <p style="color:var(--gray);font-size:0.9rem;">Got a story we should hear? <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:'Epilogue',sans-serif;font-size:0.9rem;text-decoration:underline;font-weight:600;">Share it &rarr;</button></p>
     </div>
   </div>
 </section>
@@ -317,57 +338,78 @@
   </div>
 </section>
 
-<!-- FILE A COMPLAINT -->
+<!-- REACH OUT — send a thank-you or a complaint, any agency -->
 <section id="complaint">
   <div class="wrap-wide">
-    <div class="ph"><h2>File a Complaint</h2><p>Send a complaint directly to the department. Pre-filled from your review whenever possible.</p></div>
+    <div class="ph"><h2>Reach Out</h2><p>Send a message directly to the agency &mdash; a thank-you for someone who helped, or a concern for someone who didn't. They're legally required to respond in NY.</p></div>
 
     <div class="ai-notice">
-      <span>&#129302;</span>
-      <div><strong style="color:var(--blue);">Smart Complaint System.</strong> Select the department below. The app will auto-fill your complaint using details from your review, and send it directly to the right contact. You can edit before sending.</div>
+      <span>&#128172;</span>
+      <div><strong style="color:var(--blue);">Send a thank-you or a complaint.</strong> Pick any agency below &mdash; police, EMT, fire, DMV, hospital, government. We pre-fill the message from your story, you edit, and it goes to the verified contact.</div>
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;">&#128205; New York Department Directory</h3>
-      <div style="font-size:0.78rem;color:var(--gray);"><span id="deptCount">&mdash;</span> departments &middot; <span style="color:var(--green);">&#10003; Verified contacts</span></div>
+      <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;">&#128205; New York Agency Directory</h3>
+      <div style="font-size:0.78rem;color:var(--gray);"><span id="deptCount">&mdash;</span> agencies &middot; <span style="color:var(--green);">&#10003; Verified contacts</span></div>
     </div>
 
-    <div class="search-bar-wrap" style="margin-bottom:14px;">
-      <input type="text" id="deptSearch" placeholder="Search by department name, town, or county&hellip;" oninput="renderDepartments()">
+    <div class="search-bar-wrap" style="margin-bottom:10px;">
+      <input type="text" id="deptSearch" placeholder="Search by agency name, town, or county&hellip;" oninput="renderDepartments()">
       <select id="deptRegion" onchange="renderDepartments()" style="background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--white);font-family:'Epilogue',sans-serif;font-size:0.93rem;outline:none;cursor:pointer;">
         <option value="">All regions</option>
       </select>
     </div>
+    <div class="pills" id="agencyTypeFilter" style="margin-bottom:18px;">
+      <span class="pill on" data-typefilter="" onclick="agencyTypeClick(this)">All</span>
+      <span class="pill" data-typefilter="police" onclick="agencyTypeClick(this)">&#128659; Police</span>
+      <span class="pill" data-typefilter="emt" onclick="agencyTypeClick(this)">&#128657; EMT</span>
+      <span class="pill" data-typefilter="fire" onclick="agencyTypeClick(this)">&#128658; Fire</span>
+      <span class="pill" data-typefilter="dmv" onclick="agencyTypeClick(this)">&#129411; DMV</span>
+      <span class="pill" data-typefilter="hospital" onclick="agencyTypeClick(this)">&#127973; Hospital</span>
+      <span class="pill" data-typefilter="gov" onclick="agencyTypeClick(this)">&#128104;&#8205;&#128188; Gov't</span>
+    </div>
     <div class="contact-grid" id="contactGrid">
-      <div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">Loading departments&hellip;</div>
+      <div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">Loading agencies&hellip;</div>
     </div>
 
     <div class="complaint-form" id="complaintFormWrap" style="display:none;">
-      <div class="cf-title" id="cfTitle">Complaint to Chief Oleszczuk</div>
-      <div class="cf-sub" id="cfSub">Sending to: ROLESZCZUK@villagespringvalley.org</div>
-      <div class="fl"><label>Your Name (optional &mdash; or submit anonymously)</label><input type="text" id="cfSenderName" placeholder="Anonymous"></div>
-      <div class="fl-2">
-        <div class="fl"><label>Officer Badge / Name</label><input type="text" id="cfBadge" placeholder="From your review"></div>
-        <div class="fl"><label>Date of Incident</label><input type="date" id="cfDate"></div>
+      <div class="cf-title" id="cfTitle">Message to&hellip;</div>
+      <div class="cf-sub" id="cfSub">Sending to:&hellip;</div>
+
+      <div class="fl">
+        <label>What kind of message?</label>
+        <div class="msg-type-pills">
+          <span class="msg-type on" data-type="praise" onclick="setMessageType(this, 'praise')">&#127942; Thank-you</span>
+          <span class="msg-type" data-type="complaint" onclick="setMessageType(this, 'complaint')">&#9888;&#65039; Concern / Complaint</span>
+        </div>
       </div>
-      <div class="fl"><label>Complaint Description</label><textarea id="cfBody" style="min-height:130px;" placeholder="Describe what happened. Be factual and specific &mdash; include time, location, what was said, and how the officer behaved."></textarea></div>
-      <div class="fl"><label>Attach Evidence (optional)</label>
+
+      <div class="fl"><label>Your Name <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional &mdash; leave blank to send anonymously</span></label><input type="text" id="cfSenderName" placeholder="Anonymous"></div>
+      <div class="fl-2">
+        <div class="fl"><label id="cfPersonLabel">Their name / ID</label><input type="text" id="cfBadge" placeholder="From your story"></div>
+        <div class="fl"><label>Date</label><input type="date" id="cfDate"></div>
+      </div>
+      <div class="fl">
+        <label id="cfBodyLabel">Message</label>
+        <textarea id="cfBody" style="min-height:140px;" placeholder="Describe the moment. Be specific &mdash; include time, location, what was said and done."></textarea>
+      </div>
+      <div class="fl"><label>Attach a photo <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
         <div class="upload-zone">
           <input type="file" id="cfFile" accept="image/*,.pdf">
           <div class="uz-icon">&#128206;</div>
-          <div class="uz-title">Attach ticket, body cam request, or photos</div>
-          <div class="uz-sub">Optional &middot; Max 10MB</div>
+          <div class="uz-title">Add a photo or document</div>
+          <div class="uz-sub">JPG / PNG / PDF &middot; Max 10MB</div>
         </div>
       </div>
-      <button class="submit-main" id="cfSubmitBtn" onclick="sendComplaint()">Send Complaint &rarr;</button>
+      <button class="submit-main" id="cfSubmitBtn" onclick="sendComplaint()">Send message &rarr;</button>
       <div class="success-box" id="complaintSuccess">
         <div style="font-size:1.6rem;">&#128231;</div>
         <div>
-          <div style="font-weight:600;">Complaint sent successfully.</div>
-          <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">A copy has been saved to your review record. Departments are legally required to respond within 30 days in NY State.</div>
+          <div style="font-weight:600;">Message sent.</div>
+          <div style="font-size:0.85rem;color:var(--light);margin-top:3px;">NY agencies are legally required to respond within 30 days. A copy is on your record.</div>
         </div>
       </div>
-      <div class="error-box" id="complaintError" style="display:none;background:rgba(224,82,82,0.09);border:1.5px solid rgba(224,82,82,0.3);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
+      <div class="error-box" id="complaintError" style="display:none;background:rgba(201,52,52,0.08);border:1.5px solid rgba(201,52,52,0.35);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
     </div>
   </div>
 </section>
@@ -376,41 +418,41 @@
 <section id="deck">
   <div class="deck-wrap">
     <div class="deck-hero">
-      <div class="dh-eyebrow">Sponsorship Opportunity</div>
-      <h2 class="dh-title">Why Sponsor <span>CivicVoice</span>?</h2>
-      <p class="dh-body">CivicVoice is the public record for every interaction with a public servant. You reach drivers right after a stop, citizens right after a hospital visit, residents right after a DMV trip &mdash; at the exact moments they need help, recognition, or a lawyer.</p>
-      <a class="btn-gold" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Sponsor Package &darr;</a>
+      <div class="dh-eyebrow">Partnership Opportunity</div>
+      <h2 class="dh-title">Why Partner With <span>CivicVoice</span>?</h2>
+      <p class="dh-body">CivicVoice is the public record of every interaction with a public servant &mdash; police, EMT, fire, DMV, hospitals, government. We turn the most emotional moments people have with civic institutions into a structured, shareable record. Partners reach a highly engaged, real-life-grounded audience that no ad network can touch.</p>
+      <a class="btn-gold" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Partnership Deck &darr;</a>
     </div>
 
     <div class="insight-box">
-      <div class="ib-h">The <span>Right Audience</span> at the Right Moment.</div>
-      <div class="ib-b">Every person who opens CivicVoice just had an experience worth recording &mdash; a stop, a call, a visit. Praise or complaint, they're already engaged. Sponsors reach customers at peak intent, not in the wild.</div>
+      <div class="ib-h">A <span>Civic Layer</span>, Not an Ad Slot.</div>
+      <div class="ib-b">Every story on CivicVoice came from a real moment a real person had with a real public servant. That's earned engagement &mdash; not bought attention. Partners join the platform because they believe in transparent civic life, not because they want to chase impressions.</div>
     </div>
 
     <div class="deck-grid">
       <div class="dg">
-        <div class="dg-n">50M+</div>
-        <div class="dg-t">Traffic Stops / Year (US)</div>
-        <div class="dg-d">Every stop is a potential user &mdash; and a potential client for your business.</div>
-      </div>
-      <div class="dg">
-        <div class="dg-n">~$280</div>
-        <div class="dg-t">Average Ticket Cost</div>
-        <div class="dg-d">High financial pain point means users are highly motivated to seek help.</div>
+        <div class="dg-n">6</div>
+        <div class="dg-t">Categories live</div>
+        <div class="dg-d">Police, EMT, fire, DMV, hospitals, government &mdash; all equal weight from day one.</div>
       </div>
       <div class="dg">
         <div class="dg-n">100%</div>
-        <div class="dg-t">Intent-Based Audience</div>
-        <div class="dg-d">Zero cold traffic. Every user arrived because they just had a stop.</div>
+        <div class="dg-t">First-person stories</div>
+        <div class="dg-d">Every entry is from someone who was there. No aggregated reviews, no scraped data.</div>
+      </div>
+      <div class="dg">
+        <div class="dg-n">&#127794;</div>
+        <div class="dg-t">Civic, not transactional</div>
+        <div class="dg-d">A platform that recognizes good public service and documents what needs to improve.</div>
       </div>
     </div>
 
-    <h3 style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:16px;">How the Funnel Works</h3>
+    <h3 style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:16px;">Who Sponsors CivicVoice</h3>
     <div class="funnel">
-      <div class="fs"><div class="fs-ic">&#128680;</div><div class="fs-t">Driver Gets Pulled Over</div><div class="fs-d">Frustrated, needs help</div></div>
-      <div class="fs"><div class="fs-ic">&#128241;</div><div class="fs-t">Opens CivicVoice</div><div class="fs-d">Rates the stop, tells their story</div></div>
-      <div class="fs"><div class="fs-ic">&#127919;</div><div class="fs-t">Enters Ticket Details</div><div class="fs-d">App asks: Want to fight this?</div></div>
-      <div class="fs"><div class="fs-ic">&#127942;</div><div class="fs-t">Becomes Your Client</div><div class="fs-d">Free consult &rarr; paid case &rarr; you win</div></div>
+      <div class="fs"><div class="fs-ic">&#127891;</div><div class="fs-t">Civic Foundations</div><div class="fs-d">Open-government and accountability orgs underwriting visibility</div></div>
+      <div class="fs"><div class="fs-ic">&#127973;</div><div class="fs-t">Health Systems</div><div class="fs-d">Hospitals and EMS networks tracking patient-facing sentiment</div></div>
+      <div class="fs"><div class="fs-ic">&#127970;</div><div class="fs-t">Local Agencies</div><div class="fs-d">Municipalities subscribing to the data layer for their staff</div></div>
+      <div class="fs"><div class="fs-ic">&#9878;&#65039;</div><div class="fs-t">Legal Services</div><div class="fs-d">Optional &mdash; for people who specifically want a ticket-fighter referral</div></div>
     </div>
 
     <div class="tiers">
@@ -419,40 +461,40 @@
         <div class="t-price">$2K<span style="font-size:0.9rem;color:var(--gray)">/mo</span></div>
         <div class="t-freq">Starter</div>
         <ul class="t-perks">
-          <li>Banner ad in community feed</li>
-          <li>Logo in footer</li>
-          <li>Monthly traffic report</li>
+          <li>Recognition badge on partner profile</li>
+          <li>Logo in CivicVoice footer</li>
+          <li>Monthly community report</li>
         </ul>
       </div>
       <div class="tier feat">
         <div class="t-name gold">&#9889; Recommended</div>
         <div class="t-price">$8K<span style="font-size:0.9rem;color:var(--gray)">/mo</span></div>
-        <div class="t-freq">Core Sponsor</div>
+        <div class="t-freq">Core Partner</div>
         <ul class="t-perks">
-          <li>Pop-up when ticket is entered</li>
-          <li>Button inside review form</li>
-          <li>Sponsored card in feed</li>
-          <li>Lead data dashboard</li>
-          <li>Monthly performance report</li>
+          <li>Sponsored card in the moment feed</li>
+          <li>Recognition badge on partner profile</li>
+          <li>Sentiment dashboard for your agency / category</li>
+          <li>Monthly performance &amp; trends report</li>
+          <li>Co-branded recognition campaigns</li>
         </ul>
       </div>
       <div class="tier">
         <div class="t-name">Premium</div>
         <div class="t-price">$18K<span style="font-size:0.9rem;color:var(--gray)">/mo</span></div>
-        <div class="t-freq">Exclusive Partner</div>
+        <div class="t-freq">Founding Partner</div>
         <ul class="t-perks">
           <li>Everything in Core</li>
-          <li>Sole sponsor &mdash; no competition</li>
-          <li>Direct intake API integration</li>
-          <li>Co-branded marketing assets</li>
-          <li>Quarterly strategy sessions</li>
+          <li>Sole partner in your category</li>
+          <li>Direct API access to sentiment data</li>
+          <li>Co-branded recognition campaigns</li>
+          <li>Quarterly civic-impact reviews</li>
         </ul>
       </div>
     </div>
 
     <div class="deck-cta">
       <h3>Let's Talk</h3>
-      <p>CivicVoice brings the audience. You bring the solution. Together, it's the most targeted funnel in this space.</p>
+      <p>CivicVoice is building the civic layer for public-service interaction. Partner with us at the founding stage.</p>
       <div class="cta-row">
         <a class="btn-gold" href="mailto:chesky2039@gmail.com?subject=CivicVoice%20Sponsorship%20Inquiry&body=Hi%20Chesky%2C%0A%0AI%27m%20interested%20in%20sponsoring%20CivicVoice.%20Please%20send%20me%20more%20information.%0A%0AThanks%2C" style="display:inline-block;text-decoration:none;">Contact Us Today</a>
         <a class="btn-ghost" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Full Deck (PDF)</a>

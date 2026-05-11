@@ -137,22 +137,25 @@ function getSelectedTags(containerId) {
 }
 
 function goStep(n) {
-  // Step 1 validation: must pick a role first
+  // Validation gates
   if (n === 2 && !currentRole) {
-    alert('Pick who it was first (Police / EMT / Fire / DMV / Hospital / Gov’t).');
+    alert('Pick who the moment was with — Police, EMT, Fire, DMV, Hospital, or Gov’t.');
     return;
   }
-  // Step 3 is ticket info — only relevant for police. Skip for everyone else.
-  if (n === 3 && currentRole !== 'police') {
-    n = 4;
+  if (n === 3) {
+    const story = (document.getElementById('quickStory')?.value || '').trim();
+    if (story.length < 10) {
+      alert('Tell us a little about what happened — even one sentence helps.');
+      return;
+    }
   }
   document.getElementById('step' + step).style.display = 'none';
   step = n;
   document.getElementById('step' + n).style.display = 'block';
-  // Show the live rating chip starting at step 2 — never visible during step-1 input
+  // Show the live rating chip starting at step 3 — never visible during role pick or story
   const chip = document.getElementById('liveRating');
   if (chip) {
-    if (n >= 2) { refreshLiveRating(); chip.classList.add('visible'); }
+    if (n >= 3) { refreshLiveRating(); chip.classList.add('visible'); }
     else        { chip.classList.remove('visible'); }
   }
   for (let i = 1; i <= 4; i++) {
@@ -168,18 +171,52 @@ function onTicketChange() {
   document.getElementById('ticketViolationWrap').style.display = showTicket ? 'block' : 'none';
 }
 
-// Role selection (Step 1). All roles are equal — police is one of six categories.
-// No default selection — user picks. Police-only contextual UI hides for other roles.
+// Role selection (Step 1). All roles equal. Sets all the labels/placeholders/help text
+// throughout the rest of the form so no police-specific language leaks into other roles.
 let currentRole = null;
+
+const ROLE_CONFIG = {
+  police:   { who: 'Officer',     ref: 'Ticket / Citation number',          name_ph: 'e.g. K. Williams',   id_label: 'Badge #',          id_ph: 'e.g. #4821',            agency_label: 'Department / Precinct', agency_ph: 'e.g. Spring Valley PD', where_label: 'Where (location of stop)', where_ph: 'e.g. Main St & Route 59, Spring Valley', story_label: 'What happened?', story_ph: 'Tell the story. The more you share, the more it matters.', photo_help: 'A ticket, badge, or photo from the stop. JPG / PNG / PDF', show_ticket: true,  show_bodycam: true,  show_ref: true },
+  emt:      { who: 'EMT / Paramedic', ref: 'Call / Run number',             name_ph: 'e.g. M. Hernandez',  id_label: 'Unit #',           id_ph: 'e.g. Unit 14',          agency_label: 'Ambulance service / EMS', agency_ph: 'e.g. Rockland Paramedic Services', where_label: 'Where', where_ph: 'e.g. Maple Ave, Spring Valley', story_label: 'What happened?', story_ph: 'How did they show up? What did they do? What will you remember?', photo_help: 'Any photo from the call. JPG / PNG / PDF', show_ticket: false, show_bodycam: false, show_ref: true },
+  fire:     { who: 'Firefighter',  ref: 'Incident number',                  name_ph: 'e.g. Capt. Murphy',  id_label: 'Engine / Co. #',   id_ph: 'e.g. Engine 60',        agency_label: 'Fire department', agency_ph: 'e.g. Spring Valley FD', where_label: 'Where', where_ph: 'e.g. 14 Main St, Spring Valley', story_label: 'What happened?', story_ph: 'A rescue? An inspection? A false alarm? Tell the story.', photo_help: 'Any photo from the scene. JPG / PNG / PDF', show_ticket: false, show_bodycam: false, show_ref: true },
+  dmv:      { who: 'DMV worker',   ref: 'Confirmation number',              name_ph: 'e.g. their first name',  id_label: 'Window / Station', id_ph: 'e.g. Window 5',         agency_label: 'DMV office',  agency_ph: 'e.g. NY DMV — Spring Valley', where_label: 'Which DMV', where_ph: 'e.g. Spring Valley, NY', story_label: 'What happened at the DMV?', story_ph: 'Was it fast? Slow? Did someone go out of their way? Tell us.', photo_help: 'A receipt, queue ticket, or anything from the visit. JPG / PNG / PDF', show_ticket: false, show_bodycam: false, show_ref: true },
+  hospital: { who: 'Hospital staff', ref: 'Visit / Admission ID',            name_ph: 'e.g. Nurse Khan',    id_label: 'Role / Dept',      id_ph: 'e.g. RN, ER, Floor 3', agency_label: 'Hospital',    agency_ph: 'e.g. Nyack Hospital', where_label: 'Which hospital', where_ph: 'e.g. Nyack, NY', story_label: 'What happened?', photo_help: 'Wristband, paperwork, or any photo from the visit. JPG / PNG / PDF', story_ph: 'A nurse who stayed late? A tech who was rough? Tell the story.', show_ticket: false, show_bodycam: false, show_ref: true },
+  gov:      { who: 'Gov’t worker', ref: 'Case / File number',               name_ph: 'e.g. their first name',  id_label: 'Title / Role',    id_ph: 'e.g. Caseworker, Inspector', agency_label: 'Agency',   agency_ph: 'e.g. NYS Unemployment Office', where_label: 'Where', where_ph: 'e.g. Spring Valley, NY', story_label: 'What happened?', photo_help: 'Letter, case ID, anything from the interaction. JPG / PNG / PDF', story_ph: 'A caseworker who fought for you? A clerk who lost your file? Tell us.', show_ticket: false, show_bodycam: false, show_ref: true },
+};
+
 function setRole(el, role) {
   currentRole = role;
   document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
-  const reasonRow = document.getElementById('reasonRow');
-  if (reasonRow) reasonRow.style.display = (role === 'police') ? 'block' : 'none';
+  applyRoleLabels(role);
+}
+
+function applyRoleLabels(role) {
+  const cfg = ROLE_CONFIG[role];
+  if (!cfg) return;
+  // Step 2 — story labels
+  const sL = document.getElementById('storyLabel'); if (sL) sL.textContent = cfg.story_label;
+  const sT = document.getElementById('quickStory'); if (sT) sT.placeholder = cfg.story_ph;
+  // Step 3 — who & where labels & placeholders
+  const setLabel = (id, text) => { const e = document.getElementById(id); if (e) e.textContent = text; };
+  const setPh    = (id, text) => { const e = document.getElementById(id); if (e) e.placeholder = text; };
+  setLabel('nameLabel',  `${cfg.who} name`);
+  setPh   ('officerName', cfg.name_ph);
+  setLabel('idLabel',    `${cfg.id_label}`);
+  setPh   ('badgeIn',     cfg.id_ph);
+  setLabel('agencyLabel', cfg.agency_label);
+  setPh   ('deptIn',      cfg.agency_ph);
+  setLabel('whereLabel',  cfg.where_label);
+  setPh   ('locationIn',  cfg.where_ph);
+  // Step 4 — verify section
+  setPh   ('photoHelp',   cfg.photo_help);  // placeholder-style help text element
+  const phHelp = document.getElementById('photoHelp'); if (phHelp) phHelp.textContent = cfg.photo_help;
+  setLabel('referenceNumberLabel', cfg.ref);
+  // Police-only sections
+  const ticketSection = document.getElementById('ticketSection');
+  if (ticketSection) ticketSection.style.display = cfg.show_ticket ? 'block' : 'none';
   const bodyCamWrap = document.getElementById('bodyCamWrap');
-  if (bodyCamWrap) bodyCamWrap.style.display = (role === 'police') ? 'block' : 'none';
-  // Step 3 is the ticket info — only makes sense for traffic stops
+  if (bodyCamWrap) bodyCamWrap.style.display = cfg.show_bodycam ? 'block' : 'none';
 }
 
 async function onFileUpload(input) {
@@ -227,7 +264,7 @@ async function submitReview() {
     role: currentRole,
     verdict: verdict || 'fair',  // backend requires fair|unfair; default to fair for balanced/positive moments
     stars,
-    reasons: getSelectedTags('reasonTags'),
+    reasons: [],
     behaviors: getSelectedTags('behaviorTags'),
     officer_name: document.getElementById('officerName').value || null,
     officer_badge: document.getElementById('badgeIn').value || null,
@@ -270,8 +307,8 @@ async function submitReview() {
       // Clear role selection — user picks fresh each time
       currentRole = null;
       document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
-      const reasonRow = document.getElementById('reasonRow'); if (reasonRow) reasonRow.style.display = 'none';
       const bodyCamWrap = document.getElementById('bodyCamWrap'); if (bodyCamWrap) bodyCamWrap.style.display = 'none';
+      const ticketSection = document.getElementById('ticketSection'); if (ticketSection) ticketSection.style.display = 'none';
       const lap = document.getElementById('lrAdjustPanel'); if (lap) lap.classList.remove('show');
       const lr = document.getElementById('liveRating'); if (lr) lr.classList.remove('visible');
       refreshLiveRating();
@@ -289,41 +326,60 @@ async function submitReview() {
 
 // ── OFFICER PROFILES ──
 let officerCache = [];
-let activePill = 'All Officers';
+let activePill = '';  // '' = All; or 'police','emt',...,'top'
 
 function starsStr(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
 
 async function loadOfficers() {
+  const stream = document.getElementById('storyStream');
   const grid = document.getElementById('officerGrid');
-  grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Loading officers…</div>';
+  if (stream) stream.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Loading stories…</div>';
+  if (grid)   grid.innerHTML   = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Loading…</div>';
   try {
     officerCache = await api.listOfficers();
     applyFilters();
   } catch (err) {
-    grid.innerHTML = `<div style="color:var(--red);text-align:center;padding:40px 0;">Couldn't load officers: ${err.message}</div>`;
+    if (stream) stream.innerHTML = `<div style="color:var(--red);text-align:center;padding:40px 0;">Couldn't load stories: ${err.message}</div>`;
   }
+}
+
+// Stream / grid toggle
+let storiesView = 'stream';
+function setStoriesView(el, view) {
+  storiesView = view;
+  document.querySelectorAll('.view-toggle .vt-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('storyStream').style.display = view === 'stream' ? 'flex' : 'none';
+  document.getElementById('officerGrid').style.display = view === 'grid'   ? 'grid' : 'none';
+  applyFilters();
 }
 
 function renderOfficers(list) {
   const grid = document.getElementById('officerGrid');
   if (!list.length) {
-    grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">No officers match yet. Be the first to add one by submitting a review.</div>';
+    grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Nothing matches yet. Be the first — <button onclick="nav(\'share\')" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-family:inherit;font-size:inherit;">share a story</button>.</div>';
     return;
   }
-  grid.innerHTML = list.map(o => `
+  const ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
+  grid.innerHTML = list.map(o => {
+    const role = inferRole(o);
+    return `
     <div class="officer-card" onclick="openOfficer(${o.id})">
       <div class="oc-top">
-        <div class="oc-av">${(o.name || 'Unknown').split(' ').pop().slice(0, 2).toUpperCase()}</div>
-        <div><div class="oc-name">${escapeHtml(o.name || 'Unknown Officer')}</div><div class="oc-dept">${escapeHtml(o.badge || '—')} · ${escapeHtml(o.department || 'Unknown Dept')}</div></div>
+        <div class="oc-av">${ICON[role] || '👤'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="oc-name">${escapeHtml(o.name || 'Unknown')}</div>
+          <div class="oc-dept">${escapeHtml(o.department || 'Unknown agency')}</div>
+        </div>
       </div>
-      <div class="oc-stars">${starsStr(Math.round(o.avg_stars || 0))} <span style="font-size:0.8rem;color:var(--gray);margin-left:4px;">${(o.avg_stars || 0).toFixed(1)}/5</span></div>
+      <div class="oc-stars">${starsStr(Math.round(o.avg_stars || 0))} <span style="font-size:0.78rem;color:var(--gray);margin-left:4px;">${(o.avg_stars || 0).toFixed(1)}</span></div>
       <div class="oc-meta">
-        ${o.fair_count > 0 ? `<span class="oc-chip fair">✅ ${o.fair_count} Fair</span>` : ''}
-        ${o.unfair_count > 0 ? `<span class="oc-chip unfair">❌ ${o.unfair_count} Unfair</span>` : ''}
+        ${o.fair_count > 0 ? `<span class="oc-chip fair">${o.fair_count} ${o.fair_count === 1 ? 'recognition' : 'recognitions'}</span>` : ''}
+        ${o.unfair_count > 0 ? `<span class="oc-chip unfair">${o.unfair_count} concern${o.unfair_count === 1 ? '' : 's'}</span>` : ''}
       </div>
-      <div class="oc-reviews">${o.review_count} review${o.review_count !== 1 ? 's' : ''} · Click to view</div>
+      <div class="oc-reviews">${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'} · tap to read</div>
     </div>
-  `).join('');
+  `;}).join('');
 }
 
 async function openOfficer(id) {
@@ -341,16 +397,16 @@ async function openOfficer(id) {
         </div>
       </div>
       <div class="mo-stats">
-        <div class="ms-box"><div class="ms-n">${(o.avg_stars || 0).toFixed(1)}★</div><div class="ms-l">Avg Rating</div></div>
-        <div class="ms-box"><div class="ms-n">${o.review_count}</div><div class="ms-l">Reviews</div></div>
-        <div class="ms-box"><div class="ms-n">${o.unfair_count}</div><div class="ms-l">Complaints</div></div>
+        <div class="ms-box"><div class="ms-n">${(o.avg_stars || 0).toFixed(1)}★</div><div class="ms-l">Sentiment</div></div>
+        <div class="ms-box"><div class="ms-n">${o.review_count}</div><div class="ms-l">Stories</div></div>
+        <div class="ms-box"><div class="ms-n">${o.fair_count}</div><div class="ms-l">Recognitions</div></div>
       </div>
       ${o.reviews.map(r => `
         <div class="mo-review">
           <div class="mr-top">
             <div class="mr-stars">${starsStr(r.stars)}</div>
             <div>
-              <span class="mr-verdict ${r.verdict}">${r.verdict === 'fair' ? '✅ Fair' : '❌ Unfair'}</span>
+              <span class="mr-verdict ${r.verdict}">${r.verdict === 'fair' ? '★ Recognition' : '⚠ Concern'}</span>
               ${r.upload_url ? '<span class="flag-verified" style="margin-left:6px;">🛡️ Verified</span>' : ''}
             </div>
           </div>
@@ -358,8 +414,7 @@ async function openOfficer(id) {
           <div class="mr-date">${formatDate(r.created_at)}</div>
         </div>
       `).join('')}
-      ${o.unfair_count >= 3 ? `<div class="mo-flag"><span>⚠️</span><div>This officer has <strong>${o.unfair_count} unfair stop complaints</strong> from community reviews. You can file a complaint directly with the department.</div></div>` : ''}
-      <button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">File a Complaint About This Officer →</button>
+      <button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">Send a message to this agency →</button>
     `;
   } catch (err) {
     modal.innerHTML = `<div style="color:var(--red);padding:40px 0;text-align:center;">Couldn't load officer: ${err.message}</div>`;
@@ -373,10 +428,23 @@ function closeModal(e) {
 function searchOfficers() { applyFilters(); }
 
 function pillClick(el) {
-  document.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+  // Only update pills within the same pill group (don't cross-touch the rankings pills)
+  const group = el.parentElement;
+  if (group) group.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
-  activePill = el.textContent.trim();
+  activePill = el.dataset.rolefilter !== undefined ? el.dataset.rolefilter : el.textContent.trim();
   applyFilters();
+}
+
+function inferRole(o) {
+  const d = (o.department || '').toLowerCase();
+  const n = (o.name || '').toLowerCase();
+  if (/\b(ems|ambulance|paramedic)\b/.test(d) || /\b(emt|paramedic|lt\. paramedic)\b/.test(n)) return 'emt';
+  if (/\b(fire|fd|engine|hose)\b/.test(d) || /\b(firefighter|capt\.|lt\. firefighter)\b/.test(n)) return 'fire';
+  if (/\bdmv\b/.test(d) || /\b(clerk|window)\b/.test(n)) return 'dmv';
+  if (/\b(hospital|medical|sinai|montefiore|good samaritan|langone|nyack hospital)\b/.test(d) || /\b(nurse|rn|pa|tech|admissions)\b/.test(n)) return 'hospital';
+  if (/\b(tax|hra|housing|unemployment|county clerk|dept of)\b/.test(d) || /\b(caseworker|case manager|inspector|specialist)\b/.test(n)) return 'gov';
+  return 'police';
 }
 
 function applyFilters() {
@@ -389,13 +457,113 @@ function applyFilters() {
       (o.department || '').toLowerCase().includes(q)
     );
   }
-  if (activePill.includes('Spring Valley')) list = list.filter(o => (o.department || '').includes('Spring Valley'));
-  else if (activePill.includes('Highest'))   list = list.sort((a, b) => (b.avg_stars || 0) - (a.avg_stars || 0));
-  else if (activePill.includes('Complaints')) list = list.sort((a, b) => (b.unfair_count || 0) - (a.unfair_count || 0));
+  const f = activePill;
+  if (f && f !== 'top') {
+    list = list.filter(o => inferRole(o) === f);
+  } else if (f === 'top') {
+    list = list.filter(o => (o.avg_stars || 0) >= 4).sort((a, b) => (b.avg_stars || 0) - (a.avg_stars || 0));
+  }
   renderOfficers(list);
+  renderStream(list, q);
 }
 
-// ── NY DEPARTMENT DIRECTORY ──
+// Flatten all officers' reviews into a flat stream, sorted newest-first.
+function renderStream(officers, q) {
+  const stream = document.getElementById('storyStream');
+  if (!stream) return;
+  const ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
+  const ROLE_NAME = { police:'POLICE', emt:'EMT', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOV\'T' };
+
+  // Build a list of {officer, review} items
+  let items = [];
+  for (const o of officers) {
+    const role = inferRole(o);
+    for (const r of (o.reviews || [])) {
+      items.push({ officer: o, review: r, role });
+    }
+  }
+  // Search filter — also match by story text
+  if (q) {
+    items = items.filter(it => (it.review.story || '').toLowerCase().includes(q) ||
+                               (it.officer.name || '').toLowerCase().includes(q) ||
+                               (it.officer.department || '').toLowerCase().includes(q));
+  }
+  // Newest first
+  items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
+  // Limit to 60 to avoid huge DOM
+  items = items.slice(0, 60);
+
+  if (!items.length) {
+    stream.innerHTML = `<div style="color:var(--gray);text-align:center;padding:48px 0;">No stories yet for this filter. <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-family:inherit;font-size:inherit;">Be the first to share one →</button></div>`;
+    return;
+  }
+
+  stream.innerHTML = items.map(it => {
+    const o = it.officer;
+    const r = it.review;
+    const isPositive = r.verdict === 'fair';
+    const sentimentClass = isPositive ? 'pos' : 'neg';
+    const sentimentTag   = isPositive ? '★ Recognition' : '⚠ Concern';
+    const date = formatDate(r.created_at);
+    const story = (r.story || '').trim() || '(No description was provided with this story.)';
+    return `
+      <article class="story-post">
+        <div class="sp-head">
+          <div class="sp-icon">${ICON[it.role] || '👤'}</div>
+          <div class="sp-meta">
+            <div class="sp-who">
+              <span class="sp-name" onclick="openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</span>
+              <span class="sp-role">${ROLE_NAME[it.role] || ''}</span>
+            </div>
+            <div class="sp-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
+          </div>
+          <div class="sp-sentiment ${sentimentClass}">
+            <span class="sp-stars">${starsStr(r.stars || 3)}</span>
+            <span class="sp-tag">${sentimentTag}</span>
+          </div>
+        </div>
+        <div class="sp-body">${escapeHtml(story)}</div>
+        <div class="sp-foot">
+          <span class="sp-date">${date}${r.upload_url ? ' · 🛡️ Verified' : ''}</span>
+          <div class="sp-actions">
+            <button class="sp-action up" onclick="thanksTo(this)">👍 Same here</button>
+            <button class="sp-action" onclick="shareTo('native')">🔗 Share</button>
+            <button class="sp-action" onclick="openOfficer(${o.id})">View profile</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+// Lightweight engagement signal — increments a "same here" counter on the button.
+function thanksTo(btn) {
+  const n = parseInt(btn.dataset.count || '0', 10) + 1;
+  btn.dataset.count = n;
+  btn.innerHTML = `👍 Same here · ${n}`;
+  btn.style.color = 'var(--green)';
+  btn.style.borderColor = 'rgba(78,201,138,0.4)';
+}
+
+// ── NY AGENCY DIRECTORY ──
+let agencyTypeFilter = '';
+function agencyTypeClick(el) {
+  document.querySelectorAll('#agencyTypeFilter .pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  agencyTypeFilter = el.dataset.typefilter || '';
+  renderDepartments();
+}
+
+function inferAgencyType(d) {
+  const name = (d.name || '').toLowerCase();
+  if (/\b(ems|ambulance|paramedic)\b/.test(name)) return 'emt';
+  if (/\b(fire|fd|hose|engine|truck co)\b/.test(name)) return 'fire';
+  if (/\bdmv\b/.test(name)) return 'dmv';
+  if (/\b(hospital|medical center|sinai|montefiore|good samaritan|langone)\b/.test(name)) return 'hospital';
+  if (/\b(tax|hra|housing|unemployment|county clerk|dept of|division of|attorney general)\b/.test(name)) return 'gov';
+  return 'police';
+}
+
 function renderDepartments() {
   const grid = document.getElementById('contactGrid');
   if (!grid) return;
@@ -416,6 +584,7 @@ function renderDepartments() {
 
   let filtered = depts;
   if (region) filtered = filtered.filter(d => d.region === region);
+  if (agencyTypeFilter) filtered = filtered.filter(d => inferAgencyType(d) === agencyTypeFilter);
   if (q) filtered = filtered.filter(d =>
     d.name.toLowerCase().includes(q) ||
     d.address.toLowerCase().includes(q) ||
@@ -453,15 +622,46 @@ function renderDepartments() {
   }).join('');
 }
 
-// ── COMPLAINTS ──
+// ── REACH OUT — bidirectional praise / complaint ──
+let messageType = 'praise';  // default to positive
+
+function setMessageType(el, type) {
+  messageType = type;
+  document.querySelectorAll('.msg-type').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  // Update labels and submit text
+  const body = document.getElementById('cfBody');
+  const bodyLabel = document.getElementById('cfBodyLabel');
+  const submitBtn = document.getElementById('cfSubmitBtn');
+  const title = document.getElementById('cfTitle');
+  if (type === 'praise') {
+    if (bodyLabel) bodyLabel.textContent = 'Thank-you message';
+    if (body) body.placeholder = 'Tell them what they did well, and why it mattered. Specifics make it real.';
+    if (submitBtn) submitBtn.textContent = 'Send thank-you →';
+    if (title) title.textContent = title.textContent.replace(/^(Message|Concern|Thank-you) to/, 'Thank-you to');
+  } else {
+    if (bodyLabel) bodyLabel.textContent = 'Complaint / concern';
+    if (body) body.placeholder = 'Be factual and specific — include time, location, what was said, and what happened.';
+    if (submitBtn) submitBtn.textContent = 'Send concern →';
+    if (title) title.textContent = title.textContent.replace(/^(Message|Concern|Thank-you) to/, 'Concern to');
+  }
+}
+
 function openComplaintForm(name, email) {
-  document.getElementById('cfTitle').textContent = 'Complaint to ' + name;
-  document.getElementById('cfSub').textContent = 'Sending to: ' + (email || 'Department front desk');
+  const title = document.getElementById('cfTitle');
+  const sub   = document.getElementById('cfSub');
+  // Default to praise — it's the positive first impression
+  const prefix = messageType === 'praise' ? 'Thank-you to ' : 'Concern to ';
+  title.textContent = prefix + name;
+  sub.textContent = 'Sending to: ' + (email || 'Agency front desk');
   document.getElementById('complaintFormWrap').style.display = 'block';
   document.getElementById('complaintFormWrap').scrollIntoView({ behavior: 'smooth' });
   document.getElementById('cfDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('complaintFormWrap').dataset.recipientName = name;
   document.getElementById('complaintFormWrap').dataset.recipientEmail = email || '';
+  // Default the message-type pills to praise visually
+  const praisePill = document.querySelector('.msg-type[data-type="praise"]');
+  if (praisePill) setMessageType(praisePill, 'praise');
 }
 
 async function sendComplaint() {
@@ -581,27 +781,50 @@ function setBodyCam(el, value) {
   }
 }
 
-// ─── Feature 3: Share button ───
-async function shareReview() {
-  const shareData = {
-    title: 'RateMyStop',
-    text: 'I just rated my traffic stop on RateMyStop — your stop, your voice, on the record. Add yours →',
-    url: window.location.origin + window.location.pathname,
-  };
-  try {
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(shareData.text + ' ' + shareData.url);
-      const btn = document.getElementById('shareBtn');
-      const orig = btn.textContent;
-      btn.textContent = '✓ Copied to clipboard';
-      setTimeout(() => { btn.textContent = orig; }, 2500);
+// ─── Share to socials ───
+function _shareText() {
+  return 'I just shared a story on CivicVoice — every interaction with a public servant, on the record. Add yours →';
+}
+function _shareUrl() {
+  return window.location.origin + window.location.pathname;
+}
+async function shareTo(target) {
+  const text = _shareText();
+  const url  = _shareUrl();
+  const fullText = encodeURIComponent(text);
+  const fullUrl  = encodeURIComponent(url);
+  if (target === 'twitter') {
+    window.open(`https://twitter.com/intent/tweet?text=${fullText}&url=${fullUrl}`, '_blank', 'noopener,width=600,height=500');
+  } else if (target === 'linkedin') {
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${fullUrl}`, '_blank', 'noopener,width=600,height=500');
+  } else if (target === 'whatsapp') {
+    window.open(`https://wa.me/?text=${fullText}%20${fullUrl}`, '_blank', 'noopener');
+  } else if (target === 'facebook') {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${fullUrl}`, '_blank', 'noopener,width=600,height=500');
+  } else if (target === 'copy') {
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      _flashShare('copy', '✓ Copied to clipboard');
+    } catch {
+      prompt('Copy this:', `${text} ${url}`);
     }
-  } catch (err) {
-    // User cancelled — silent
+  } else if (target === 'native') {
+    if (navigator.share) {
+      try { await navigator.share({ title: 'CivicVoice', text, url }); } catch {}
+    } else {
+      _flashShare('more', 'No native share available — try Copy link');
+    }
   }
 }
+function _flashShare(targetClass, msg) {
+  const btn = document.querySelector('.share-pill.share-' + targetClass);
+  if (!btn) return;
+  const original = btn.innerHTML;
+  btn.innerHTML = msg;
+  setTimeout(() => { btn.innerHTML = original; }, 2200);
+}
+// Legacy alias — old code might still reference shareReview()
+function shareReview() { shareTo('native'); }
 
 // ─── Feature 4: Officer badge auto-lookup ───
 function onBadgeInput() {
