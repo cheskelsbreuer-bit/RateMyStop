@@ -1,7 +1,6 @@
-"""Generate the CivicVoice sponsor pitch PDF.
+"""Generate the CivicVoice sponsor pitch PDF — LIGHT palette, balanced framing.
 
 4 pages: cover · mission · the play · sponsorship.
-Civic Brutalism design philosophy, refined.
 """
 from pathlib import Path
 from reportlab.lib.colors import HexColor
@@ -21,17 +20,20 @@ pdfmetrics.registerFont(TTFont("Mono",         FONTS / "GeistMono-Regular.ttf"))
 pdfmetrics.registerFont(TTFont("MonoBold",     FONTS / "GeistMono-Bold.ttf"))
 pdfmetrics.registerFont(TTFont("Serif",        FONTS / "InstrumentSerif-Italic.ttf"))
 
-BG       = HexColor("#0f0f13")
-BG_SOFT  = HexColor("#16161d")
-GOLD     = HexColor("#e8c547")
-GOLD_DIM = HexColor("#8a7228")
-WHITE    = HexColor("#f0f0f5")
-LIGHT    = HexColor("#c8c8dc")
-GRAY     = HexColor("#7a7a90")
-GRAY_DIM = HexColor("#3a3a48")
-GREEN    = HexColor("#4ec98a")
-RED      = HexColor("#e05252")
-BLUE     = HexColor("#5b8af0")
+# Light palette — clean, civic, cream + gold + ink
+BG       = HexColor("#fafaf7")   # cream-white
+BG_SOFT  = HexColor("#f3f3ee")
+CARD     = HexColor("#ffffff")
+GOLD     = HexColor("#b8941e")
+GOLD_DIM = HexColor("#d4b13a")
+GOLD_BG  = HexColor("#fef9e7")
+INK      = HexColor("#1a1a1d")   # deep charcoal text
+LIGHT    = HexColor("#3d3d45")
+GRAY     = HexColor("#7a7a82")
+GRAY_DIM = HexColor("#c9c9d0")
+GREEN    = HexColor("#1f8c5f")
+RED      = HexColor("#c93434")
+BLUE     = HexColor("#2563d9")
 
 PAGE_W, PAGE_H = 1280, 800
 M = 72
@@ -63,7 +65,7 @@ def chrome(num: str, eyebrow: str):
     reg_marks()
     c.setFillColor(GOLD)
     c.rect(M, PAGE_H - M + 4, 10, 10, fill=1, stroke=0)
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("BodyBold", 8.5)
     c.drawString(M + 18, PAGE_H - M + 6, "CIVICVOICE")
     c.setFillColor(GRAY)
@@ -94,13 +96,13 @@ def page_cover():
     c.setFillColor(LIGHT)
     c.setFont("Serif", 22)
     c.drawString(M, PAGE_H - M - 90, "Every day, people interact with public servants")
-    c.drawString(M, PAGE_H - M - 116, "during the most stressful moments of their lives.")
+    c.drawString(M, PAGE_H - M - 116, "during the most stressful — and meaningful — moments of their lives.")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Display", 138)
     c.drawString(M - 6, PAGE_H - M - 240, "Some moments")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Display", 138)
     c.drawString(M - 6, PAGE_H - M - 360, "deserve thanks.")
 
@@ -108,14 +110,14 @@ def page_cover():
     c.setFont("Display", 138)
     c.drawString(M - 6, PAGE_H - M - 480, "Some, the record.")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Serif", 26)
     answer = "Both belong somewhere."
     c.drawRightString(PAGE_W - M, M + 200, answer)
     aw = c.stringWidth(answer, "Serif", 26)
     line(PAGE_W - M - aw, M + 196, PAGE_W - M, M + 196, GOLD, 1.0)
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Display", 38)
     c.drawString(M, M + 70, "Civic")
     c.setFillColor(GOLD)
@@ -145,170 +147,163 @@ def page_mission():
 
     c.setFillColor(GOLD)
     c.setFont("Mono", 8)
-    c.drawString(M, PAGE_H - M - 30, "FIG. 01 — THE MISSION, IN PLAIN ENGLISH")
+    c.drawString(M, PAGE_H - M - 30, "FIG. 01 — WHO THE PLATFORM IS FOR")
 
-    c.setFillColor(WHITE)
-    c.setFont("Display", 78)
-    c.drawString(M - 4, PAGE_H - M - 120, "Recognize good service.")
+    c.setFillColor(INK)
+    c.setFont("Display", 76)
+    c.drawString(M - 4, PAGE_H - M - 116, "Recognize good service.")
     c.setFillColor(LIGHT)
-    c.setFont("DisplayLight", 78)
-    c.drawString(M - 4, PAGE_H - M - 198, "Document the rest.")
+    c.setFont("DisplayLight", 76)
+    c.drawString(M - 4, PAGE_H - M - 190, "Document the rest.")
     c.setFillColor(GOLD)
-    c.setFont("Display", 78)
-    c.drawString(M - 4, PAGE_H - M - 276, "On the record.")
+    c.setFont("Display", 76)
+    c.drawString(M - 4, PAGE_H - M - 264, "On the record.")
 
     c.setFillColor(LIGHT)
     c.setFont("Body", 13)
-    c.drawString(M, PAGE_H - M - 326, "Every day, millions of people interact with public servants — police, EMTs, firefighters,")
-    c.drawString(M, PAGE_H - M - 346, "DMV staff, code inspectors, hospital workers. Most experiences are forgotten.")
-    c.drawString(M, PAGE_H - M - 366, "The good ones, never recognized. The bad ones, never recorded.")
+    c.drawString(M, PAGE_H - M - 314, "Every category is live from day one: police, EMTs, firefighters, DMV staff,")
+    c.drawString(M, PAGE_H - M - 334, "hospital workers, government caseworkers. Equal weight. Same record.")
     c.setFillColor(GOLD)
     c.setFont("BodyBold", 13)
-    c.drawString(M, PAGE_H - M - 388, "CivicVoice is where both go on the record.")
+    c.drawString(M, PAGE_H - M - 358, "If you serve the public, you're on CivicVoice.")
 
-    # Three flow steps
+    # 6 category strip — equal weight visual
     box_y = M + 130
     box_h = 200
-    col_w = (PAGE_W - 2 * M - 32) / 3
+    n_cats = 6
+    col_w = (PAGE_W - 2 * M - 16 * (n_cats - 1)) / n_cats
 
-    boxes = [
-        ("01.", "MOMENT",   "An interaction with a public servant", "A traffic stop. An EMT call. A DMV visit. A code inspection."),
-        ("02.", "LOG",      "Open the app and tell what happened",  "Praise the good. Document the bad. Tag the behavior. Add a photo to verify."),
-        ("03.", "RECORD",   "It joins the public record",           "Searchable by location, role, agency. Departments can respond. Patterns emerge."),
+    cats = [
+        ("Police",   "Stops · complaints · recognition"),
+        ("EMT",      "Response time · care · professionalism"),
+        ("Fire",     "Rescues · safety · response"),
+        ("DMV",      "Wait time · clarity · helpfulness"),
+        ("Hospital", "Care · compassion · communication"),
+        ("Gov't",    "Caseworkers · inspectors · clerks"),
     ]
-    for i, (idx, name, t1, t2) in enumerate(boxes):
+    for i, (name, desc) in enumerate(cats):
         x = M + i * (col_w + 16)
-        line(x, box_y + box_h, x + col_w - 18, box_y + box_h, GOLD if i == 0 else GRAY_DIM, 0.5)
+        line(x, box_y + box_h, x + col_w, box_y + box_h, GOLD, 0.6)
         c.setFillColor(GOLD)
-        c.setFont("Mono", 9)
-        c.drawString(x, box_y + box_h - 16, idx)
-        c.setFillColor(WHITE)
-        c.setFont("Display", 38)
-        c.drawString(x, box_y + box_h - 64, name)
-        c.setFillColor(GOLD if i == 0 else LIGHT)
-        c.setFont("BodyBold", 12)
-        c.drawString(x, box_y + box_h - 92, t1)
+        c.setFont("Mono", 8)
+        c.drawString(x, box_y + box_h - 16, f"0{i+1}")
+        c.setFillColor(INK)
+        c.setFont("Display", 32)
+        c.drawString(x, box_y + box_h - 70, name)
         c.setFillColor(GRAY)
-        c.setFont("Body", 10.5)
-        words = t2.split()
-        max_w = col_w - 20
+        c.setFont("Body", 9.5)
+        # Wrap desc
+        words = desc.split()
+        max_w = col_w - 6
         cur, lines = "", []
         for w in words:
             test = (cur + " " + w).strip()
-            if c.stringWidth(test, "Body", 10.5) > max_w:
+            if c.stringWidth(test, "Body", 9.5) > max_w:
                 lines.append(cur); cur = w
             else:
                 cur = test
         if cur: lines.append(cur)
         for li, ln in enumerate(lines[:4]):
-            c.drawString(x, box_y + box_h - 116 - li * 14, ln)
+            c.drawString(x, box_y + box_h - 96 - li * 13, ln)
+
+    # All live banner
+    c.setFillColor(GOLD_BG)
+    c.rect(M, M + 80, PAGE_W - 2 * M, 32, fill=1, stroke=0)
+    c.setFillColor(GOLD)
+    c.setFont("MonoBold", 9)
+    c.drawString(M + 16, M + 96, "● LIVE")
+    c.setFillColor(INK)
+    c.setFont("BodyBold", 12)
+    c.drawString(M + 60, M + 95, "All six categories accept moments from day one. No category is more important than another.")
 
     c.showPage()
 
 
-# ────────── PAGE 3 — THE PLAY (categories & money) ──────────
+# ────────── PAGE 3 — THE PLAY (loop & money) ──────────
 def page_play():
     fill_bg()
-    chrome("03 / 04", "the play · categories & revenue")
+    chrome("03 / 04", "the play · loop & revenue")
 
     SPLIT_X = PAGE_W * 0.52
     LEFT_X = M
     RIGHT_X = SPLIT_X + 30
     line(SPLIT_X - 8, M, SPLIT_X - 8, PAGE_H - M, GRAY_DIM, 0.4)
 
-    # ── LEFT — CATEGORY ROLLOUT ──
+    # ── LEFT — THE LOOP ──
     c.setFillColor(GOLD)
     c.setFont("Mono", 8)
-    c.drawString(LEFT_X, PAGE_H - M - 30, "FIG. 02 — THE ROLLOUT")
+    c.drawString(LEFT_X, PAGE_H - M - 30, "FIG. 02 — THE CORE LOOP")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Display", 56)
-    c.drawString(LEFT_X - 2, PAGE_H - M - 92, "Police is the wedge.")
+    c.drawString(LEFT_X - 2, PAGE_H - M - 92, "How it works:")
     c.setFillColor(GOLD)
     c.setFont("Display", 56)
-    c.drawString(LEFT_X - 2, PAGE_H - M - 148, "Everyone else,")
-    c.drawString(LEFT_X - 2, PAGE_H - M - 204, "the expansion.")
-    c.setFillColor(LIGHT)
-    c.setFont("Body", 11.5)
-    c.drawString(LEFT_X, PAGE_H - M - 232, "Traffic stops are emotional, frequent, and pre-organized.")
-    c.drawString(LEFT_X, PAGE_H - M - 250, "Once the platform is dense, every role follows.")
+    c.drawString(LEFT_X - 2, PAGE_H - M - 148, "moments → records.")
 
-    phases = [
-        ("PHASE 1", "Police Officers",        "Traffic stops · complaints · recognition", "live"),
-        ("PHASE 2", "EMT · Fire · DMV",       "Positive-only first. Lower legal risk, builds the hero feed.", "next"),
-        ("PHASE 3", "Code · Court · Transit", "Full reviews open. Moderation + verification mature.", "later"),
-        ("PHASE 4", "Hospitals & beyond",     "Every public-facing role under one record.", "later"),
+    steps = [
+        ("01", "MOMENT",   "An interaction with a public servant",     "A traffic stop · an EMT call · a DMV visit · a code inspection · a hospital ER."),
+        ("02", "LOG",      "Open the app, share what happened",        "Praise the good. Document the rest. Tag what fit. Photo to verify."),
+        ("03", "RECORD",   "Joins the public record",                  "Searchable. Departments can respond. Patterns become visible over time."),
+        ("04", "REPEAT",   "More moments, denser map",                 "Each new moment makes the next person's experience easier to interpret."),
     ]
-    y0 = PAGE_H - M - 290
-    row_h = 50
-    for i, (phase, name, desc, state) in enumerate(phases):
+    y0 = PAGE_H - M - 220
+    row_h = 52
+    for i, (idx, name, t1, t2) in enumerate(steps):
         y = y0 - i * row_h
-        line(LEFT_X, y + 26, SPLIT_X - 24, y + 26, GRAY_DIM if i else GOLD_DIM, 0.4)
-        c.setFillColor(GOLD if state == "live" else GRAY)
+        line(LEFT_X, y + 28, SPLIT_X - 24, y + 28, GRAY_DIM if i else GOLD, 0.5)
+        c.setFillColor(GOLD)
         c.setFont("MonoBold", 8.5)
-        c.drawString(LEFT_X, y + 12, phase)
-        if state == "live":
-            c.setFillColor(GOLD)
-            c.setFont("Mono", 7.5)
-            c.drawString(LEFT_X + 70, y + 12, "● LIVE")
-        elif state == "next":
-            c.setFillColor(LIGHT)
-            c.setFont("Mono", 7.5)
-            c.drawString(LEFT_X + 70, y + 12, "○ NEXT")
-        else:
-            c.setFillColor(GRAY)
-            c.setFont("Mono", 7.5)
-            c.drawString(LEFT_X + 70, y + 12, "◌ LATER")
-        c.setFillColor(WHITE if i == 0 else LIGHT)
+        c.drawString(LEFT_X, y + 12, idx)
+        c.setFillColor(INK)
         c.setFont("BodyBold", 13)
-        c.drawString(LEFT_X, y - 6, name)
+        c.drawString(LEFT_X + 40, y + 12, name)
+        c.setFillColor(LIGHT)
+        c.setFont("Body", 10.5)
+        c.drawString(LEFT_X + 110, y + 12, t1)
         c.setFillColor(GRAY)
-        c.setFont("Body", 10)
-        c.drawString(LEFT_X, y - 22, desc)
-    last_y = y0 - len(phases) * row_h
-    line(LEFT_X, last_y + 26, SPLIT_X - 24, last_y + 26, GRAY_DIM, 0.4)
+        c.setFont("Body", 9.5)
+        c.drawString(LEFT_X + 40, y - 8, t2)
+    line(LEFT_X, y0 - len(steps) * row_h + 28, SPLIT_X - 24, y0 - len(steps) * row_h + 28, GRAY_DIM, 0.4)
 
-    # ── RIGHT — REVENUE STACK ──
+    # ── RIGHT — REVENUE ──
     c.setFillColor(GOLD)
     c.setFont("Mono", 8)
     c.drawString(RIGHT_X, PAGE_H - M - 30, "FIG. 03 — FIVE REVENUE STREAMS")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Display", 56)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 92, "Not one")
+    c.drawString(RIGHT_X - 2, PAGE_H - M - 92, "Not one pipe.")
     c.setFillColor(GOLD)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 148, "revenue pipe.")
-    c.setFillColor(WHITE)
     c.setFont("Display", 56)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 204, "Five.")
+    c.drawString(RIGHT_X - 2, PAGE_H - M - 148, "Five.")
 
     revenues = [
-        ("DAY 1",    "Ticket-fighter referrals",       "$50-$300 per lead · $5K-$20K/mo"),
-        ("MONTH 3+", "Department sentiment dashboards", "B2B SaaS · $500-$2K/mo per dept"),
-        ("MONTH 6+", "Civic partnerships",              "Counties · cities · agencies"),
+        ("DAY 1",    "Lead generation (services)",      "Lawyers · contractors · concierge medical · advocacy"),
+        ("MONTH 3+", "Department sentiment dashboards", "B2B SaaS · $500-$2K/mo per agency"),
+        ("MONTH 6+", "Civic partnerships",              "Counties · cities · health systems"),
         ("YEAR 1+",  "API & data licensing",            "Journalists · researchers · advocacy orgs"),
         ("ALWAYS",   "Premium user features",           "Alerts · saved reports · history"),
     ]
-    ry0 = PAGE_H - M - 250
-    rrow = 40
+    ry0 = PAGE_H - M - 210
+    rrow = 42
     for i, (when, what, where) in enumerate(revenues):
         y = ry0 - i * rrow
-        line(RIGHT_X, y + 20, PAGE_W - M, y + 20, GRAY_DIM, 0.4)
+        line(RIGHT_X, y + 22, PAGE_W - M, y + 22, GRAY_DIM, 0.4)
         c.setFillColor(GOLD)
         c.setFont("Mono", 7.5)
         c.drawString(RIGHT_X, y + 8, when)
-        c.setFillColor(WHITE)
+        c.setFillColor(INK)
         c.setFont("BodyBold", 12.5)
         c.drawString(RIGHT_X + 78, y + 8, what)
         c.setFillColor(GRAY)
         c.setFont("Body", 9.5)
         c.drawString(RIGHT_X + 78, y - 6, where)
-    last_y = ry0 - len(revenues) * rrow
-    line(RIGHT_X, last_y + 20, PAGE_W - M, last_y + 20, GRAY_DIM, 0.4)
+    line(RIGHT_X, ry0 - len(revenues) * rrow + 22, PAGE_W - M, ry0 - len(revenues) * rrow + 22, GRAY_DIM, 0.4)
 
     c.setFillColor(LIGHT)
     c.setFont("BodyItalic", 11)
-    c.drawString(RIGHT_X, M + 50, "Lawyer leads pay today. B2B pays tomorrow. Both stack.")
+    c.drawString(RIGHT_X, M + 50, "Lead-gen pays today. B2B pays tomorrow. Civic partnerships compound.")
 
     c.showPage()
 
@@ -322,7 +317,7 @@ def page_tiers():
     c.setFont("Mono", 8)
     c.drawString(M, PAGE_H - M - 30, "FIG. 04 — TERMS OF ENGAGEMENT")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("Display", 88)
     c.drawString(M - 4, PAGE_H - M - 130, "Three doors.")
     c.setFillColor(GOLD)
@@ -331,7 +326,7 @@ def page_tiers():
 
     tiers = [
         ("BASIC",   "$2K",  "starter",      ["Banner ad in community feed", "Logo in footer", "Monthly traffic report"], False),
-        ("CORE",    "$8K",  "recommended",  ["Pop-up when a ticket is logged", "Button inside review form", "Sponsored card in feed", "Lead-data dashboard", "Monthly performance report"], True),
+        ("CORE",    "$8K",  "recommended",  ["Pop-up at high-intent moments", "Sponsored card in feed", "Lead-data dashboard", "Monthly performance report"], True),
         ("PREMIUM", "$18K", "exclusive",    ["Everything in Core", "Sole sponsor — no competition", "Direct intake API integration", "Co-branded marketing", "Quarterly strategy sessions"], False),
     ]
 
@@ -357,10 +352,10 @@ def page_tiers():
             c.setFillColor(GRAY)
             c.setFont("Mono", 7.5)
             c.drawString(x, block_top - 12, tag.upper())
-        c.setFillColor(WHITE)
+        c.setFillColor(INK)
         c.setFont("BodyBold", 11)
         c.drawString(x, block_top - 32, name)
-        c.setFillColor(GOLD if featured else WHITE)
+        c.setFillColor(GOLD if featured else INK)
         c.setFont("Display", 88)
         c.drawString(x - 6, block_top - 130, price)
         pw = c.stringWidth(price, "Display", 88)
@@ -384,7 +379,7 @@ def page_tiers():
     c.setFont("Mono", 8)
     c.drawString(M, bar_y + 22, "OPEN A CONVERSATION")
 
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("BodyBold", 14)
     c.drawString(M, bar_y, "Chesky")
     c.setFillColor(GRAY)
@@ -394,14 +389,14 @@ def page_tiers():
     c.setFillColor(GRAY)
     c.setFont("Mono", 7.5)
     c.drawString(M + 320, bar_y + 4, "EMAIL")
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("BodyBold", 13)
     c.drawString(M + 320, bar_y - 14, "chesky2039@gmail.com")
 
     c.setFillColor(GRAY)
     c.setFont("Mono", 7.5)
     c.drawString(M + 660, bar_y + 4, "WEB")
-    c.setFillColor(WHITE)
+    c.setFillColor(INK)
     c.setFont("BodyBold", 13)
     c.drawString(M + 660, bar_y - 14, "civicvoice.com")
 

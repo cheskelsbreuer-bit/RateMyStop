@@ -42,16 +42,17 @@
   <div class="hero hero-plain">
     <div class="hero-eyebrow">A public record of public service</div>
     <h1>Public service.<br><em>On the record.</em></h1>
-    <p class="hero-lead">Every day, ordinary people meet the people who serve them &mdash; police, EMTs, firefighters, government workers. Most moments are forgotten. CivicVoice is where they live.</p>
+    <p class="hero-lead">Every day, ordinary people meet the people who serve them &mdash; an EMT in the middle of the night, a clerk at the DMV, a firefighter, an officer, a hospital tech. Most moments are forgotten. CivicVoice is where they live.</p>
     <div style="text-align:center;margin-bottom:36px;">
       <button class="btn-gold" style="font-size:1rem;padding:16px 38px;border-radius:12px;" onclick="nav('share')">Share a moment &rarr;</button>
     </div>
     <div class="categories-strip">
-      <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police &middot; <strong>Live</strong></span>
-      <span class="cs-item"><span class="cs-dot"></span>&#128657; EMT &middot; Coming</span>
-      <span class="cs-item"><span class="cs-dot"></span>&#128658; Fire &middot; Coming</span>
-      <span class="cs-item"><span class="cs-dot"></span>&#129411; DMV &middot; Coming</span>
-      <span class="cs-item"><span class="cs-dot"></span>&#127973; Hospitals &middot; Coming</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128657; EMT</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128658; Fire</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#129411; DMV</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#127973; Hospitals</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128104;&#8205;&#128188; Government</span>
     </div>
   </div>
   <div class="stats-strip" id="statsStrip">
@@ -105,12 +106,14 @@
         <div class="fl">
           <label>Who was it?</label>
           <div class="role-pills" id="rolePills">
-            <span class="role-pill on" data-role="police" onclick="setRole(this, 'police')">&#128659; Police Officer</span>
-            <span class="role-pill"    data-role="emt"    onclick="setRole(this, 'emt')">&#128657; EMT / Paramedic</span>
-            <span class="role-pill"    data-role="fire"   onclick="setRole(this, 'fire')">&#128658; Firefighter</span>
-            <span class="role-pill"    data-role="dmv"    onclick="setRole(this, 'dmv')">&#129411; DMV Worker</span>
-            <span class="role-pill"    data-role="other"  onclick="setRole(this, 'other')">&#128104;&#8205;&#128188; Other</span>
+            <span class="role-pill" data-role="police"   onclick="setRole(this, 'police')">&#128659; Police Officer</span>
+            <span class="role-pill" data-role="emt"      onclick="setRole(this, 'emt')">&#128657; EMT / Paramedic</span>
+            <span class="role-pill" data-role="fire"     onclick="setRole(this, 'fire')">&#128658; Firefighter</span>
+            <span class="role-pill" data-role="dmv"      onclick="setRole(this, 'dmv')">&#129411; DMV Worker</span>
+            <span class="role-pill" data-role="hospital" onclick="setRole(this, 'hospital')">&#127973; Hospital Staff</span>
+            <span class="role-pill" data-role="gov"      onclick="setRole(this, 'gov')">&#128104;&#8205;&#128188; Gov't Worker</span>
           </div>
+          <div style="font-size:0.75rem;color:var(--gray);margin-top:8px;">All categories are live. Share any moment with any public servant.</div>
         </div>
         <div class="fl">
           <label>Tell us what happened</label>
@@ -269,7 +272,7 @@
 <!-- OFFICER PROFILES -->
 <section id="officers">
   <div class="wrap-wide">
-    <div class="ph"><h2>Public Servant Profiles</h2><p>Community-built profiles. Every moment adds to the record.</p></div>
+    <div class="ph"><h2>Profiles</h2><p>Public servants across police, EMT, fire, DMV, hospitals, and government &mdash; built by the community. Every moment adds to the record.</p></div>
     <div class="search-bar-wrap">
       <input type="text" id="officerSearch" placeholder="Search by name, badge number, or department&hellip;" oninput="searchOfficers()">
       <button onclick="searchOfficers()">Search</button>

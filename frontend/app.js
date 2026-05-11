@@ -137,7 +137,15 @@ function getSelectedTags(containerId) {
 }
 
 function goStep(n) {
-  if (n === 2 && !verdict) { alert('Please tell us whether the stop was fair or unfair.'); return; }
+  // Step 1 validation: must pick a role first
+  if (n === 2 && !currentRole) {
+    alert('Pick who it was first (Police / EMT / Fire / DMV / Hospital / Gov’t).');
+    return;
+  }
+  // Step 3 is ticket info — only relevant for police. Skip for everyone else.
+  if (n === 3 && currentRole !== 'police') {
+    n = 4;
+  }
   document.getElementById('step' + step).style.display = 'none';
   step = n;
   document.getElementById('step' + n).style.display = 'block';
@@ -160,18 +168,18 @@ function onTicketChange() {
   document.getElementById('ticketViolationWrap').style.display = showTicket ? 'block' : 'none';
 }
 
-// Role selection (Step 1). Currently only Police is fully live; selecting another
-// role still allows the form (lower-risk: positive-only flow expected).
-let currentRole = 'police';
+// Role selection (Step 1). All roles are equal — police is one of six categories.
+// No default selection — user picks. Police-only contextual UI hides for other roles.
+let currentRole = null;
 function setRole(el, role) {
   currentRole = role;
   document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
-  // Police-only contextual UI
   const reasonRow = document.getElementById('reasonRow');
   if (reasonRow) reasonRow.style.display = (role === 'police') ? 'block' : 'none';
   const bodyCamWrap = document.getElementById('bodyCamWrap');
   if (bodyCamWrap) bodyCamWrap.style.display = (role === 'police') ? 'block' : 'none';
+  // Step 3 is the ticket info — only makes sense for traffic stops
 }
 
 async function onFileUpload(input) {
@@ -259,9 +267,11 @@ async function submitReview() {
       const anonT = document.getElementById('anonToggle'); if (anonT) { anonT.checked = true; const rnw = document.getElementById('reviewerNameWrap'); if (rnw) rnw.style.display = 'none'; }
       ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','ticketNumberIn','quickStory','reviewerName']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      // Reset to Police role default
-      const policePill = document.querySelector('#rolePills .role-pill[data-role="police"]');
-      if (policePill) setRole(policePill, 'police');
+      // Clear role selection — user picks fresh each time
+      currentRole = null;
+      document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
+      const reasonRow = document.getElementById('reasonRow'); if (reasonRow) reasonRow.style.display = 'none';
+      const bodyCamWrap = document.getElementById('bodyCamWrap'); if (bodyCamWrap) bodyCamWrap.style.display = 'none';
       const lap = document.getElementById('lrAdjustPanel'); if (lap) lap.classList.remove('show');
       const lr = document.getElementById('liveRating'); if (lr) lr.classList.remove('visible');
       refreshLiveRating();
