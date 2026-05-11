@@ -56,11 +56,11 @@ function _flushPendingAuth() {
     setTimeout(fn, 150);
   }
 }
+// Returns true if user is already authed — caller should continue.
+// Returns false if not — caller should bail; we'll resume the action after sign-in.
 function requireAuth(action, intentLabel) {
-  const u = getCurrentUser();
-  if (u) { action(); return true; }
+  if (getCurrentUser()) return true;   // already authed; do NOT run action here (caller continues)
   _pendingAuthAction = action;
-  // Optionally update the modal eyebrow to show what they're about to do
   if (intentLabel) {
     const eyebrow = document.querySelector('.auth-eyebrow');
     if (eyebrow) eyebrow.textContent = intentLabel.toUpperCase();
@@ -347,6 +347,15 @@ function applyRoleLabels(role) {
   if (bodyCamWrap) bodyCamWrap.style.display = cfg.show_bodycam ? 'block' : 'none';
 }
 
+const EVIDENCE_LABELS = {
+  ticket:     { label: '📝 Ticket-verified',    desc: 'A ticket photo is on file. This is strong evidence.' },
+  badge:      { label: '🛡️ Badge-verified',     desc: 'A badge or officer-card photo is attached.' },
+  receipt:    { label: '🧾 Receipt-verified',   desc: 'A receipt or paperwork backs this up.' },
+  record:     { label: '📃 Record-verified',    desc: 'A service or case record is attached.' },
+  screenshot: { label: '📱 Screenshot-verified',desc: 'A screenshot or official message is attached.' },
+  other:      { label: '📷 Photo-verified',      desc: 'A photo from the moment is attached.' },
+};
+
 async function onFileUpload(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
@@ -356,11 +365,31 @@ async function onFileUpload(input) {
     const result = await api.uploadFile(file);
     uploadedFileUrl = result.url;
     document.getElementById('uploadName').textContent = `${file.name} uploaded ✓`;
+    _refreshVerificationTier();
   } catch (err) {
     document.getElementById('uploadName').textContent = `Upload failed: ${err.message}`;
     uploadedFileUrl = null;
+    _refreshVerificationTier();
   }
 }
+
+function _refreshVerificationTier() {
+  const tier = document.getElementById('verificationTier');
+  if (!tier) return;
+  const type = document.getElementById('evidenceType')?.value;
+  if (!uploadedFileUrl || !type) {
+    tier.style.display = 'none';
+    return;
+  }
+  const info = EVIDENCE_LABELS[type] || EVIDENCE_LABELS.other;
+  tier.innerHTML = `<strong>${info.label}</strong> &mdash; ${info.desc}`;
+  tier.style.display = 'block';
+}
+
+// Update verification tier whenever the evidence type changes
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'evidenceType') _refreshVerificationTier();
+});
 
 // Submit — direct, no modal. The live chip already showed the user the rating the whole time.
 async function submitReview() {
@@ -411,13 +440,25 @@ async function submitReview() {
     story,
     ticket_number: document.getElementById('ticketNumberIn').value || null,
     upload_url: uploadedFileUrl,
+    evidence_type: document.getElementById('evidenceType')?.value || null,
     anonymous,
     reviewer_name: anonymous ? null : (document.getElementById('reviewerName')?.value || null),
     body_cam: bodyCamAnswer,
   };
 
   try {
-    await api.submitReview(payload);
+    const result = await api.submitReview(payload);
+    // Tailor success copy to demo mode vs live
+    const isDemo = result && result.demo;
+    const sTitle = document.getElementById('successTitle');
+    const sSub   = document.getElementById('successSub');
+    if (isDemo) {
+      if (sTitle) sTitle.textContent = 'Your story is saved (preview mode).';
+      if (sSub)   sSub.innerHTML = 'When we go live, it joins the public record. For now, share it with your network below.';
+    } else {
+      if (sTitle) sTitle.textContent = 'Your story is on the record.';
+      if (sSub)   sSub.textContent = 'Public service is real because of moments like this. Help others see it.';
+    }
     document.getElementById('successBox').classList.add('show');
     btn.style.display = 'none';
     setTimeout(() => {
@@ -436,6 +477,8 @@ async function submitReview() {
       const statHelper = document.getElementById('statuteHelper'); if (statHelper) statHelper.classList.remove('show');
       const badgeSug = document.getElementById('badgeSuggest'); if (badgeSug) badgeSug.classList.remove('show');
       const anonT = document.getElementById('anonToggle'); if (anonT) { anonT.checked = true; const rnw = document.getElementById('reviewerNameWrap'); if (rnw) rnw.style.display = 'none'; }
+      const evType = document.getElementById('evidenceType'); if (evType) evType.value = '';
+      const vTier  = document.getElementById('verificationTier'); if (vTier) vTier.style.display = 'none';
       ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','ticketNumberIn','quickStory','reviewerName']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       // Clear role selection — user picks fresh each time
@@ -668,7 +711,7 @@ function renderStream(officers, q) {
         </div>
         <div class="sp-body">${escapeHtml(shown)}${truncated ? ' <button class="sp-readmore" onclick="event.stopPropagation(); openStoryDetail(' + o.id + ', ' + r.id + ')">Read full</button>' : ''}</div>
         <div class="sp-byline">
-          <span class="sp-author"><span class="sp-author-avatar">${escapeHtml(authorInitial)}</span>${escapeHtml(author)}</span>
+          <span class="sp-author" style="cursor:pointer;" onclick="event.stopPropagation(); openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(authorInitial)}</span>${escapeHtml(author)}</span>
           <span class="sp-sep">·</span>
           <span>${date}</span>
           ${r.upload_url ? '<span class="sp-sep">·</span><span style="color:var(--blue);">🛡️ Verified</span>' : ''}
@@ -715,7 +758,7 @@ function openStoryDetail(officerId, reviewId) {
     <div class="sd-foot">
       <div class="sd-byline">
         <span class="sd-author-avatar">${escapeHtml(authorInitial)}</span>
-        Posted by <strong style="color:var(--ink);">${escapeHtml(author)}</strong>
+        Posted by <strong style="color:var(--ink);cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="closeStoryDetail(); openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');">${escapeHtml(author)}</strong>
         · ${formatDate(r.created_at)}
         ${r.upload_url ? ' · <span style="color:var(--blue);">🛡️ Verified</span>' : ''}
       </div>
@@ -729,6 +772,91 @@ function openStoryDetail(officerId, reviewId) {
 function closeStoryDetail() {
   document.getElementById('storyDetailModal').classList.remove('show');
 }
+
+// ── AUTHOR PROFILE — click any handle to see their full history ──
+function openAuthorProfile(handle) {
+  if (!handle) return;
+  // Gather every story attributed to this handle
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const items = [];
+  for (const o of officers) {
+    for (const r of (o.reviews || [])) {
+      const author = r.author_display || _legacyAuthor(o.id, r.id);
+      if (author === handle) items.push({ officer: o, review: r, role: inferRole(o) });
+    }
+  }
+  items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
+
+  // Compute sentiment summary
+  const total = items.length;
+  const fair = items.filter(it => it.review.verdict === 'fair').length;
+  const unfair = total - fair;
+  const avgStars = total ? (items.reduce((s, it) => s + (it.review.stars || 3), 0) / total) : 0;
+  const tone = total === 0 ? 'no stories yet'
+              : fair / total >= 0.7 ? 'overwhelmingly positive'
+              : fair / total >= 0.5 ? 'mostly positive'
+              : fair / total >= 0.35 ? 'mixed'
+              : 'mostly critical';
+  const toneColor = fair / total >= 0.5 ? 'var(--green)' : (fair / total >= 0.35 ? 'var(--accent)' : 'var(--red)');
+
+  const initial = handle.charAt(0).toUpperCase();
+  const isCurrentUser = (() => {
+    const u = getCurrentUser();
+    return u && (u.handle === handle || u.displayName === handle);
+  })();
+
+  const body = document.getElementById('authorProfileBody');
+  body.innerHTML = `
+    <div class="sd-eyebrow">Contributor</div>
+    <div class="sd-head">
+      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;">${escapeHtml(initial)}</div>
+      <div class="sd-who">
+        <div class="sd-name" style="cursor:default;">${escapeHtml(handle)}${isCurrentUser ? ' <span style="font-size:0.7rem;color:var(--accent);font-weight:600;background:var(--accent-soft);border:1px solid rgba(184,148,30,0.3);border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle;">You</span>' : ''}</div>
+        <div class="sd-agency">${total} stor${total === 1 ? 'y' : 'ies'} on the record · sentiment <strong style="color:${toneColor};">${tone}</strong></div>
+        <div class="sd-sent">
+          <span class="sd-stars">${starsStr(Math.round(avgStars))}</span>
+          <span class="sd-tag pos" style="background:rgba(31,140,95,0.1);">${fair} ★</span>
+          <span class="sd-tag neg" style="background:rgba(201,52,52,0.08);">${unfair} ⚠</span>
+        </div>
+      </div>
+    </div>
+    ${items.length === 0 ? `
+      <div style="color:var(--gray);padding:30px 0;text-align:center;">This contributor hasn't posted any stories yet.</div>
+    ` : `
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        ${items.slice(0, 12).map(it => {
+          const o = it.officer;
+          const r = it.review;
+          const isPos = r.verdict === 'fair';
+          const story = (r.story || '').trim();
+          const preview = story.length > 180 ? story.slice(0, 180).replace(/\s+\S*$/, '') + '…' : (story || '(No description.)');
+          return `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;" onclick="closeAuthorProfile(); openStoryDetail(${o.id}, ${r.id});">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+                <div style="font-weight:700;font-size:0.9rem;color:var(--ink);">${ROLE_ICON[it.role] || '👤'} ${escapeHtml(o.name || 'Unknown')}</div>
+                <span style="font-size:0.68rem;font-weight:700;color:${isPos ? 'var(--green)' : 'var(--red)'};text-transform:uppercase;letter-spacing:0.5px;background:${isPos ? 'rgba(31,140,95,0.1)' : 'rgba(201,52,52,0.08)'};padding:2px 8px;border-radius:999px;">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
+              </div>
+              <div style="font-size:0.83rem;color:var(--gray);margin-bottom:8px;">${escapeHtml(o.department || '')}</div>
+              <div style="font-size:0.92rem;line-height:1.6;color:var(--light);">${escapeHtml(preview)}</div>
+              <div style="font-size:0.74rem;color:var(--gray);margin-top:8px;">${formatDate(r.created_at)}${r.upload_url ? ' · 🛡️ Verified' : ''}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ${items.length > 12 ? `<div style="font-size:0.82rem;color:var(--gray);text-align:center;margin-top:14px;">+ ${items.length - 12} more stories</div>` : ''}
+    `}
+    <div class="sd-foot" style="margin-top:18px;">
+      <div class="sd-byline" style="flex:1;">
+        ${isCurrentUser ? 'This is your contributor profile.' : 'This is a public contributor on CivicVoice.'}
+      </div>
+      ${!isCurrentUser ? '<button class="sp-action">Report contributor</button>' : ''}
+    </div>
+  `;
+  document.getElementById('authorProfileModal').classList.add('show');
+}
+function closeAuthorProfile() {
+  document.getElementById('authorProfileModal').classList.remove('show');
+}
 // Escape closes modal
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
@@ -736,6 +864,8 @@ document.addEventListener('keydown', (e) => {
     if (sd && sd.classList.contains('show')) closeStoryDetail();
     const am = document.getElementById('authModal');
     if (am && am.classList.contains('show')) closeAuthModal();
+    const ap = document.getElementById('authorProfileModal');
+    if (ap && ap.classList.contains('show')) closeAuthorProfile();
   }
 });
 
@@ -1034,39 +1164,105 @@ function _flashShare(targetClass, msg) {
 // Legacy alias — old code might still reference shareReview()
 function shareReview() { shareTo('native'); }
 
-// ─── Feature 4: Officer badge auto-lookup ───
-function onBadgeInput() {
-  const q = document.getElementById('badgeIn').value.trim().toLowerCase();
-  const sug = document.getElementById('badgeSuggest');
-  if (!q || q.length < 1) { sug.classList.remove('show'); return; }
+// ─── Universal autocomplete on Step 3 fields ───
+// Role-aware: shows only people whose inferred role matches the picked category.
+// Triggered from both the name and ID inputs; picking a match fills name+ID+agency+location.
 
-  // Pull from whichever data source is available
-  const all = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
-  const matches = all.filter(o =>
-    (o.badge && o.badge.toLowerCase().includes(q)) ||
-    (o.name && o.name.toLowerCase().includes(q))
-  ).slice(0, 5);
+function _allOfficers() {
+  return (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+}
+function _filterByRole(list) {
+  if (!currentRole || currentRole === 'other') return list;
+  return list.filter(o => inferRole(o) === currentRole);
+}
 
+function onPersonInput(sourceFieldId) {
+  const valueRaw = document.getElementById(sourceFieldId).value.trim().toLowerCase();
+  // Pick the right suggestion container based on which field triggered
+  const sugId = (sourceFieldId === 'officerName') ? 'personSuggest' : 'badgeSuggest';
+  const sug = document.getElementById(sugId);
+  const otherSug = document.getElementById(sugId === 'personSuggest' ? 'badgeSuggest' : 'personSuggest');
+  if (otherSug) otherSug.classList.remove('show');
+  if (!sug) return;
+
+  const all = _filterByRole(_allOfficers());
+  // If field is empty on focus, show top recent of this role
+  let matches;
+  if (!valueRaw) {
+    matches = all.slice(0, 5);
+  } else {
+    matches = all.filter(o =>
+      (o.name && o.name.toLowerCase().includes(valueRaw)) ||
+      (o.badge && o.badge.toLowerCase().includes(valueRaw)) ||
+      (o.department && o.department.toLowerCase().includes(valueRaw))
+    ).slice(0, 6);
+  }
   if (!matches.length) { sug.classList.remove('show'); return; }
 
   sug.innerHTML = matches.map(o => `
-    <div class="ac-item" onmousedown="pickBadgeMatch(${o.id})">
+    <div class="ac-item" onmousedown="pickPersonMatch(${o.id})">
       <div class="ac-name">${escapeHtml(o.name || 'Unknown')}</div>
-      <div class="ac-meta">${escapeHtml(o.badge || '—')} · ${escapeHtml(o.department || 'Unknown')} · ${(o.avg_stars || 0).toFixed(1)}★ avg · ${o.review_count} review${o.review_count !== 1 ? 's' : ''}</div>
+      <div class="ac-meta">${escapeHtml(o.badge || '—')} · ${escapeHtml(o.department || 'Unknown')} · ${(o.avg_stars || 0).toFixed(1)}★ · ${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'}</div>
     </div>
   `).join('');
   sug.classList.add('show');
 }
 
-function pickBadgeMatch(id) {
-  const all = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
-  const o = all.find(x => x.id === id);
+function pickPersonMatch(id) {
+  const o = _allOfficers().find(x => x.id === id);
   if (!o) return;
-  document.getElementById('badgeIn').value = o.badge || '';
   document.getElementById('officerName').value = o.name || '';
+  document.getElementById('badgeIn').value = o.badge || '';
   document.getElementById('deptIn').value = o.department || '';
+  document.getElementById('personSuggest').classList.remove('show');
   document.getElementById('badgeSuggest').classList.remove('show');
 }
+
+// Agency / Department autocomplete — unique department names, filtered by role
+function onAgencyInput() {
+  const q = document.getElementById('deptIn').value.trim().toLowerCase();
+  const sug = document.getElementById('agencySuggest');
+  if (!sug) return;
+  const filtered = _filterByRole(_allOfficers());
+  const names = new Set(filtered.map(o => o.department).filter(Boolean));
+  let pool = Array.from(names).sort();
+  if (q) pool = pool.filter(d => d.toLowerCase().includes(q));
+  pool = pool.slice(0, 6);
+  if (!pool.length) { sug.classList.remove('show'); return; }
+  sug.innerHTML = pool.map(d => `
+    <div class="ac-item" onmousedown="document.getElementById('deptIn').value=${JSON.stringify(d)};document.getElementById('agencySuggest').classList.remove('show');">
+      <div class="ac-name">${escapeHtml(d)}</div>
+    </div>
+  `).join('');
+  sug.classList.add('show');
+}
+
+// Location autocomplete — pulls from all known story locations matching the role
+function onLocationInput() {
+  const q = document.getElementById('locationIn').value.trim().toLowerCase();
+  const sug = document.getElementById('locationSuggest');
+  if (!sug) return;
+  if (!q || q.length < 2) { sug.classList.remove('show'); return; }
+  const filtered = _filterByRole(_allOfficers());
+  const locs = new Set();
+  for (const o of filtered) {
+    for (const r of (o.reviews || [])) {
+      if (r.location) locs.add(r.location);
+    }
+  }
+  const matches = Array.from(locs).filter(l => l.toLowerCase().includes(q)).slice(0, 6);
+  if (!matches.length) { sug.classList.remove('show'); return; }
+  sug.innerHTML = matches.map(l => `
+    <div class="ac-item" onmousedown="document.getElementById('locationIn').value=${JSON.stringify(l)};document.getElementById('locationSuggest').classList.remove('show');">
+      <div class="ac-name">${escapeHtml(l)}</div>
+    </div>
+  `).join('');
+  sug.classList.add('show');
+}
+
+// Legacy aliases — keep old calls working
+function onBadgeInput() { onPersonInput('officerName'); }
+function pickBadgeMatch(id) { pickPersonMatch(id); }
 
 // ─── Feature 5: Statute code lookup ───
 function onViolationInput() {

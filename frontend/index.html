@@ -175,6 +175,7 @@
         <div class="fl">
           <label>How did the moment feel? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;pick all that fit &mdash; optional</span></label>
           <div class="tags" id="behaviorTags">
+            <!-- Positives -->
             <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#128077; Respected</span>
             <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#129309; Helpful</span>
             <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128516; Patient</span>
@@ -183,6 +184,15 @@
             <span class="tag" data-w="1.0"  data-pol="pos" onclick="toggle(this)">&#128293; Above and beyond</span>
             <span class="tag" data-w="0.6"  data-pol="pos" onclick="toggle(this)">&#128150; Kind</span>
             <span class="tag" data-w="0.4"  data-pol="pos" onclick="toggle(this)">&#128221; Professional</span>
+            <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#128064; Listened to me</span>
+            <span class="tag" data-w="0.6"  data-pol="pos" onclick="toggle(this)">&#129767; Empathetic</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128218; Knowledgeable</span>
+            <span class="tag" data-w="0.7"  data-pol="pos" onclick="toggle(this)">&#128737;&#65039; Made me feel safe</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#129383; Clear / explained well</span>
+            <span class="tag" data-w="0.4"  data-pol="pos" onclick="toggle(this)">&#129336; De-escalated</span>
+            <span class="tag" data-w="0.5"  data-pol="pos" onclick="toggle(this)">&#128591; Treated me with dignity</span>
+            <span class="tag" data-w="0.4"  data-pol="pos" onclick="toggle(this)">&#128172; Easy to talk to</span>
+            <!-- Negatives -->
             <span class="tag" data-w="-0.8" data-pol="neg" onclick="toggle(this)">&#128528; Rude</span>
             <span class="tag" data-w="-1.0" data-pol="neg" onclick="toggle(this)">&#128548; Aggressive</span>
             <span class="tag" data-w="-0.5" data-pol="neg" onclick="toggle(this)">&#128577; Dismissive</span>
@@ -190,6 +200,14 @@
             <span class="tag" data-w="-1.5" data-pol="neg" onclick="toggle(this)">&#128545; Hostile</span>
             <span class="tag" data-w="-1.5" data-pol="neg" onclick="toggle(this)">&#128680; Made me feel unsafe</span>
             <span class="tag" data-w="-0.4" data-pol="neg" onclick="toggle(this)">&#128338; Rushed me</span>
+            <span class="tag" data-w="-1.0" data-pol="neg" onclick="toggle(this)">&#129320; Power-tripping</span>
+            <span class="tag" data-w="-1.2" data-pol="neg" onclick="toggle(this)">&#129324; Profiled / biased</span>
+            <span class="tag" data-w="-0.6" data-pol="neg" onclick="toggle(this)">&#129488; Wouldn't explain</span>
+            <span class="tag" data-w="-1.0" data-pol="neg" onclick="toggle(this)">&#128528; Intimidating</span>
+            <span class="tag" data-w="-1.2" data-pol="neg" onclick="toggle(this)">&#129325; Lied / dishonest</span>
+            <span class="tag" data-w="-0.7" data-pol="neg" onclick="toggle(this)">&#128529; Wouldn't listen</span>
+            <span class="tag" data-w="-0.5" data-pol="neg" onclick="toggle(this)">&#128549; Made things worse</span>
+            <span class="tag" data-w="-0.4" data-pol="neg" onclick="toggle(this)">&#128580; Disorganized</span>
           </div>
         </div>
         <button class="submit-main" onclick="goStep(3)">Next &rarr;</button>
@@ -201,27 +219,30 @@
         <div class="fl-2">
           <div class="fl" style="position:relative;">
             <label id="nameLabel">Their name</label>
-            <input type="text" id="officerName" placeholder="e.g. K. Williams" autocomplete="off" oninput="onBadgeInput()" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 150)">
-            <div class="autocomplete-dropdown" id="badgeSuggest"></div>
+            <input type="text" id="officerName" placeholder="e.g. K. Williams" autocomplete="off" oninput="onPersonInput('officerName')" onblur="setTimeout(()=>document.getElementById('personSuggest').classList.remove('show'), 200)" onfocus="onPersonInput('officerName')">
+            <div class="autocomplete-dropdown" id="personSuggest"></div>
           </div>
-          <div class="fl">
+          <div class="fl" style="position:relative;">
             <label id="idLabel">ID or number</label>
-            <input type="text" id="badgeIn" placeholder="e.g. #4821">
+            <input type="text" id="badgeIn" placeholder="e.g. #4821" autocomplete="off" oninput="onPersonInput('badgeIn')" onblur="setTimeout(()=>document.getElementById('badgeSuggest').classList.remove('show'), 200)">
+            <div class="autocomplete-dropdown" id="badgeSuggest"></div>
           </div>
         </div>
         <div class="fl-2">
-          <div class="fl">
+          <div class="fl" style="position:relative;">
             <label id="agencyLabel">Agency / Department</label>
-            <input type="text" id="deptIn" placeholder="e.g. Spring Valley PD">
+            <input type="text" id="deptIn" placeholder="e.g. Spring Valley PD" autocomplete="off" oninput="onAgencyInput()" onblur="setTimeout(()=>document.getElementById('agencySuggest').classList.remove('show'), 200)" onfocus="onAgencyInput()">
+            <div class="autocomplete-dropdown" id="agencySuggest"></div>
           </div>
           <div class="fl">
             <label>When</label>
             <input type="date" id="dateIn">
           </div>
         </div>
-        <div class="fl">
+        <div class="fl" style="position:relative;">
           <label id="whereLabel">Where</label>
-          <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley">
+          <input type="text" id="locationIn" placeholder="e.g. Main St &amp; Route 59, Spring Valley" autocomplete="off" oninput="onLocationInput()" onblur="setTimeout(()=>document.getElementById('locationSuggest').classList.remove('show'), 200)">
+          <div class="autocomplete-dropdown" id="locationSuggest"></div>
         </div>
 
         <!-- Police-only: ticket info -->
@@ -271,17 +292,27 @@
           <input type="text" id="reviewerName" placeholder="e.g. Jane D.">
         </div>
         <div class="fl">
-          <label id="photoLabel">Photo to verify <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional &mdash; never shown publicly</span></label>
+          <label>Verification &mdash; what evidence do you have? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional but boosts credibility</span></label>
+          <select id="evidenceType" style="margin-bottom:10px;">
+            <option value="">&mdash; Skip / no evidence &mdash;</option>
+            <option value="ticket">&#128221; Ticket / citation photo</option>
+            <option value="badge">&#128737;&#65039; Officer badge / ID photo</option>
+            <option value="receipt">&#129534; Receipt / paperwork</option>
+            <option value="record">&#128196; Service / case record</option>
+            <option value="screenshot">&#128241; Screenshot / official message</option>
+            <option value="other">&#127919; Other photo from the moment</option>
+          </select>
           <div class="upload-zone" id="uploadZone">
             <input type="file" id="uploadInput" accept="image/*,.pdf" onchange="onFileUpload(this)">
             <div class="uz-icon">&#128247;</div>
             <div class="uz-title">Tap to add a photo</div>
-            <div class="uz-sub" id="photoHelp">Any photo from the moment. JPG / PNG / PDF</div>
+            <div class="uz-sub" id="photoHelp">Never shown publicly &mdash; used only to show your story is real. JPG / PNG / PDF</div>
           </div>
           <div class="upload-preview" id="uploadPreview">
             <div class="up-icon">&#9989;</div>
             <div class="up-name" id="uploadName">uploaded</div>
           </div>
+          <div id="verificationTier" style="display:none;font-size:0.78rem;color:var(--green);margin-top:8px;padding:8px 12px;background:rgba(31,140,95,0.06);border:1px solid rgba(31,140,95,0.2);border-radius:8px;"></div>
         </div>
         <div class="fl" id="referenceNumberWrap">
           <label id="referenceNumberLabel">Reference number <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
@@ -301,8 +332,8 @@
           <div style="display:flex;align-items:center;gap:14px;">
             <div style="font-size:2rem;">&#127775;</div>
             <div>
-              <div style="font-weight:700;font-size:1.05rem;">Your story is on the record.</div>
-              <div style="font-size:0.85rem;color:var(--light);margin-top:3px;">Public service is real because of moments like this. Help others see it.</div>
+              <div style="font-weight:700;font-size:1.05rem;" id="successTitle">Your story is on the record.</div>
+              <div style="font-size:0.85rem;color:var(--light);margin-top:3px;" id="successSub">Public service is real because of moments like this. Help others see it.</div>
             </div>
           </div>
           <div class="share-strip" id="shareStrip">
@@ -371,6 +402,14 @@
   <div class="story-detail">
     <button class="auth-close" onclick="closeStoryDetail()" aria-label="Close">&times;</button>
     <div id="storyDetailBody"></div>
+  </div>
+</div>
+
+<!-- Author profile modal — click any handle to see their history -->
+<div class="story-detail-overlay" id="authorProfileModal" onclick="if(event.target.id==='authorProfileModal') closeAuthorProfile();">
+  <div class="story-detail">
+    <button class="auth-close" onclick="closeAuthorProfile()" aria-label="Close">&times;</button>
+    <div id="authorProfileBody"></div>
   </div>
 </div>
 

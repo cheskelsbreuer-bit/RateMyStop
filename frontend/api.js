@@ -60,8 +60,6 @@ function staticStats() {
   };
 }
 
-const DEMO_NOTICE = "Thanks! This is a preview build — submissions open when we go live. Stay tuned.";
-
 // ───── public API ─────
 
 const api = {
@@ -76,11 +74,11 @@ const api = {
     catch { return staticOfficer(id); }
   },
   async submitReview(data) {
-    if (STATIC_MODE) { alert(DEMO_NOTICE); return { id: -1, demo: true }; }
+    if (STATIC_MODE) return { id: -1, demo: true };  // silent success — the UI handles the demo notice
     return apiPost('/api/reviews', data);
   },
   async sendComplaint(data) {
-    if (STATIC_MODE) { alert(DEMO_NOTICE); return { id: -1, demo: true }; }
+    if (STATIC_MODE) return { id: -1, demo: true };  // silent success
     return apiPost('/api/complaints', data);
   },
   async uploadFile(file) {
