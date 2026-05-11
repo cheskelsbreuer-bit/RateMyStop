@@ -1,6 +1,7 @@
-"""Generate the RateMyStop sponsor pitch PDF.
+"""Generate the CivicVoice sponsor pitch PDF.
 
-4 pages, designer-crafted: cover · mission · the play · sponsorship.
+4 pages: cover · mission · the play · sponsorship.
+Civic Brutalism design philosophy, refined.
 """
 from pathlib import Path
 from reportlab.lib.colors import HexColor
@@ -36,8 +37,8 @@ PAGE_W, PAGE_H = 1280, 800
 M = 72
 
 c = Canvas(str(OUTPUT), pagesize=(PAGE_W, PAGE_H))
-c.setTitle("RateMyStop — Sponsorship Vision Deck")
-c.setAuthor("RateMyStop")
+c.setTitle("CivicVoice — Sponsorship Vision Deck")
+c.setAuthor("CivicVoice")
 c.setSubject("Sponsorship — 2026")
 
 
@@ -64,10 +65,10 @@ def chrome(num: str, eyebrow: str):
     c.rect(M, PAGE_H - M + 4, 10, 10, fill=1, stroke=0)
     c.setFillColor(WHITE)
     c.setFont("BodyBold", 8.5)
-    c.drawString(M + 18, PAGE_H - M + 6, "RATEMYSTOP")
+    c.drawString(M + 18, PAGE_H - M + 6, "CIVICVOICE")
     c.setFillColor(GRAY)
     c.setFont("Mono", 7)
-    c.drawString(M + 92, PAGE_H - M + 6, "/ a public-accountability platform")
+    c.drawString(M + 90, PAGE_H - M + 6, "/ your voice on every public servant")
 
     c.setFillColor(GOLD)
     c.setFont("Mono", 7.5)
@@ -78,11 +79,10 @@ def chrome(num: str, eyebrow: str):
     c.setFont("Mono", 7)
     c.drawString(M, M - 32, eyebrow.upper())
     c.setFillColor(GRAY_DIM)
-    c.drawRightString(PAGE_W - M, M - 32, "RMS · VISION DECK · 2026")
+    c.drawRightString(PAGE_W - M, M - 32, "CV · VISION DECK · 2026")
 
 
 # ────────── PAGE 1 — COVER ──────────
-
 def page_cover():
     fill_bg()
     chrome("01 / 04", "the cover")
@@ -93,45 +93,45 @@ def page_cover():
 
     c.setFillColor(LIGHT)
     c.setFont("Serif", 22)
-    c.drawString(M, PAGE_H - M - 90, "On rare occasion, a piece of public infrastructure")
-    c.drawString(M, PAGE_H - M - 116, "is missing for so long that everyone forgets to notice.")
+    c.drawString(M, PAGE_H - M - 90, "Every day, people interact with public servants")
+    c.drawString(M, PAGE_H - M - 116, "during the most stressful moments of their lives.")
 
     c.setFillColor(WHITE)
     c.setFont("Display", 138)
-    c.drawString(M - 6, PAGE_H - M - 240, "Where do drivers go")
+    c.drawString(M - 6, PAGE_H - M - 240, "Some moments")
 
     c.setFillColor(WHITE)
     c.setFont("Display", 138)
-    c.drawString(M - 6, PAGE_H - M - 360, "after the cop")
+    c.drawString(M - 6, PAGE_H - M - 360, "deserve thanks.")
 
     c.setFillColor(GOLD)
     c.setFont("Display", 138)
-    c.drawString(M - 6, PAGE_H - M - 480, "drives away?")
+    c.drawString(M - 6, PAGE_H - M - 480, "Some, the record.")
 
     c.setFillColor(WHITE)
     c.setFont("Serif", 26)
-    answer = "Now: somewhere."
+    answer = "Both belong somewhere."
     c.drawRightString(PAGE_W - M, M + 200, answer)
     aw = c.stringWidth(answer, "Serif", 26)
     line(PAGE_W - M - aw, M + 196, PAGE_W - M, M + 196, GOLD, 1.0)
 
     c.setFillColor(WHITE)
     c.setFont("Display", 38)
-    c.drawString(M, M + 70, "Rate")
+    c.drawString(M, M + 70, "Civic")
     c.setFillColor(GOLD)
-    rw = c.stringWidth("Rate", "Display", 38)
-    c.drawString(M + rw, M + 70, "MyStop")
+    cw = c.stringWidth("Civic", "Display", 38)
+    c.drawString(M + cw, M + 70, "Voice")
 
     c.setFillColor(GRAY)
     c.setFont("Body", 9)
-    c.drawString(M, M + 50, "your stop · your voice · on the record")
+    c.drawString(M, M + 50, "your voice · on every public servant")
 
     c.setFillColor(GRAY)
     c.setFont("Mono", 7)
     c.drawString(M + 360, M + 76, "FULL DISCLOSURE")
     c.setFillColor(LIGHT)
     c.setFont("BodyItalic", 9)
-    c.drawString(M + 360, M + 62, "The site, brand, and product are real.")
+    c.drawString(M + 360, M + 62, "The platform, brand, and product are real.")
     c.drawString(M + 360, M + 50, "The user base and revenue are not — yet.")
     c.drawString(M + 360, M + 38, "This deck is the vision.")
 
@@ -139,63 +139,57 @@ def page_cover():
 
 
 # ────────── PAGE 2 — THE MISSION ──────────
-
 def page_mission():
     fill_bg()
     chrome("02 / 04", "the mission")
 
-    # Big mission statement, in three weights
     c.setFillColor(GOLD)
     c.setFont("Mono", 8)
     c.drawString(M, PAGE_H - M - 30, "FIG. 01 — THE MISSION, IN PLAIN ENGLISH")
 
     c.setFillColor(WHITE)
-    c.setFont("Display", 88)
-    c.drawString(M - 4, PAGE_H - M - 132, "If you got pulled over —")
+    c.setFont("Display", 78)
+    c.drawString(M - 4, PAGE_H - M - 120, "Recognize good service.")
     c.setFillColor(LIGHT)
-    c.setFont("DisplayLight", 88)
-    c.drawString(M - 4, PAGE_H - M - 218, "happy or not —")
+    c.setFont("DisplayLight", 78)
+    c.drawString(M - 4, PAGE_H - M - 198, "Document the rest.")
     c.setFillColor(GOLD)
-    c.setFont("Display", 88)
-    c.drawString(M - 4, PAGE_H - M - 304, "come tell everyone.")
+    c.setFont("Display", 78)
+    c.drawString(M - 4, PAGE_H - M - 276, "On the record.")
 
-    # The three behaviors below
     c.setFillColor(LIGHT)
     c.setFont("Body", 13)
-    c.drawString(M, PAGE_H - M - 348, "RateMyStop is the public square for traffic stops.")
-    c.drawString(M, PAGE_H - M - 368, "Drivers post what happened. The platform structures the rating.")
-    c.drawString(M, PAGE_H - M - 388, "Officers' profiles are built — review by review — by the community they serve.")
+    c.drawString(M, PAGE_H - M - 326, "Every day, millions of people interact with public servants — police, EMTs, firefighters,")
+    c.drawString(M, PAGE_H - M - 346, "DMV staff, code inspectors, hospital workers. Most experiences are forgotten.")
+    c.drawString(M, PAGE_H - M - 366, "The good ones, never recognized. The bad ones, never recorded.")
+    c.setFillColor(GOLD)
+    c.setFont("BodyBold", 13)
+    c.drawString(M, PAGE_H - M - 388, "CivicVoice is where both go on the record.")
 
-    # Three columns: How it works
+    # Three flow steps
     box_y = M + 130
     box_h = 200
     col_w = (PAGE_W - 2 * M - 32) / 3
 
     boxes = [
-        ("01.", "STOP",     "Driver gets pulled over",     "Happy or not, calm or angry — every stop counts."),
-        ("02.", "RATE",     "Open the app, tag what happened",  "Pick fair or unfair. Tag behaviors. Stars are calculated automatically — not subjective."),
-        ("03.", "RECORD",   "Post becomes part of officer's profile",   "Verified by ticket photo. Searchable. On the record. Forever."),
+        ("01.", "MOMENT",   "An interaction with a public servant", "A traffic stop. An EMT call. A DMV visit. A code inspection."),
+        ("02.", "LOG",      "Open the app and tell what happened",  "Praise the good. Document the bad. Tag the behavior. Add a photo to verify."),
+        ("03.", "RECORD",   "It joins the public record",           "Searchable by location, role, agency. Departments can respond. Patterns emerge."),
     ]
     for i, (idx, name, t1, t2) in enumerate(boxes):
         x = M + i * (col_w + 16)
-        # Top hairline
         line(x, box_y + box_h, x + col_w - 18, box_y + box_h, GOLD if i == 0 else GRAY_DIM, 0.5)
-        # Index
         c.setFillColor(GOLD)
         c.setFont("Mono", 9)
         c.drawString(x, box_y + box_h - 16, idx)
-        # Name
         c.setFillColor(WHITE)
         c.setFont("Display", 38)
         c.drawString(x, box_y + box_h - 64, name)
-        # Subtitle
         c.setFillColor(GOLD if i == 0 else LIGHT)
         c.setFont("BodyBold", 12)
         c.drawString(x, box_y + box_h - 92, t1)
-        # Body
         c.setFillColor(GRAY)
         c.setFont("Body", 10.5)
-        # Wrap manually
         words = t2.split()
         max_w = col_w - 20
         cur, lines = "", []
@@ -212,131 +206,114 @@ def page_mission():
     c.showPage()
 
 
-# ────────── PAGE 3 — THE PLAY (with phases) ──────────
-
+# ────────── PAGE 3 — THE PLAY (categories & money) ──────────
 def page_play():
     fill_bg()
-    chrome("03 / 04", "the play · phases & integrations")
+    chrome("03 / 04", "the play · categories & revenue")
 
-    # Two columns — left is phases, right is ticket-fighter integration
-    SPLIT_X = PAGE_W * 0.55
+    SPLIT_X = PAGE_W * 0.52
     LEFT_X = M
     RIGHT_X = SPLIT_X + 30
     line(SPLIT_X - 8, M, SPLIT_X - 8, PAGE_H - M, GRAY_DIM, 0.4)
 
-    # ── LEFT — PHASES ──
+    # ── LEFT — CATEGORY ROLLOUT ──
     c.setFillColor(GOLD)
     c.setFont("Mono", 8)
-    c.drawString(LEFT_X, PAGE_H - M - 30, "FIG. 02 — THE ROLLOUT, ONE STEP AT A TIME")
+    c.drawString(LEFT_X, PAGE_H - M - 30, "FIG. 02 — THE ROLLOUT")
 
     c.setFillColor(WHITE)
-    c.setFont("Display", 60)
-    c.drawString(LEFT_X - 2, PAGE_H - M - 96, "Today: cops.")
+    c.setFont("Display", 56)
+    c.drawString(LEFT_X - 2, PAGE_H - M - 92, "Police is the wedge.")
     c.setFillColor(GOLD)
-    c.setFont("Display", 60)
-    c.drawString(LEFT_X - 2, PAGE_H - M - 152, "Tomorrow: anyone")
-    c.drawString(LEFT_X - 2, PAGE_H - M - 208, "in public service.")
+    c.setFont("Display", 56)
+    c.drawString(LEFT_X - 2, PAGE_H - M - 148, "Everyone else,")
+    c.drawString(LEFT_X - 2, PAGE_H - M - 204, "the expansion.")
+    c.setFillColor(LIGHT)
+    c.setFont("Body", 11.5)
+    c.drawString(LEFT_X, PAGE_H - M - 232, "Traffic stops are emotional, frequent, and pre-organized.")
+    c.drawString(LEFT_X, PAGE_H - M - 250, "Once the platform is dense, every role follows.")
 
-    # Phase ladder
     phases = [
-        ("PHASE 1", "Police Officers",                                    "Live now. Traffic stops, ratings, complaints.",                "live"),
-        ("PHASE 2", "EMTs · Paramedics · Utility (O&R, Con Ed)",          "Response time, professionalism, billing & service issues.",     "next"),
-        ("PHASE 3", "Gov't Caseworkers · Inspectors",                      "DMV. Social services. Code, building, health inspections.",    "later"),
-        ("PHASE 4", "Public Defenders · Prosecutors · Beyond",             "Courts. Lawyers. Anyone who serves the public.",                "later"),
+        ("PHASE 1", "Police Officers",        "Traffic stops · complaints · recognition", "live"),
+        ("PHASE 2", "EMT · Fire · DMV",       "Positive-only first. Lower legal risk, builds the hero feed.", "next"),
+        ("PHASE 3", "Code · Court · Transit", "Full reviews open. Moderation + verification mature.", "later"),
+        ("PHASE 4", "Hospitals & beyond",     "Every public-facing role under one record.", "later"),
     ]
-    y0 = PAGE_H - M - 252
-    row_h = 60
+    y0 = PAGE_H - M - 290
+    row_h = 50
     for i, (phase, name, desc, state) in enumerate(phases):
         y = y0 - i * row_h
-        line(LEFT_X, y + 32, SPLIT_X - 24, y + 32, GRAY_DIM if i else GOLD_DIM, 0.4)
+        line(LEFT_X, y + 26, SPLIT_X - 24, y + 26, GRAY_DIM if i else GOLD_DIM, 0.4)
         c.setFillColor(GOLD if state == "live" else GRAY)
         c.setFont("MonoBold", 8.5)
-        c.drawString(LEFT_X, y + 16, phase)
-        # Status pill
+        c.drawString(LEFT_X, y + 12, phase)
         if state == "live":
             c.setFillColor(GOLD)
             c.setFont("Mono", 7.5)
-            c.drawString(LEFT_X + 70, y + 16, "● LIVE")
+            c.drawString(LEFT_X + 70, y + 12, "● LIVE")
         elif state == "next":
             c.setFillColor(LIGHT)
             c.setFont("Mono", 7.5)
-            c.drawString(LEFT_X + 70, y + 16, "○ NEXT")
+            c.drawString(LEFT_X + 70, y + 12, "○ NEXT")
         else:
             c.setFillColor(GRAY)
             c.setFont("Mono", 7.5)
-            c.drawString(LEFT_X + 70, y + 16, "◌ LATER")
-        # Name
+            c.drawString(LEFT_X + 70, y + 12, "◌ LATER")
         c.setFillColor(WHITE if i == 0 else LIGHT)
-        c.setFont("BodyBold", 14)
-        c.drawString(LEFT_X, y - 4, name)
-        # Description
+        c.setFont("BodyBold", 13)
+        c.drawString(LEFT_X, y - 6, name)
         c.setFillColor(GRAY)
-        c.setFont("Body", 10.5)
+        c.setFont("Body", 10)
         c.drawString(LEFT_X, y - 22, desc)
-
-    # Final hairline
     last_y = y0 - len(phases) * row_h
-    line(LEFT_X, last_y + 32, SPLIT_X - 24, last_y + 32, GRAY_DIM, 0.4)
+    line(LEFT_X, last_y + 26, SPLIT_X - 24, last_y + 26, GRAY_DIM, 0.4)
 
-    # ── RIGHT — INTEGRATIONS & SMART RATING ──
+    # ── RIGHT — REVENUE STACK ──
     c.setFillColor(GOLD)
     c.setFont("Mono", 8)
-    c.drawString(RIGHT_X, PAGE_H - M - 30, "FIG. 03 — TWO REVENUE PIPES")
+    c.drawString(RIGHT_X, PAGE_H - M - 30, "FIG. 03 — FIVE REVENUE STREAMS")
 
-    # First pipe — ticket fighters
     c.setFillColor(WHITE)
-    c.setFont("Display", 38)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 90, "Ticket-fighter")
+    c.setFont("Display", 56)
+    c.drawString(RIGHT_X - 2, PAGE_H - M - 92, "Not one")
     c.setFillColor(GOLD)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 124, "integration.")
-    c.setFillColor(LIGHT)
-    c.setFont("Body", 11)
-    c.drawString(RIGHT_X, PAGE_H - M - 152, "When a driver enters their ticket, the app asks:")
-    c.setFillColor(GOLD)
-    c.setFont("BodyBold", 12)
-    c.drawString(RIGHT_X, PAGE_H - M - 172, "“Want to fight this?”")
-    c.setFillColor(LIGHT)
-    c.setFont("Body", 11)
-    c.drawString(RIGHT_X, PAGE_H - M - 192, "One tap routes the lead to a sponsored attorney.")
-    c.drawString(RIGHT_X, PAGE_H - M - 208, "Pre-qualified. Intent-driven. The lawyer pays per case won.")
+    c.drawString(RIGHT_X - 2, PAGE_H - M - 148, "revenue pipe.")
+    c.setFillColor(WHITE)
+    c.setFont("Display", 56)
+    c.drawString(RIGHT_X - 2, PAGE_H - M - 204, "Five.")
 
-    # Second pipe — smart rating
-    c.setFillColor(WHITE)
-    c.setFont("Display", 38)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 274, "Smart auto-")
-    c.setFillColor(GOLD)
-    c.drawString(RIGHT_X - 2, PAGE_H - M - 308, "rating system.")
+    revenues = [
+        ("DAY 1",    "Ticket-fighter referrals",       "$50-$300 per lead · $5K-$20K/mo"),
+        ("MONTH 3+", "Department sentiment dashboards", "B2B SaaS · $500-$2K/mo per dept"),
+        ("MONTH 6+", "Civic partnerships",              "Counties · cities · agencies"),
+        ("YEAR 1+",  "API & data licensing",            "Journalists · researchers · advocacy orgs"),
+        ("ALWAYS",   "Premium user features",           "Alerts · saved reports · history"),
+    ]
+    ry0 = PAGE_H - M - 250
+    rrow = 40
+    for i, (when, what, where) in enumerate(revenues):
+        y = ry0 - i * rrow
+        line(RIGHT_X, y + 20, PAGE_W - M, y + 20, GRAY_DIM, 0.4)
+        c.setFillColor(GOLD)
+        c.setFont("Mono", 7.5)
+        c.drawString(RIGHT_X, y + 8, when)
+        c.setFillColor(WHITE)
+        c.setFont("BodyBold", 12.5)
+        c.drawString(RIGHT_X + 78, y + 8, what)
+        c.setFillColor(GRAY)
+        c.setFont("Body", 9.5)
+        c.drawString(RIGHT_X + 78, y - 6, where)
+    last_y = ry0 - len(revenues) * rrow
+    line(RIGHT_X, last_y + 20, PAGE_W - M, last_y + 20, GRAY_DIM, 0.4)
+
     c.setFillColor(LIGHT)
-    c.setFont("Body", 11)
-    c.drawString(RIGHT_X, PAGE_H - M - 336, "Stars are not asked — they're calculated.")
-    c.drawString(RIGHT_X, PAGE_H - M - 352, "The driver tags concrete behaviors —")
-    c.setFillColor(GOLD)
     c.setFont("BodyItalic", 11)
-    c.drawString(RIGHT_X, PAGE_H - M - 368, "professional · respectful · aggressive · hostile")
-    c.setFillColor(LIGHT)
-    c.setFont("Body", 11)
-    c.drawString(RIGHT_X, PAGE_H - M - 384, "— and the system computes the rating.")
-    c.drawString(RIGHT_X, PAGE_H - M - 400, "Less subjective. Less inflation. Better data.")
-
-    # The math callout, very small
-    box_y = M + 60
-    line(RIGHT_X, box_y + 80, PAGE_W - M, box_y + 80, GOLD_DIM, 0.5)
-    c.setFillColor(GOLD)
-    c.setFont("Mono", 7)
-    c.drawString(RIGHT_X, box_y + 64, "THE FORMULA")
-    c.setFillColor(LIGHT)
-    c.setFont("Mono", 9)
-    c.drawString(RIGHT_X, box_y + 46, "stars = 3 (baseline)  +  verdict (±1)")
-    c.drawString(RIGHT_X, box_y + 30, "         +  Σ(behavior weights, ±0.3 to ±1.5)")
-    c.setFillColor(GRAY)
-    c.setFont("BodyItalic", 10)
-    c.drawString(RIGHT_X, box_y + 10, "clamped 1–5. driver can override with one tap.")
+    c.drawString(RIGHT_X, M + 50, "Lawyer leads pay today. B2B pays tomorrow. Both stack.")
 
     c.showPage()
 
 
 # ────────── PAGE 4 — TIERS & CONTACT ──────────
-
 def page_tiers():
     fill_bg()
     chrome("04 / 04", "tiers · contact")
@@ -354,7 +331,7 @@ def page_tiers():
 
     tiers = [
         ("BASIC",   "$2K",  "starter",      ["Banner ad in community feed", "Logo in footer", "Monthly traffic report"], False),
-        ("CORE",    "$8K",  "recommended",  ["Pop-up when ticket is entered", "Button inside review form", "Sponsored card in feed", "Lead-data dashboard", "Monthly performance report"], True),
+        ("CORE",    "$8K",  "recommended",  ["Pop-up when a ticket is logged", "Button inside review form", "Sponsored card in feed", "Lead-data dashboard", "Monthly performance report"], True),
         ("PREMIUM", "$18K", "exclusive",    ["Everything in Core", "Sole sponsor — no competition", "Direct intake API integration", "Co-branded marketing", "Quarterly strategy sessions"], False),
     ]
 
@@ -390,7 +367,6 @@ def page_tiers():
         c.setFillColor(GRAY)
         c.setFont("Mono", 11)
         c.drawString(x + pw - 4, block_top - 110, "/mo")
-
         py = block_top - 168
         for p in perks:
             c.setFillColor(GOLD if featured else GRAY)
@@ -413,7 +389,7 @@ def page_tiers():
     c.drawString(M, bar_y, "Chesky")
     c.setFillColor(GRAY)
     c.setFont("Body", 11)
-    c.drawString(M, bar_y - 18, "founder, RateMyStop")
+    c.drawString(M, bar_y - 18, "founder, CivicVoice")
 
     c.setFillColor(GRAY)
     c.setFont("Mono", 7.5)
@@ -427,7 +403,7 @@ def page_tiers():
     c.drawString(M + 660, bar_y + 4, "WEB")
     c.setFillColor(WHITE)
     c.setFont("BodyBold", 13)
-    c.drawString(M + 660, bar_y - 14, "ratemystop.com")
+    c.drawString(M + 660, bar_y - 14, "civicvoice.com")
 
     c.setFillColor(LIGHT)
     c.setFont("Serif", 17)
@@ -435,8 +411,6 @@ def page_tiers():
 
     c.showPage()
 
-
-# ────────── BUILD ──────────
 
 page_cover()
 page_mission()

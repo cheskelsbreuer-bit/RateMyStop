@@ -1,7 +1,7 @@
 {
-  "name": "RateMyStop",
-  "short_name": "RateMyStop",
-  "description": "Rate your traffic stop. See how officers are rated by the community. File complaints. On the record.",
+  "name": "CivicVoice",
+  "short_name": "CivicVoice",
+  "description": "Recognize good public service. Document the rest. CivicVoice is the public record of every interaction with a public servant.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -19,6 +19,7 @@ function nav(id) {
   if (id === 'home')      loadStats();
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')  renderRankings();
+  if (id === 'recognize') initRecognize();
 }
 
 // ── RATE FORM STATE ──
@@ -639,6 +640,91 @@ function switchRanking(el, kind) {
   el.classList.add('on');
   _rankSort = kind;
   renderRankings();
+}
+
+// ─── RECOGNIZE (positive flow) ───
+let recogRole = 'police';
+let recogStep = 1;
+
+function initRecognize() {
+  // Set today's date if blank
+  const d = document.getElementById('recogDate');
+  if (d && !d.value) d.value = new Date().toISOString().split('T')[0];
+}
+
+function setRecogRole(el, role) {
+  recogRole = role;
+  document.querySelectorAll('#rolePills .role-pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function goRecogStep(n) {
+  if (n === 2) {
+    const tags = document.querySelectorAll('#praiseTags .tag.on');
+    const story = (document.getElementById('recogStory')?.value || '').trim();
+    if (!tags.length && !story) {
+      alert('Pick at least one tag — or write a short story — so we know what made it good.');
+      return;
+    }
+  }
+  document.getElementById('rstep' + recogStep).style.display = 'none';
+  recogStep = n;
+  document.getElementById('rstep' + n).style.display = 'block';
+  ['rws1', 'rws2'].forEach((id, i) => {
+    const w = document.getElementById(id);
+    w.className = 'ws' + ((i + 1) < n ? ' done' : (i + 1) === n ? ' active' : '');
+  });
+}
+
+async function submitRecognition() {
+  const btn = document.getElementById('recogSubmit');
+  const err = document.getElementById('recogError');
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Posting…';
+
+  const praiseTags = Array.from(document.querySelectorAll('#praiseTags .tag.on'))
+    .map(t => t.textContent.trim());
+  const payload = {
+    kind: 'praise',
+    role: recogRole,
+    verdict: 'fair',          // praise is by definition "fair" in the underlying schema
+    stars: 5,                  // recognition defaults to 5★
+    reasons: [],
+    behaviors: praiseTags,
+    officer_name: document.getElementById('recogName').value || null,
+    officer_badge: document.getElementById('recogBadge').value || null,
+    department: document.getElementById('recogDept').value || null,
+    stop_date: document.getElementById('recogDate').value || null,
+    location: document.getElementById('recogLocation').value || null,
+    story: document.getElementById('recogStory').value || null,
+    upload_url: null,
+    anonymous: true,
+    body_cam: null,
+  };
+
+  try {
+    await api.submitReview(payload);
+    document.getElementById('recogSuccess').classList.add('show');
+    btn.style.display = 'none';
+    setTimeout(() => {
+      // Reset the flow
+      document.getElementById('recogSuccess').classList.remove('show');
+      btn.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Post Recognition →';
+      document.querySelectorAll('#praiseTags .tag.on').forEach(t => t.classList.remove('on', 'pos'));
+      ['recogName', 'recogBadge', 'recogDept', 'recogLocation', 'recogStory']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      recogStep = 1;
+      goRecogStep(1);
+    }, 5000);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Post Recognition →';
+    err.textContent = `Couldn't post: ${e.message}`;
+    err.style.display = 'block';
+  }
 }
 
 function renderRankings() {

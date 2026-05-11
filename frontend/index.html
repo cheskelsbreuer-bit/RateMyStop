@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#0f0f13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="RateMyStop">
-<meta name="description" content="Rate your traffic stop. See how officers are rated by the community. File complaints. On the record.">
-<meta property="og:title" content="RateMyStop — Your Stop. Your Voice. On the Record.">
-<meta property="og:description" content="Rate your traffic stop. See how officers in your area are rated.">
+<meta name="apple-mobile-web-app-title" content="CivicVoice">
+<meta name="description" content="Recognize good public service. Document the rest. CivicVoice is the public record of every interaction with a police officer, EMT, firefighter, or government worker.">
+<meta property="og:title" content="CivicVoice — Your voice on every public servant.">
+<meta property="og:description" content="Recognize good public service. Document the rest. On the record.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="icon-512.png">
-<title>RateMyStop &mdash; Your Stop. Your Voice. On the Record.</title>
+<title>CivicVoice &mdash; Your voice on every public servant.</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -24,46 +24,44 @@
 <!-- TOPBAR -->
 <header class="topbar">
   <div class="brand" onclick="nav('home')">
-    <div class="brand-mark">R</div>
-    <div class="brand-name">Rate<span>MyStop</span></div>
+    <div class="brand-mark">C</div>
+    <div class="brand-name">Civic<span>Voice</span></div>
   </div>
   <nav class="topnav">
     <button class="active" onclick="nav('home')">Home</button>
-    <button onclick="nav('rate')">Rate a Stop</button>
-    <button onclick="nav('officers')">Officer Profiles</button>
+    <button onclick="nav('rate')">Document</button>
+    <button onclick="nav('recognize')">Recognize</button>
+    <button onclick="nav('officers')">Profiles</button>
     <button onclick="nav('rankings')">Rankings</button>
-    <button onclick="nav('complaint')">File a Complaint</button>
-    <button onclick="nav('deck')">Sponsor Info</button>
+    <button onclick="nav('complaint')">Complain</button>
+    <button onclick="nav('deck')">Sponsors</button>
   </nav>
 </header>
 
 <!-- HOME -->
 <section id="home" class="active">
-  <div class="hero">
-    <div>
-      <div class="hero-eyebrow">Community accountability, on the record</div>
-      <h1>Your Stop.<br>Your Voice.<br><em>On the Record.</em></h1>
-      <p>Rate your traffic stop. See how officers in your area are rated by the community. And if you got a ticket that wasn't fair &mdash; we'll help you fight it.</p>
-      <div class="hero-btns">
-        <button class="btn-gold" onclick="nav('rate')">Rate My Stop &rarr;</button>
-        <button class="btn-ghost" onclick="nav('officers')">Officer Profiles</button>
-      </div>
+  <div class="hero hero-plain">
+    <div class="hero-eyebrow">A public record of every interaction with a public servant</div>
+    <h1>Your voice.<br>On every<br><em>public servant.</em></h1>
+    <p class="hero-lead">Recognize the good. Document the rest. Built by the community, for the community.</p>
+    <div class="hero-cta-row">
+      <button class="cta-card cta-praise" onclick="nav('recognize')">
+        <span class="cta-icon">&#127942;</span>
+        <span class="cta-title">Recognize good service</span>
+        <span class="cta-sub">An EMT, officer, or worker who went above and beyond? Say thanks.</span>
+      </button>
+      <button class="cta-card cta-doc" onclick="nav('rate')">
+        <span class="cta-icon">&#128221;</span>
+        <span class="cta-title">Document a bad stop</span>
+        <span class="cta-sub">Pulled over unfairly? Treated poorly? Get it on the record.</span>
+      </button>
     </div>
-    <div>
-      <div class="phone-mock">
-        <div class="pn"></div>
-        <div class="pm-lbl">Your last stop</div>
-        <div class="pm-title">How was it?</div>
-        <div class="pm-row">
-          <div class="pm-chip f" onclick="startRateWith('fair')" role="button" tabindex="0">&#9989; Fair</div>
-          <div class="pm-chip u" onclick="startRateWith('unfair')" role="button" tabindex="0">&#10060; Unfair</div>
-        </div>
-        <div class="pm-stars" id="pmStars" role="radiogroup" aria-label="Rate the officer">
-          <span data-v="1" onclick="startRateWith(null, 1)">&#9733;</span><span data-v="2" onclick="startRateWith(null, 2)">&#9733;</span><span data-v="3" onclick="startRateWith(null, 3)">&#9733;</span><span data-v="4" onclick="startRateWith(null, 4)">&#9733;</span><span data-v="5" onclick="startRateWith(null, 5)">&#9733;</span>
-        </div>
-        <button class="pm-btn" onclick="nav('rate')">&#9889; Fight This Ticket?</button>
-        <div class="pm-note">Free consult &mdash; no commitment</div>
-      </div>
+    <div class="categories-strip">
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police &middot; <strong>Live</strong></span>
+      <span class="cs-item"><span class="cs-dot"></span>&#128657; EMT &middot; Coming</span>
+      <span class="cs-item"><span class="cs-dot"></span>&#128658; Fire &middot; Coming</span>
+      <span class="cs-item"><span class="cs-dot"></span>&#129411; DMV &middot; Coming</span>
+      <span class="cs-item"><span class="cs-dot"></span>&#127973; Hospitals &middot; Coming</span>
     </div>
   </div>
   <div class="stats-strip" id="statsStrip">
@@ -293,6 +291,92 @@
   </div>
 </section>
 
+<!-- RECOGNIZE — positive flow, simple 2 steps, supports any role -->
+<section id="recognize">
+  <div class="wrap">
+    <div class="ph">
+      <h2>Recognize Good Service</h2>
+      <p>Tell us about someone who helped, cared, or went above and beyond. Public service done right.</p>
+    </div>
+    <div class="wizard-steps">
+      <div class="ws active" id="rws1">1</div>
+      <div class="ws-line"></div>
+      <div class="ws" id="rws2">2</div>
+    </div>
+    <div class="rcard">
+      <!-- STEP 1 — Who & what -->
+      <div id="rstep1">
+        <div class="fl">
+          <label>Who was it?</label>
+          <div class="role-pills" id="rolePills">
+            <span class="role-pill on" data-role="police"   onclick="setRecogRole(this, 'police')">&#128659; Police Officer</span>
+            <span class="role-pill"    data-role="emt"      onclick="setRecogRole(this, 'emt')">&#128657; EMT / Paramedic</span>
+            <span class="role-pill"    data-role="fire"     onclick="setRecogRole(this, 'fire')">&#128658; Firefighter</span>
+            <span class="role-pill"    data-role="dmv"      onclick="setRecogRole(this, 'dmv')">&#129411; DMV Worker</span>
+            <span class="role-pill"    data-role="other"    onclick="setRecogRole(this, 'other')">&#128104;&#8205;&#128188; Other</span>
+          </div>
+        </div>
+        <div class="fl">
+          <label>What did they do well?</label>
+          <div class="tags" id="praiseTags">
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128293; Went above and beyond</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#129505; Showed real kindness</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128077; Stayed professional</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#129309; Treated me with respect</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#9889; Quick and efficient</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128083; Calm under pressure</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128175; Patient with me</span>
+            <span class="tag" data-pol="pos" onclick="toggle(this)">&#128150; Saved my day</span>
+          </div>
+        </div>
+        <div class="fl">
+          <label>Tell the story <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+          <textarea id="recogStory" placeholder="What happened? How did they help? The story is what makes it real." style="min-height:90px;"></textarea>
+        </div>
+        <button class="submit-main submit-praise" onclick="goRecogStep(2)">Next: Who? &rarr;</button>
+      </div>
+
+      <!-- STEP 2 — Identify & submit -->
+      <div id="rstep2" style="display:none;">
+        <div class="fl-2">
+          <div class="fl">
+            <label>Their Name (if you know it)</label>
+            <input type="text" id="recogName" placeholder="e.g. Officer Smith / Sgt. Diaz">
+          </div>
+          <div class="fl">
+            <label>Badge / ID</label>
+            <input type="text" id="recogBadge" placeholder="e.g. #4821 (optional)">
+          </div>
+        </div>
+        <div class="fl-2">
+          <div class="fl">
+            <label>Department / Agency</label>
+            <input type="text" id="recogDept" placeholder="e.g. Spring Valley PD, FDNY EMS">
+          </div>
+          <div class="fl">
+            <label>Date</label>
+            <input type="date" id="recogDate">
+          </div>
+        </div>
+        <div class="fl">
+          <label>Where? <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional</span></label>
+          <input type="text" id="recogLocation" placeholder="e.g. Route 59, Spring Valley">
+        </div>
+        <button class="submit-main submit-praise" onclick="submitRecognition()" id="recogSubmit">Post Recognition &rarr;</button>
+        <div class="success-box" id="recogSuccess">
+          <div style="font-size:1.6rem;">&#127942;</div>
+          <div style="flex:1;">
+            <div style="font-weight:600;">Thank you for the shoutout &mdash; they earned it.</div>
+            <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-top:3px;">It's on the record. Good public service gets recognized too.</div>
+            <button class="share-btn" onclick="shareReview()" style="background:var(--green);color:var(--bg);">&#128279; Share this</button>
+          </div>
+        </div>
+        <div class="error-box" id="recogError" style="display:none;background:rgba(224,82,82,0.09);border:1.5px solid rgba(224,82,82,0.3);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- OFFICER PROFILES -->
 <section id="officers">
   <div class="wrap-wide">
@@ -402,14 +486,14 @@
   <div class="deck-wrap">
     <div class="deck-hero">
       <div class="dh-eyebrow">Sponsorship Opportunity</div>
-      <h2 class="dh-title">Why Sponsor <span>RateMyStop</span>?</h2>
-      <p class="dh-body">RateMyStop puts your business in front of drivers who just got a ticket &mdash; the perfect moment they need you most. This is not an ad. It's a direct pipeline.</p>
+      <h2 class="dh-title">Why Sponsor <span>CivicVoice</span>?</h2>
+      <p class="dh-body">CivicVoice is the public record for every interaction with a public servant. You reach drivers right after a stop, citizens right after a hospital visit, residents right after a DMV trip &mdash; at the exact moments they need help, recognition, or a lawyer.</p>
       <a class="btn-gold" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Sponsor Package &darr;</a>
     </div>
 
     <div class="insight-box">
       <div class="ib-h">The <span>Right Audience</span> at the Right Moment.</div>
-      <div class="ib-b">Every person who uses RateMyStop just had a traffic stop. Many got tickets. Many are frustrated. That's your customer &mdash; already looking for answers. RateMyStop puts your solution right in their hands, at the exact moment they need it.</div>
+      <div class="ib-b">Every person who opens CivicVoice just had an experience worth recording &mdash; a stop, a call, a visit. Praise or complaint, they're already engaged. Sponsors reach customers at peak intent, not in the wild.</div>
     </div>
 
     <div class="deck-grid">
@@ -433,7 +517,7 @@
     <h3 style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:16px;">How the Funnel Works</h3>
     <div class="funnel">
       <div class="fs"><div class="fs-ic">&#128680;</div><div class="fs-t">Driver Gets Pulled Over</div><div class="fs-d">Frustrated, needs help</div></div>
-      <div class="fs"><div class="fs-ic">&#128241;</div><div class="fs-t">Opens RateMyStop</div><div class="fs-d">Rates the stop, tells their story</div></div>
+      <div class="fs"><div class="fs-ic">&#128241;</div><div class="fs-t">Opens CivicVoice</div><div class="fs-d">Rates the stop, tells their story</div></div>
       <div class="fs"><div class="fs-ic">&#127919;</div><div class="fs-t">Enters Ticket Details</div><div class="fs-d">App asks: Want to fight this?</div></div>
       <div class="fs"><div class="fs-ic">&#127942;</div><div class="fs-t">Becomes Your Client</div><div class="fs-d">Free consult &rarr; paid case &rarr; you win</div></div>
     </div>
@@ -477,9 +561,9 @@
 
     <div class="deck-cta">
       <h3>Let's Talk</h3>
-      <p>RateMyStop brings the audience. You bring the solution. Together, it's the most targeted funnel in this space.</p>
+      <p>CivicVoice brings the audience. You bring the solution. Together, it's the most targeted funnel in this space.</p>
       <div class="cta-row">
-        <a class="btn-gold" href="mailto:chesky2039@gmail.com?subject=RateMyStop%20Sponsorship%20Inquiry&body=Hi%20Chesky%2C%0A%0AI%27m%20interested%20in%20sponsoring%20RateMyStop.%20Please%20send%20me%20more%20information.%0A%0AThanks%2C" style="display:inline-block;text-decoration:none;">Contact Us Today</a>
+        <a class="btn-gold" href="mailto:chesky2039@gmail.com?subject=CivicVoice%20Sponsorship%20Inquiry&body=Hi%20Chesky%2C%0A%0AI%27m%20interested%20in%20sponsoring%20CivicVoice.%20Please%20send%20me%20more%20information.%0A%0AThanks%2C" style="display:inline-block;text-decoration:none;">Contact Us Today</a>
         <a class="btn-ghost" href="ratemystop-sponsor-pitch.pdf" download style="display:inline-block;text-decoration:none;">Download Full Deck (PDF)</a>
       </div>
     </div>
