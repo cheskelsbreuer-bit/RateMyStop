@@ -35,7 +35,52 @@
     <button onclick="nav('complaint')">Reach Out</button>
     <button onclick="nav('deck')">Sponsors</button>
   </nav>
+  <div class="topbar-auth">
+    <button class="sign-in-btn" id="signInBtn" onclick="openAuthModal()">Sign in</button>
+    <button class="user-pill" id="userPill" onclick="toggleUserMenu()" style="display:none;">
+      <span class="up-avatar" id="upAvatar">A</span>
+      <span class="up-handle" id="upHandle">&mdash;</span>
+      <span class="up-caret">&#9662;</span>
+    </button>
+    <div class="user-menu" id="userMenu">
+      <div class="um-header">
+        <div class="um-handle" id="umHandle">&mdash;</div>
+        <div class="um-meta" id="umMeta">&mdash;</div>
+      </div>
+      <button class="um-item" onclick="toggleAnonymousMode()" id="umAnonToggle">&#128737; Stay anonymous</button>
+      <button class="um-item" onclick="nav('share'); closeUserMenu();">&#9998; Share another story</button>
+      <button class="um-item" onclick="signOut(); closeUserMenu();">&#128682; Sign out</button>
+    </div>
+  </div>
 </header>
+
+<!-- AUTH MODAL — required to write -->
+<div class="auth-overlay" id="authModal">
+  <div class="auth-modal">
+    <button class="auth-close" onclick="closeAuthModal()" aria-label="Close">&times;</button>
+    <div class="auth-eyebrow">CIVICVOICE</div>
+    <h3 class="auth-title">Join the record</h3>
+    <p class="auth-sub">You can read every story without an account. Writing &mdash; or saying "same here" &mdash; needs a free sign-in. You can still post anonymously: we'll give you a private handle like <strong>Anonymous-1278</strong>.</p>
+
+    <div class="auth-providers">
+      <button class="auth-prov auth-google" onclick="signIn('google')">
+        <span class="ap-icon">G</span>
+        <span>Continue with Google</span>
+      </button>
+      <button class="auth-prov auth-github" onclick="signIn('github')">
+        <span class="ap-icon">&#xf09b;</span>
+        <span>Continue with GitHub</span>
+      </button>
+    </div>
+    <div class="auth-divider"><span>or</span></div>
+    <div class="auth-email">
+      <input type="email" id="authEmailInput" placeholder="your@email.com" autocomplete="email">
+      <input type="text" id="authNameInput" placeholder="Display name (optional &mdash; leave blank to stay anonymous)" autocomplete="name">
+      <button class="auth-prov auth-email-btn" onclick="signIn('email')">Continue with email</button>
+    </div>
+    <div class="auth-footer">By signing in you agree that your stories may appear on the public record. We never share your sign-in info publicly.</div>
+  </div>
+</div>
 
 <!-- HOME -->
 <section id="home" class="active">
@@ -318,6 +363,14 @@
   <div class="modal" style="position:relative;">
     <button class="modal-close" onclick="document.getElementById('officerModal').classList.remove('show')">&#10005;</button>
     <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- Story detail modal — full single-story view -->
+<div class="story-detail-overlay" id="storyDetailModal" onclick="if(event.target.id==='storyDetailModal') closeStoryDetail();">
+  <div class="story-detail">
+    <button class="auth-close" onclick="closeStoryDetail()" aria-label="Close">&times;</button>
+    <div id="storyDetailBody"></div>
   </div>
 </div>
 

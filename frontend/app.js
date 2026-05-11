@@ -1,3 +1,131 @@
+// ── AUTH (localStorage-backed mock — real OAuth slots in here later) ──
+const AUTH_KEY = 'civicvoice_user_v1';
+let _pendingAuthAction = null;
+
+function getCurrentUser() {
+  try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); }
+  catch { return null; }
+}
+function _persistUser(u) {
+  if (u) localStorage.setItem(AUTH_KEY, JSON.stringify(u));
+  else localStorage.removeItem(AUTH_KEY);
+  renderAuthState();
+}
+function _newAnonymousHandle() {
+  const n = Math.floor(1000 + Math.random() * 9000);
+  return `Anonymous-${n}`;
+}
+function openAuthModal() {
+  document.getElementById('authModal').classList.add('show');
+}
+function closeAuthModal() {
+  document.getElementById('authModal').classList.remove('show');
+}
+function signIn(provider) {
+  const existing = getCurrentUser();
+  if (existing) { closeAuthModal(); _flushPendingAuth(); return existing; }
+  let displayName = null;
+  let email = null;
+  if (provider === 'email') {
+    email = (document.getElementById('authEmailInput')?.value || '').trim();
+    displayName = (document.getElementById('authNameInput')?.value || '').trim() || null;
+    if (!email) { alert('Please enter an email.'); return null; }
+  } else if (provider === 'google') {
+    // Mock — in production, swap for real Google OAuth
+    displayName = null;  // user keeps the option to be anonymous
+  } else if (provider === 'github') {
+    displayName = null;
+  }
+  const user = {
+    handle: _newAnonymousHandle(),
+    displayName,
+    email: email || null,
+    anonymous: !displayName,  // anonymous by default unless they typed a name
+    provider,
+    signedInAt: new Date().toISOString(),
+  };
+  _persistUser(user);
+  closeAuthModal();
+  _flushPendingAuth();
+  return user;
+}
+function _flushPendingAuth() {
+  if (_pendingAuthAction) {
+    const fn = _pendingAuthAction;
+    _pendingAuthAction = null;
+    setTimeout(fn, 150);
+  }
+}
+function requireAuth(action, intentLabel) {
+  const u = getCurrentUser();
+  if (u) { action(); return true; }
+  _pendingAuthAction = action;
+  // Optionally update the modal eyebrow to show what they're about to do
+  if (intentLabel) {
+    const eyebrow = document.querySelector('.auth-eyebrow');
+    if (eyebrow) eyebrow.textContent = intentLabel.toUpperCase();
+  }
+  openAuthModal();
+  return false;
+}
+function signOut() {
+  _persistUser(null);
+  closeUserMenu();
+}
+function toggleAnonymousMode() {
+  const u = getCurrentUser();
+  if (!u) return;
+  u.anonymous = !u.anonymous;
+  _persistUser(u);
+  closeUserMenu();
+}
+function toggleUserMenu() {
+  document.getElementById('userMenu').classList.toggle('show');
+}
+function closeUserMenu() {
+  document.getElementById('userMenu').classList.remove('show');
+}
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('userMenu');
+  const pill = document.getElementById('userPill');
+  if (!menu || !pill) return;
+  if (!menu.contains(e.target) && !pill.contains(e.target)) closeUserMenu();
+});
+function renderAuthState() {
+  const u = getCurrentUser();
+  const pill = document.getElementById('userPill');
+  const btn = document.getElementById('signInBtn');
+  if (!pill || !btn) return;
+  if (u) {
+    pill.style.display = 'inline-flex';
+    btn.style.display = 'none';
+    const shown = u.anonymous ? u.handle : (u.displayName || u.handle);
+    document.getElementById('upHandle').textContent = shown;
+    document.getElementById('upAvatar').textContent = shown.charAt(0).toUpperCase();
+    const umH = document.getElementById('umHandle'); if (umH) umH.textContent = shown;
+    const umM = document.getElementById('umMeta');
+    if (umM) {
+      const parts = [];
+      parts.push(u.anonymous ? 'Anonymous' : 'Public name');
+      if (u.email) parts.push(u.email);
+      umM.textContent = parts.join(' · ');
+    }
+    const anonBtn = document.getElementById('umAnonToggle');
+    if (anonBtn) anonBtn.innerHTML = u.anonymous ? '👁️ Show my name instead' : '🛡️ Stay anonymous';
+  } else {
+    pill.style.display = 'none';
+    btn.style.display = 'inline-flex';
+  }
+}
+
+// What name to show on stories the current user posts
+function getAuthorDisplay() {
+  const u = getCurrentUser();
+  if (!u) return 'Anonymous';
+  return u.anonymous ? u.handle : (u.displayName || u.handle);
+}
+
 // ── NAVIGATION ──
 const NAV_IDS = ['home', 'share', 'officers', 'rankings', 'complaint', 'deck'];
 
@@ -236,6 +364,7 @@ async function onFileUpload(input) {
 
 // Submit — direct, no modal. The live chip already showed the user the rating the whole time.
 async function submitReview() {
+  if (!requireAuth(() => submitReview(), 'Sign in to post your story')) return;
   // Make sure the current rating reflects the latest inputs (in case of focus changes etc.)
   refreshLiveRating();
   const btn = document.getElementById('finalSubmit');
@@ -259,9 +388,14 @@ async function submitReview() {
   }
 
   const anonymous = document.getElementById('anonToggle')?.checked !== false;
+  const author = getCurrentUser();
+  const authorDisplay = author ? (anonymous ? author.handle : (author.displayName || author.handle)) : 'Anonymous';
   const payload = {
     kind: 'moment',
     role: currentRole,
+    author_handle: author?.handle || null,
+    author_display: authorDisplay,
+    author_provider: author?.provider || null,
     verdict: verdict || 'fair',  // backend requires fair|unfair; default to fair for balanced/positive moments
     stars,
     reasons: [],
@@ -467,30 +601,36 @@ function applyFilters() {
   renderStream(list, q);
 }
 
+const ROLE_ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
+const ROLE_NAME = { police:'POLICE', emt:'EMT', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOV\'T' };
+const STORY_PREVIEW_CHARS = 280;
+let _streamIndex = {};  // map of `${officerId}:${reviewId}` → {officer, review, role}
+
+// Generate a stable handle for seed/legacy stories that have no author attached.
+function _legacyAuthor(officerId, reviewId) {
+  const n = ((officerId * 7919 + reviewId * 11) % 9000) + 1000;
+  return `Anonymous-${n}`;
+}
+
 // Flatten all officers' reviews into a flat stream, sorted newest-first.
 function renderStream(officers, q) {
   const stream = document.getElementById('storyStream');
   if (!stream) return;
-  const ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
-  const ROLE_NAME = { police:'POLICE', emt:'EMT', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOV\'T' };
 
-  // Build a list of {officer, review} items
   let items = [];
   for (const o of officers) {
     const role = inferRole(o);
     for (const r of (o.reviews || [])) {
       items.push({ officer: o, review: r, role });
+      _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role };
     }
   }
-  // Search filter — also match by story text
   if (q) {
     items = items.filter(it => (it.review.story || '').toLowerCase().includes(q) ||
                                (it.officer.name || '').toLowerCase().includes(q) ||
                                (it.officer.department || '').toLowerCase().includes(q));
   }
-  // Newest first
   items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
-  // Limit to 60 to avoid huge DOM
   items = items.slice(0, 60);
 
   if (!items.length) {
@@ -505,30 +645,39 @@ function renderStream(officers, q) {
     const sentimentClass = isPositive ? 'pos' : 'neg';
     const sentimentTag   = isPositive ? '★ Recognition' : '⚠ Concern';
     const date = formatDate(r.created_at);
-    const story = (r.story || '').trim() || '(No description was provided with this story.)';
+    const rawStory = (r.story || '').trim() || '(No description was provided with this story.)';
+    const truncated = rawStory.length > STORY_PREVIEW_CHARS;
+    const shown = truncated ? rawStory.slice(0, STORY_PREVIEW_CHARS).replace(/\s+\S*$/, '') + '…' : rawStory;
+    const author = r.author_display || _legacyAuthor(o.id, r.id);
+    const authorInitial = author.charAt(0).toUpperCase();
     return `
-      <article class="story-post">
+      <article class="story-post" onclick="openStoryDetail(${o.id}, ${r.id})">
         <div class="sp-head">
-          <div class="sp-icon">${ICON[it.role] || '👤'}</div>
+          <div class="sp-icon">${ROLE_ICON[it.role] || '👤'}</div>
           <div class="sp-meta">
             <div class="sp-who">
-              <span class="sp-name" onclick="openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</span>
+              <span class="sp-name" onclick="event.stopPropagation(); openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</span>
               <span class="sp-role">${ROLE_NAME[it.role] || ''}</span>
             </div>
-            <div class="sp-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
+            <div class="sp-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' <span class="sp-loc">· ' + escapeHtml(r.location) + '</span>' : ''}</div>
           </div>
           <div class="sp-sentiment ${sentimentClass}">
             <span class="sp-stars">${starsStr(r.stars || 3)}</span>
             <span class="sp-tag">${sentimentTag}</span>
           </div>
         </div>
-        <div class="sp-body">${escapeHtml(story)}</div>
+        <div class="sp-body">${escapeHtml(shown)}${truncated ? ' <button class="sp-readmore" onclick="event.stopPropagation(); openStoryDetail(' + o.id + ', ' + r.id + ')">Read full</button>' : ''}</div>
+        <div class="sp-byline">
+          <span class="sp-author"><span class="sp-author-avatar">${escapeHtml(authorInitial)}</span>${escapeHtml(author)}</span>
+          <span class="sp-sep">·</span>
+          <span>${date}</span>
+          ${r.upload_url ? '<span class="sp-sep">·</span><span style="color:var(--blue);">🛡️ Verified</span>' : ''}
+        </div>
         <div class="sp-foot">
-          <span class="sp-date">${date}${r.upload_url ? ' · 🛡️ Verified' : ''}</span>
           <div class="sp-actions">
-            <button class="sp-action up" onclick="thanksTo(this)">👍 Same here</button>
-            <button class="sp-action" onclick="shareTo('native')">🔗 Share</button>
-            <button class="sp-action" onclick="openOfficer(${o.id})">View profile</button>
+            <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
+            <button class="sp-action" onclick="event.stopPropagation(); shareTo('native')">🔗 Share</button>
+            <button class="sp-action primary" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">Read full →</button>
           </div>
         </div>
       </article>
@@ -536,13 +685,70 @@ function renderStream(officers, q) {
   }).join('');
 }
 
+// ── STORY DETAIL MODAL ──
+function openStoryDetail(officerId, reviewId) {
+  const it = _streamIndex[`${officerId}:${reviewId}`];
+  if (!it) return;
+  const o = it.officer;
+  const r = it.review;
+  const isPositive = r.verdict === 'fair';
+  const sClass = isPositive ? 'pos' : 'neg';
+  const sTag   = isPositive ? '★ Recognition' : '⚠ Concern';
+  const story = (r.story || '').trim() || '(No description was provided.)';
+  const author = r.author_display || _legacyAuthor(o.id, r.id);
+  const authorInitial = author.charAt(0).toUpperCase();
+  const body = document.getElementById('storyDetailBody');
+  body.innerHTML = `
+    <div class="sd-eyebrow">A moment on the record</div>
+    <div class="sd-head">
+      <div class="sd-icon">${ROLE_ICON[it.role] || '👤'}</div>
+      <div class="sd-who">
+        <div class="sd-name" onclick="closeStoryDetail(); openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</div>
+        <div class="sd-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
+        <div class="sd-sent">
+          <span class="sd-stars">${starsStr(r.stars || 3)}</span>
+          <span class="sd-tag ${sClass}">${sTag}</span>
+        </div>
+      </div>
+    </div>
+    <div class="sd-body">${escapeHtml(story)}</div>
+    <div class="sd-foot">
+      <div class="sd-byline">
+        <span class="sd-author-avatar">${escapeHtml(authorInitial)}</span>
+        Posted by <strong style="color:var(--ink);">${escapeHtml(author)}</strong>
+        · ${formatDate(r.created_at)}
+        ${r.upload_url ? ' · <span style="color:var(--blue);">🛡️ Verified</span>' : ''}
+      </div>
+      <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
+      <button class="sp-action" onclick="shareTo('native')">🔗 Share</button>
+      <button class="sp-action primary" onclick="closeStoryDetail(); openOfficer(${o.id})">View full profile →</button>
+    </div>
+  `;
+  document.getElementById('storyDetailModal').classList.add('show');
+}
+function closeStoryDetail() {
+  document.getElementById('storyDetailModal').classList.remove('show');
+}
+// Escape closes modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const sd = document.getElementById('storyDetailModal');
+    if (sd && sd.classList.contains('show')) closeStoryDetail();
+    const am = document.getElementById('authModal');
+    if (am && am.classList.contains('show')) closeAuthModal();
+  }
+});
+
 // Lightweight engagement signal — increments a "same here" counter on the button.
-function thanksTo(btn) {
+// Requires sign-in (you can read without an account, but engaging requires one).
+function thanksTo(btn, evt) {
+  if (evt) evt.stopPropagation();
+  if (!requireAuth(() => thanksTo(btn), 'Sign in to react')) return;
   const n = parseInt(btn.dataset.count || '0', 10) + 1;
   btn.dataset.count = n;
   btn.innerHTML = `👍 Same here · ${n}`;
   btn.style.color = 'var(--green)';
-  btn.style.borderColor = 'rgba(78,201,138,0.4)';
+  btn.style.borderColor = 'rgba(31,140,95,0.4)';
 }
 
 // ── NY AGENCY DIRECTORY ──
@@ -665,6 +871,7 @@ function openComplaintForm(name, email) {
 }
 
 async function sendComplaint() {
+  if (!requireAuth(() => sendComplaint(), 'Sign in to send a message')) return;
   const btn = document.getElementById('cfSubmitBtn');
   const errBox = document.getElementById('complaintError');
   errBox.style.display = 'none';
@@ -740,6 +947,7 @@ function formatDate(iso) {
 
 // ── INIT ──
 document.getElementById('dateIn').value = new Date().toISOString().split('T')[0];
+renderAuthState();
 loadStats();
 loadOfficers();
 refreshLiveRating();   // initial state: 4/5 charitable default
