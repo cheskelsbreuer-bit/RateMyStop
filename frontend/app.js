@@ -863,6 +863,54 @@ function _pulseMomentum(it) {
   return recencyScore + replyScore + ackScore;
 }
 
+function _renderOnePulseCard(it) {
+  const o = it.officer, r = it.review;
+  const author = r.author_display || _legacyAuthor(o.id, r.id);
+  const isPos = r.verdict === 'fair';
+  const status = getResolutionStatus(o.id, r.id, r);
+  const meta = RES_META[status];
+  const replyCount = getReplyCount(o.id, r.id);
+  const trust = computeTrustScore(author);
+  const story = (r.story || '').trim() || '(No description.)';
+  const tags = r.tags || [];
+  return `
+    <article class="pulse-card" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}">
+      <div class="pulse-card-head">
+        <div class="pulse-card-role">
+          <span class="pulse-role-icon">${ROLE_ICON[it.role] || '👤'}</span>
+          <span class="pulse-role-name">${ROLE_NAME[it.role] || ''}</span>
+        </div>
+        <div class="pulse-sent ${isPos ? 'pos' : 'neg'}">
+          <span class="pulse-stars">${starsStr(r.stars || 3)}</span>
+          <span class="pulse-sent-tag">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
+        </div>
+      </div>
+      <h3 class="pulse-name" onclick="openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</h3>
+      <div class="pulse-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''} · ${formatDate(r.created_at)}</div>
+
+      <div class="pulse-body">${escapeHtml(story.slice(0, 480))}${story.length > 480 ? '…' : ''}</div>
+
+      ${tags.length ? `<div class="sp-tags-row" style="margin:8px 0 14px;">${tags.slice(0, 6).map(t => `<span class="spt">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+
+      <div class="pulse-byline">
+        <span class="pulse-author" onclick="openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(author.charAt(0).toUpperCase())}</span>${escapeHtml(author)} · Trust ${trust.score}/100</span>
+      </div>
+
+      <div class="resolution-banner" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};margin-top:14px;">
+        <span class="rb-icon">${meta.icon}</span>
+        <span class="rb-text"><strong>${meta.label}</strong></span>
+      </div>
+
+      <div class="pulse-actions">
+        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
+        <button class="sp-action" onclick="openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} &amp; thread</button>
+        <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
+        <button class="sp-action primary" onclick="openStoryDetail(${o.id}, ${r.id})">Read full →</button>
+      </div>
+    </article>
+  `;
+}
+
 function renderPulse() {
   const stage = document.getElementById('pulseStage');
   if (!stage) return;
@@ -885,83 +933,61 @@ function renderPulse() {
   else if (_pulseFilter === 'subscribed') items = items.filter(it => subs.includes(it.officer.department));
   // Sort by momentum
   items.sort((a, b) => _pulseMomentum(b) - _pulseMomentum(a));
-  items = items.slice(0, 50);
+  items = items.slice(0, 100);
   _pulseItems = items;
-  if (_pulseIdx >= items.length) _pulseIdx = 0;
   if (!items.length) {
     stage.innerHTML = `<div class="pulse-empty">No stories for this filter yet.</div>`;
     document.getElementById('pulsePos').textContent = 0;
     document.getElementById('pulseTotal').textContent = 0;
     return;
   }
-  _renderPulseCard();
+  // Render every card stacked vertically — scroll snaps each into view
+  stage.innerHTML = items.map(_renderOnePulseCard).join('');
   document.getElementById('pulseTotal').textContent = items.length;
+  document.getElementById('pulsePos').textContent = 1;
+  // Track which card is on-screen for the position counter
+  _attachPulseScrollObserver();
+  // Reset scroll to top when filter changes
+  stage.scrollTop = 0;
 }
 
-function _renderPulseCard() {
+let _pulseObserver = null;
+function _attachPulseScrollObserver() {
+  if (_pulseObserver) _pulseObserver.disconnect();
   const stage = document.getElementById('pulseStage');
-  if (!stage || !_pulseItems.length) return;
-  const it = _pulseItems[_pulseIdx];
-  const o = it.officer, r = it.review;
-  const author = r.author_display || _legacyAuthor(o.id, r.id);
-  const isPos = r.verdict === 'fair';
-  const status = getResolutionStatus(o.id, r.id, r);
-  const meta = RES_META[status];
-  const replyCount = getReplyCount(o.id, r.id);
-  const trust = computeTrustScore(author);
-  const story = (r.story || '').trim() || '(No description.)';
-  const tags = r.tags || [];
-  stage.innerHTML = `
-    <article class="pulse-card" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}">
-      <div class="pulse-card-head">
-        <div class="pulse-card-role">
-          <span class="pulse-role-icon">${ROLE_ICON[it.role] || '👤'}</span>
-          <span class="pulse-role-name">${ROLE_NAME[it.role] || ''}</span>
-        </div>
-        <div class="pulse-sent ${isPos ? 'pos' : 'neg'}">
-          <span class="pulse-stars">${starsStr(r.stars || 3)}</span>
-          <span class="pulse-sent-tag">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
-        </div>
-      </div>
-      <h3 class="pulse-name" onclick="openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</h3>
-      <div class="pulse-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''} · ${formatDate(r.created_at)}</div>
-
-      <div class="pulse-body">${escapeHtml(story.slice(0, 420))}${story.length > 420 ? '…' : ''}</div>
-
-      ${tags.length ? `<div class="sp-tags-row" style="margin:8px 0 14px;">${tags.slice(0, 6).map(t => `<span class="spt">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
-
-      <div class="pulse-byline">
-        <span class="pulse-author" onclick="openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(author.charAt(0).toUpperCase())}</span>${escapeHtml(author)} · Trust ${trust.score}/100</span>
-      </div>
-
-      <div class="resolution-banner" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};margin-top:14px;">
-        <span class="rb-icon">${meta.icon}</span>
-        <span class="rb-text"><strong>${meta.label}</strong></span>
-      </div>
-
-      <div class="pulse-actions">
-        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
-        <button class="sp-action" onclick="openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} &amp; thread</button>
-        <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
-        <button class="sp-action primary" onclick="openStoryDetail(${o.id}, ${r.id})">Read full →</button>
-      </div>
-    </article>
-  `;
-  document.getElementById('pulsePos').textContent = _pulseIdx + 1;
+  if (!stage) return;
+  const cards = stage.querySelectorAll('.pulse-card');
+  _pulseObserver = new IntersectionObserver((entries) => {
+    // Find the entry closest to centre (highest intersection ratio)
+    let best = null;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+    }
+    if (best) {
+      const idx = Array.from(cards).indexOf(best.target);
+      if (idx >= 0) document.getElementById('pulsePos').textContent = idx + 1;
+    }
+  }, { root: stage, threshold: [0.4, 0.6, 0.8] });
+  cards.forEach(c => _pulseObserver.observe(c));
 }
 
 function pulseNext() {
-  if (!_pulseItems.length) return;
-  _pulseIdx = (_pulseIdx + 1) % _pulseItems.length;
-  _renderPulseCard();
+  const stage = document.getElementById('pulseStage');
+  if (!stage) return;
+  const cards = stage.querySelectorAll('.pulse-card');
+  const idx = Math.min(cards.length - 1, parseInt(document.getElementById('pulsePos').textContent || '1', 10));
+  cards[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function pulsePrev() {
-  if (!_pulseItems.length) return;
-  _pulseIdx = (_pulseIdx - 1 + _pulseItems.length) % _pulseItems.length;
-  _renderPulseCard();
+  const stage = document.getElementById('pulseStage');
+  if (!stage) return;
+  const cards = stage.querySelectorAll('.pulse-card');
+  const idx = Math.max(0, parseInt(document.getElementById('pulsePos').textContent || '1', 10) - 2);
+  cards[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Keyboard nav on Pulse
+// Keyboard nav on Pulse — also natural scroll works
 document.addEventListener('keydown', (e) => {
   const onPulse = document.getElementById('pulse')?.classList.contains('active');
   if (!onPulse) return;

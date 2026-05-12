@@ -341,9 +341,17 @@ section.active{display:block;}
 .pulse-filters .pill:hover{border-color:rgba(184,148,30,0.4);color:var(--ink);}
 .pulse-filters .pill.on{background:rgba(184,148,30,0.12);border-color:rgba(184,148,30,0.5);color:var(--accent);font-weight:600;}
 
-.pulse-stage{min-height:560px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+/* Scroll-snap stage — vertical feed, one card per screen, scrolls naturally */
+.pulse-stage{height:min(78vh, 700px);overflow-y:auto;scroll-snap-type:y mandatory;border-radius:18px;background:transparent;padding:0;margin-bottom:14px;scrollbar-width:thin;scrollbar-color:rgba(184,148,30,0.4) transparent;}
+.pulse-stage::-webkit-scrollbar{width:6px;}
+.pulse-stage::-webkit-scrollbar-thumb{background:rgba(184,148,30,0.35);border-radius:3px;}
 .pulse-empty{color:var(--gray);text-align:center;padding:80px 20px;}
-.pulse-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px 38px;width:100%;max-width:760px;box-shadow:var(--shadow-lg);}
+.pulse-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px 38px;width:100%;max-width:760px;margin:0 auto 14px;box-shadow:var(--shadow);scroll-snap-align:start;scroll-snap-stop:always;min-height:calc(min(78vh, 700px) - 24px);display:flex;flex-direction:column;justify-content:space-between;}
+@media(max-width:700px){
+  .pulse-card{padding:24px 22px;min-height:calc(min(82vh, 600px) - 24px);border-radius:16px;}
+  .pulse-name{font-size:1.4rem;}
+  .pulse-body{font-size:1rem;}
+}
 .pulse-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
 .pulse-card-role{display:flex;align-items:center;gap:10px;}
 .pulse-role-icon{font-size:1.6rem;}
