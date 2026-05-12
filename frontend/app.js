@@ -2713,7 +2713,99 @@ function getApprovedAsOfficers() {
   });
 }
 
-// ─── MODERATION QUEUE — admin view (access via ?admin=1) ───
+// ─── MODERATION DASHBOARD (admin only — access via ?admin=1) ───
+//
+// What the admin sees here is a real moderation tool: compact pending list at the top,
+// click-into-detail for every item showing the author's history, the officer's recent
+// submission rate, and computed abuse signals.
+
+// Aggregate the author's full activity (stories + sentiment + recent volume + trust)
+function _adminAuthorActivity(handle) {
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const approved = getApprovedAsOfficers();
+  const all = [...approved, ...officers];
+  let total = 0, fair = 0, unfair = 0, recentCount = 0;
+  const oneDayAgo = Date.now() - 86400000;
+  const recent = [];
+  for (const o of all) {
+    for (const r of (o.reviews || [])) {
+      const author = r.author_display || _legacyAuthor(o.id, r.id);
+      if (author === handle) {
+        total++;
+        if (r.verdict === 'fair') fair++; else unfair++;
+        if (new Date(r.created_at).getTime() > oneDayAgo) recentCount++;
+        recent.push({ officer: o, review: r });
+      }
+    }
+  }
+  const pendingFromAuthor = _readPending().filter(p => p.author_display === handle);
+  recent.sort((a, b) => new Date(b.review.created_at) - new Date(a.review.created_at));
+  return {
+    total, fair, unfair, recentCount,
+    pendingCount: pendingFromAuthor.length,
+    recent: recent.slice(0, 5),
+    trust: computeTrustScore(handle),
+  };
+}
+
+// How often this specific officer is mentioned in recent submissions (brigading detector)
+function _adminOfficerRate(officerName, department) {
+  const pending = _readPending();
+  const approved = _readApproved();
+  const oneDayAgo = Date.now() - 86400000;
+  const oneWeekAgo = Date.now() - 604800000;
+  let today = 0, week = 0;
+  for (const a of [...pending, ...approved]) {
+    const p = a.payload;
+    const matchName = (p.officer_name || '').toLowerCase().trim() === (officerName || '').toLowerCase().trim();
+    const matchDept = (p.department || '').toLowerCase().trim() === (department || '').toLowerCase().trim();
+    if (matchName && matchDept) {
+      const ts = new Date(a.submitted_at || a.approved_at || 0).getTime();
+      if (ts > oneDayAgo) today++;
+      if (ts > oneWeekAgo) week++;
+    }
+  }
+  return { today, week };
+}
+
+// Compute abuse / quality signals to surface for the admin
+function _adminAbuseSignals(payload, authorActivity, officerRate) {
+  const sigs = [];
+  if (authorActivity.trust.score < 30) {
+    sigs.push({ level: 'warning', text: `Low trust score: <strong>${authorActivity.trust.score}/100</strong> (${authorActivity.trust.tier.label} contributor)` });
+  }
+  if (authorActivity.pendingCount >= 3) {
+    sigs.push({ level: 'warning', text: `<strong>${authorActivity.pendingCount}</strong> pending submissions from this author — high volume` });
+  }
+  if (authorActivity.recentCount >= 5) {
+    sigs.push({ level: 'alert', text: `<strong>${authorActivity.recentCount}</strong> stories from this author in the last 24h` });
+  }
+  if (officerRate.today >= 3) {
+    sigs.push({ level: 'alert', text: `<strong>${officerRate.today}</strong> submissions about this person in 24h — possible brigading` });
+  }
+  if (officerRate.week >= 8) {
+    sigs.push({ level: 'warning', text: `${officerRate.week} submissions about this person this week — unusual volume` });
+  }
+  if (!payload.story || payload.story.length < 30) {
+    sigs.push({ level: 'info', text: 'Very short story — may lack context for readers' });
+  }
+  if (payload.story && /[A-Z\s!?]{15,}/.test(payload.story) && /[A-Z]{8,}/.test(payload.story)) {
+    sigs.push({ level: 'info', text: 'Heavy uppercase — emotionally charged language' });
+  }
+  if (!payload.upload_url) {
+    sigs.push({ level: 'info', text: 'No photo / evidence attached' });
+  }
+  if (authorActivity.total === 0) {
+    sigs.push({ level: 'info', text: 'First-ever submission from this author' });
+  }
+  if (authorActivity.total >= 5) {
+    const negPct = authorActivity.unfair / authorActivity.total;
+    if (negPct >= 0.85) sigs.push({ level: 'warning', text: `<strong>${Math.round(negPct * 100)}%</strong> of their past stories are concerns — possible bias` });
+  }
+  if (sigs.length === 0) sigs.push({ level: 'good', text: 'No red flags. Submission looks clean.' });
+  return sigs;
+}
+
 function renderModQueue() {
   const wrap = document.getElementById('modQueueList');
   if (!wrap) return;
@@ -2733,53 +2825,210 @@ function renderModQueue() {
 
   let html = '';
 
-  // Pending section
+  // Compact pending list
   if (pending.length) {
-    html += `<h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin-bottom:14px;color:var(--accent);">&#9203; Pending review &middot; ${pending.length}</h3>`;
+    html += `<div class="adm-section-head">⏳ Pending review · <strong>${pending.length}</strong></div>`;
+    html += `<div class="adm-list">`;
     html += pending.map(p => {
       const r = p.payload;
+      const activity = _adminAuthorActivity(p.author_display);
+      const officerRate = _adminOfficerRate(r.officer_name, r.department);
+      const sigs = _adminAbuseSignals(r, activity, officerRate);
+      const warnCount = sigs.filter(s => s.level === 'alert' || s.level === 'warning').length;
       return `
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:12px;" id="pq-${p.pending_id}">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
-            <div>
-              <div style="font-weight:700;font-size:0.95rem;">${ROLE_ICON[r.role] || '👤'} ${escapeHtml(r.officer_name || 'Unknown')}${r.officer_badge ? ' · ' + escapeHtml(r.officer_badge) : ''}</div>
-              <div style="font-size:0.82rem;color:var(--gray);">${escapeHtml(r.department || 'Unknown')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
-              <div style="font-size:0.74rem;color:var(--gray);margin-top:4px;">By <strong style="color:var(--ink);">${escapeHtml(p.author_display)}</strong> · ${formatDate(p.submitted_at)}</div>
+        <div class="adm-row" onclick="openAdminReview('${p.pending_id}')">
+          <div class="adm-row-main">
+            <div class="adm-row-headline">
+              <span class="adm-role">${ROLE_ICON[r.role] || '👤'}</span>
+              <span class="adm-target">${escapeHtml(r.officer_name || 'Unknown')}</span>
+              <span class="adm-target-sub">· ${escapeHtml(r.department || 'Unknown')}</span>
+              <span class="adm-sent ${r.verdict === 'fair' ? 'pos' : 'neg'}">${r.verdict === 'fair' ? '★' : '⚠'}</span>
+              ${r.upload_url ? '<span class="adm-evidence" title="Has photo evidence">📎</span>' : ''}
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:0.74rem;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(184,148,30,0.3);border-radius:999px;padding:3px 10px;font-weight:700;display:inline-block;">PENDING</div>
-              <div style="margin-top:6px;font-size:0.84rem;color:${r.verdict === 'fair' ? 'var(--green)' : 'var(--red)'};">${r.verdict === 'fair' ? '★ Recognition' : '⚠ Concern'} · ${'★'.repeat(r.stars || 3)}</div>
+            <div class="adm-row-author">
+              <strong>${escapeHtml(p.author_display)}</strong>
+              · trust <span style="color:${activity.trust.tier.color};font-weight:700;">${activity.trust.score}</span>
+              · ${activity.total} prior · ${formatDate(p.submitted_at)}
             </div>
+            <div class="adm-row-preview">${escapeHtml((r.story || '(no description)').slice(0, 140))}${(r.story || '').length > 140 ? '…' : ''}</div>
           </div>
-          <div style="font-size:0.92rem;line-height:1.65;color:var(--light);margin-bottom:10px;">${escapeHtml((r.story || '(No description)'))}</div>
-          ${(r.tags && r.tags.length) ? `<div class="sp-tags-row">${r.tags.map(t => `<span class="spt">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
-          ${r.upload_url ? `<div style="font-size:0.78rem;color:var(--blue);margin:8px 0;">🛡️ ${r.evidence_type || 'photo'} attached</div>` : ''}
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
-            <button class="sp-action" style="background:rgba(31,140,95,0.1);border-color:rgba(31,140,95,0.4);color:var(--green);font-weight:700;" onclick="approvePending('${p.pending_id}')">✓ Approve & publish</button>
-            <button class="sp-action" style="background:rgba(201,52,52,0.08);border-color:rgba(201,52,52,0.4);color:var(--red);" onclick="rejectPending('${p.pending_id}')">✕ Reject</button>
+          <div class="adm-row-side">
+            ${warnCount > 0 ? `<span class="adm-warn" title="${warnCount} signal(s) to review">🚨 ${warnCount}</span>` : '<span class="adm-clean" title="No red flags">✓</span>'}
+            <button class="adm-quick adm-approve" onclick="event.stopPropagation(); approvePending('${p.pending_id}')" title="Approve as-is">✓</button>
+            <button class="adm-quick adm-reject" onclick="event.stopPropagation(); rejectPending('${p.pending_id}')" title="Reject">✕</button>
           </div>
         </div>
       `;
     }).join('');
+    html += `</div>`;
   }
 
-  // Approved section
+  // Approved log (collapsed list)
   if (approved.length) {
-    html += `<h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin:24px 0 14px;color:var(--green);">&#10003; Published &middot; ${approved.length}</h3>`;
-    html += approved.slice(0, 10).map(a => {
+    html += `<div class="adm-section-head" style="margin-top:28px;color:var(--green);">✓ Published · <strong>${approved.length}</strong></div>`;
+    html += `<div class="adm-published">`;
+    html += approved.slice(0, 20).map(a => {
       const r = a.payload;
       return `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div style="font-weight:600;font-size:0.9rem;">${ROLE_ICON[r.role] || '👤'} ${escapeHtml(r.officer_name || 'Unknown')} · <span style="color:var(--gray);font-weight:500;">${escapeHtml(r.department || '')}</span></div>
-            <div style="font-size:0.78rem;color:var(--green);">✓ Live · approved ${formatDate(a.approved_at)}</div>
-          </div>
+        <div class="adm-pub-row">
+          <span class="adm-role">${ROLE_ICON[r.role] || '👤'}</span>
+          <strong>${escapeHtml(r.officer_name || 'Unknown')}</strong>
+          <span style="color:var(--gray);">· ${escapeHtml(r.department || '')}</span>
+          <span class="adm-pub-when">approved ${formatDate(a.approved_at)}</span>
         </div>
       `;
     }).join('');
+    html += `</div>`;
   }
 
   wrap.innerHTML = html;
+}
+
+// ── ADMIN DETAIL MODAL — full review with author history + signals + edit ──
+function openAdminReview(pendingId) {
+  const pending = _readPending();
+  const item = pending.find(p => p.pending_id === pendingId);
+  if (!item) return;
+  const p = item.payload;
+  const activity = _adminAuthorActivity(item.author_display);
+  const officerRate = _adminOfficerRate(p.officer_name, p.department);
+  const signals = _adminAbuseSignals(p, activity, officerRate);
+
+  const body = document.getElementById('storyDetailBody');
+  body.innerHTML = `
+    <div class="sd-eyebrow" style="color:var(--red);">🛡️ ADMIN REVIEW</div>
+    <h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin-bottom:6px;">Pending submission</h3>
+    <div style="color:var(--gray);font-size:0.86rem;margin-bottom:18px;">Submitted ${formatDate(item.submitted_at)} · ID <code style="font-family:Mono,monospace;font-size:0.78rem;background:var(--bg2);padding:2px 6px;border-radius:4px;">${item.pending_id}</code></div>
+
+    <!-- Abuse / quality signals -->
+    <div class="adm-signals">
+      <div class="adm-block-head">Signals</div>
+      ${signals.map(s => `<div class="adm-signal ${s.level}">${s.text}</div>`).join('')}
+    </div>
+
+    <!-- Author panel -->
+    <div class="adm-block">
+      <div class="adm-block-head">Contributor: <strong style="color:var(--ink);">${escapeHtml(item.author_display)}</strong></div>
+      <div class="adm-stats-grid">
+        <div><span class="adm-stat-n" style="color:${activity.trust.tier.color};">${activity.trust.score}</span><span class="adm-stat-l">Trust score</span></div>
+        <div><span class="adm-stat-n">${activity.total}</span><span class="adm-stat-l">Past stories</span></div>
+        <div><span class="adm-stat-n" style="color:var(--green);">${activity.fair}</span><span class="adm-stat-l">Recognitions</span></div>
+        <div><span class="adm-stat-n" style="color:var(--red);">${activity.unfair}</span><span class="adm-stat-l">Concerns</span></div>
+        <div><span class="adm-stat-n" style="color:var(--accent);">${activity.pendingCount}</span><span class="adm-stat-l">Pending now</span></div>
+        <div><span class="adm-stat-n" style="color:${activity.recentCount >= 5 ? 'var(--red)' : 'var(--ink)'};">${activity.recentCount}</span><span class="adm-stat-l">Last 24h</span></div>
+      </div>
+      ${activity.recent.length ? `
+        <div class="adm-block-sub">Recent stories from this contributor</div>
+        <div class="adm-history">
+          ${activity.recent.map(it => `
+            <div class="adm-history-row" onclick="closeStoryDetail(); openStoryDetail(${it.officer.id}, ${it.review.id});">
+              <span class="adm-role">${ROLE_ICON[inferRole(it.officer)] || '👤'}</span>
+              <strong>${escapeHtml(it.officer.name || 'Unknown')}</strong>
+              <span style="color:var(--gray);">${escapeHtml(it.officer.department || '')}</span>
+              <span class="adm-sent ${it.review.verdict === 'fair' ? 'pos' : 'neg'}">${it.review.verdict === 'fair' ? '★' : '⚠'}</span>
+              <span style="color:var(--gray);margin-left:auto;">${formatDate(it.review.created_at)}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : '<div class="adm-block-sub">No prior stories — this is their first submission.</div>'}
+    </div>
+
+    <!-- Officer / target activity -->
+    <div class="adm-block">
+      <div class="adm-block-head">Target: <strong style="color:var(--ink);">${escapeHtml(p.officer_name || 'Unknown')}</strong> · ${escapeHtml(p.department || 'Unknown agency')}</div>
+      <div class="adm-stats-grid" style="grid-template-columns:repeat(2,1fr);">
+        <div><span class="adm-stat-n" style="color:${officerRate.today >= 3 ? 'var(--red)' : 'var(--ink)'};">${officerRate.today}</span><span class="adm-stat-l">Submissions today</span></div>
+        <div><span class="adm-stat-n" style="color:${officerRate.week >= 8 ? 'var(--red)' : 'var(--ink)'};">${officerRate.week}</span><span class="adm-stat-l">This week</span></div>
+      </div>
+      ${officerRate.today >= 3 ? '<div class="adm-signal alert" style="margin-top:10px;">⚠ This target has been reported ' + officerRate.today + ' times today. Verify before approving.</div>' : ''}
+    </div>
+
+    <!-- Submission content — editable -->
+    <div class="adm-block">
+      <div class="adm-block-head">Submission content (editable before approval)</div>
+      <label class="adm-field-label">Story</label>
+      <textarea id="adm-edit-story" rows="6">${escapeHtml(p.story || '')}</textarea>
+      <div class="adm-row-fields">
+        <div>
+          <label class="adm-field-label">Role</label>
+          <select id="adm-edit-role">
+            ${['police','emt','fire','dmv','hospital','gov','other'].map(role => `<option value="${role}" ${p.role === role ? 'selected' : ''}>${role}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="adm-field-label">Verdict</label>
+          <select id="adm-edit-verdict">
+            <option value="fair" ${p.verdict === 'fair' ? 'selected' : ''}>Recognition (★)</option>
+            <option value="unfair" ${p.verdict === 'unfair' ? 'selected' : ''}>Concern (⚠)</option>
+          </select>
+        </div>
+        <div>
+          <label class="adm-field-label">Stars (1–5)</label>
+          <input id="adm-edit-stars" type="number" min="1" max="5" value="${p.stars || 3}">
+        </div>
+      </div>
+      <label class="adm-field-label">Tags (comma-separated)</label>
+      <input id="adm-edit-tags" type="text" value="${(p.tags || []).join(', ')}">
+
+      ${p.upload_url ? `
+        <div class="adm-block-sub">📎 Photo evidence (${escapeHtml(p.evidence_type || 'photo')})</div>
+        <div class="adm-photo-frame">
+          <div style="font-size:2.6rem;margin-bottom:8px;">📷</div>
+          <div style="font-weight:700;color:var(--ink);">${escapeHtml(p.evidence_type || 'Photo')} attached</div>
+          <div style="font-size:0.78rem;color:var(--gray);margin-top:4px;">File: <code style="font-family:Mono,monospace;background:var(--bg2);padding:2px 6px;border-radius:4px;">${escapeHtml(p.upload_url)}</code></div>
+          <div style="font-size:0.78rem;color:var(--gray);margin-top:6px;line-height:1.5;">Admin view: in production this would render the <strong>un-redacted original</strong> for moderation review. The user only sees the redacted version they applied before upload.</div>
+        </div>
+      ` : '<div class="adm-block-sub">No photo / evidence attached.</div>'}
+    </div>
+
+    <!-- Action bar -->
+    <div class="adm-action-bar">
+      <button class="adm-btn adm-btn-approve" onclick="adminApproveWithEdits('${pendingId}')">✓ Approve &amp; publish (with my edits)</button>
+      <button class="adm-btn adm-btn-reject" onclick="rejectPending('${pendingId}'); closeStoryDetail();">✕ Reject</button>
+      <button class="adm-btn adm-btn-ban" onclick="adminBanAuthor('${escapeHtml(item.author_display).replace(/'/g, "\\'")}'); closeStoryDetail();">⛔ Ban author</button>
+    </div>
+  `;
+  document.getElementById('storyDetailModal').classList.add('show');
+}
+
+// Approve with the admin's edits applied
+function adminApproveWithEdits(pendingId) {
+  const pending = _readPending();
+  const idx = pending.findIndex(p => p.pending_id === pendingId);
+  if (idx === -1) return;
+  const item = pending[idx];
+  // Pull edited values from the modal
+  item.payload.story = document.getElementById('adm-edit-story')?.value || item.payload.story;
+  item.payload.role  = document.getElementById('adm-edit-role')?.value  || item.payload.role;
+  item.payload.verdict = document.getElementById('adm-edit-verdict')?.value || item.payload.verdict;
+  item.payload.stars = parseInt(document.getElementById('adm-edit-stars')?.value || item.payload.stars, 10) || item.payload.stars;
+  const tagsStr = document.getElementById('adm-edit-tags')?.value || '';
+  item.payload.tags = tagsStr.split(',').map(s => s.trim().toLowerCase().replace(/^#/, '')).filter(Boolean);
+  item.approved_at = new Date().toISOString();
+  // Move to approved
+  const approved = _readApproved();
+  approved.unshift(item);
+  _writeApproved(approved);
+  pending.splice(idx, 1);
+  _writePending(pending);
+  closeStoryDetail();
+  renderModQueue();
+  loadOfficers();
+  loadStats();
+}
+
+// Soft ban — record handle in localStorage, future submissions from them go to a separate "auto-rejected" lane
+function adminBanAuthor(handle) {
+  if (!confirm(`Ban ${handle}? Future submissions from this handle will be auto-rejected. (Demo: stored locally.)`)) return;
+  const BAN_KEY = 'civicvoice_banned_v1';
+  let banned = [];
+  try { banned = JSON.parse(localStorage.getItem(BAN_KEY) || '[]'); } catch {}
+  if (!banned.includes(handle)) banned.push(handle);
+  localStorage.setItem(BAN_KEY, JSON.stringify(banned));
+  // Also reject all their pending stories
+  const pending = _readPending().filter(p => p.author_display !== handle);
+  _writePending(pending);
+  renderModQueue();
 }
 function approvePending(pendingId) {
   const pending = _readPending();
