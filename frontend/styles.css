@@ -514,21 +514,31 @@ section.active{display:block;}
 .search-bar-wrap button{background:var(--accent);color:var(--bg);border:none;border-radius:10px;padding:13px 22px;font-family:'Syne',sans-serif;font-weight:800;font-size:0.85rem;cursor:pointer;}
 
 .officer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:32px;}
-.officer-card{background:linear-gradient(180deg,var(--card),rgba(28,28,38,0.7));border-radius:14px;padding:22px;border:1px solid var(--border);cursor:pointer;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden;}
-.officer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(184,148,30,0.5),transparent);opacity:0;transition:opacity 0.3s;}
-.officer-card:hover{border-color:rgba(184,148,30,0.45);transform:translateY(-3px);box-shadow:0 12px 32px rgba(15,15,19,0.14);}
-.officer-card:hover::before{opacity:1;}
-.oc-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
-.oc-av{width:46px;height:46px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);font-size:0.9rem;border:1px solid var(--border);}
-.oc-name{font-weight:700;font-size:0.95rem;}
-.oc-dept{font-size:0.78rem;color:var(--gray);margin-top:2px;}
-.oc-stars{color:var(--accent);font-size:1rem;margin-bottom:6px;letter-spacing:1px;}
-.oc-meta{display:flex;gap:10px;}
-.oc-chip{border-radius:8px;padding:3px 10px;font-size:0.73rem;font-weight:700;}
-.oc-chip.fair{background:rgba(78,201,138,0.1);color:var(--green);}
-.oc-chip.unfair{background:rgba(224,82,82,0.1);color:var(--red);}
-.oc-chip.neutral{background:rgba(15,15,19,0.045);color:var(--gray);}
-.oc-reviews{font-size:0.75rem;color:var(--gray);margin-top:8px;}
+.officer-card{background:var(--card);border-radius:18px;padding:22px 24px 18px;border:1px solid var(--border);cursor:pointer;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(15,15,19,0.04);display:flex;flex-direction:column;gap:8px;}
+.officer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--role-color, var(--accent));opacity:0.9;}
+.officer-card.role-police{--role-color:#2563d9;}
+.officer-card.role-emt{--role-color:#c93434;}
+.officer-card.role-fire{--role-color:#e07a1a;}
+.officer-card.role-dmv{--role-color:#7a51c8;}
+.officer-card.role-hospital{--role-color:#1f8c5f;}
+.officer-card.role-gov{--role-color:#8a6a1e;}
+.officer-card.role-contributor{--role-color:var(--accent);}
+.officer-card:hover{border-color:rgba(15,15,19,0.18);transform:translateY(-4px);box-shadow:0 18px 40px rgba(15,15,19,0.12);}
+
+.oc-eyebrow{font-size:0.68rem;font-weight:700;letter-spacing:1.2px;color:var(--role-color, var(--accent));text-transform:uppercase;margin-top:4px;}
+.officer-card .oc-name{font-family:'Syne',sans-serif;font-size:1.18rem;font-weight:800;letter-spacing:-0.4px;color:var(--ink);line-height:1.2;display:flex;align-items:center;gap:10px;}
+.officer-card .oc-initial{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:0.85rem;flex-shrink:0;}
+.officer-card .oc-dept{font-size:0.84rem;color:var(--light);line-height:1.4;}
+.oc-stat-row{display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:10px;border-top:1px solid var(--border);}
+.oc-stars{color:var(--accent);font-size:1rem;letter-spacing:2px;line-height:1;}
+.oc-avg{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--ink);}
+.officer-card .oc-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.officer-card .oc-chip{font-size:0.72rem;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:0.3px;border:1px solid;}
+.officer-card .oc-chip.fair{background:rgba(31,140,95,0.08);color:var(--green);border-color:rgba(31,140,95,0.22);}
+.officer-card .oc-chip.unfair{background:rgba(201,52,52,0.06);color:var(--red);border-color:rgba(201,52,52,0.22);}
+.officer-card .oc-count{font-size:0.74rem;color:var(--gray);margin-left:auto;font-weight:600;}
+.oc-view{background:var(--accent-soft);color:var(--accent);border:1px solid rgba(184,148,30,0.32);font-family:'Epilogue',sans-serif;font-weight:700;font-size:0.82rem;padding:9px 14px;border-radius:10px;cursor:pointer;margin-top:6px;transition:all 0.18s;text-align:center;}
+.officer-card:hover .oc-view{background:var(--accent);color:#fff;border-color:var(--accent);}
 
 /* Officer detail modal */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,19,0.45);z-index:300;backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;}

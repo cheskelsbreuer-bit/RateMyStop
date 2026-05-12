@@ -776,23 +776,25 @@ function renderOfficers(list) {
     return;
   }
   const ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
+  const ROLE_LABEL = { police:'POLICE', emt:'EMT / EMS', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOVERNMENT' };
   grid.innerHTML = list.map(o => {
     const role = inferRole(o);
+    const stars = Math.round(o.avg_stars || 0);
     return `
-    <div class="officer-card" onclick="openOfficer(${o.id})">
-      <div class="oc-top">
-        <div class="oc-av">${ICON[role] || '👤'}</div>
-        <div style="flex:1;min-width:0;">
-          <div class="oc-name">${escapeHtml(o.name || 'Unknown')}</div>
-          <div class="oc-dept">${escapeHtml(o.department || 'Unknown agency')}</div>
-        </div>
+    <div class="officer-card role-${role}" onclick="openOfficer(${o.id})">
+      <div class="oc-eyebrow">${ICON[role] || '👤'} ${ROLE_LABEL[role] || ''}</div>
+      <div class="oc-name">${escapeHtml(o.name || 'Unknown')}</div>
+      <div class="oc-dept">${escapeHtml(o.department || 'Unknown agency')}</div>
+      <div class="oc-stat-row">
+        <span class="oc-stars">${starsStr(stars)}</span>
+        <span class="oc-avg">${(o.avg_stars || 0).toFixed(1)}</span>
       </div>
-      <div class="oc-stars">${starsStr(Math.round(o.avg_stars || 0))} <span style="font-size:0.78rem;color:var(--gray);margin-left:4px;">${(o.avg_stars || 0).toFixed(1)}</span></div>
       <div class="oc-meta">
-        ${o.fair_count > 0 ? `<span class="oc-chip fair">${o.fair_count} ${o.fair_count === 1 ? 'recognition' : 'recognitions'}</span>` : ''}
-        ${o.unfair_count > 0 ? `<span class="oc-chip unfair">${o.unfair_count} concern${o.unfair_count === 1 ? '' : 's'}</span>` : ''}
+        ${o.fair_count > 0 ? `<span class="oc-chip fair">★ ${o.fair_count}</span>` : ''}
+        ${o.unfair_count > 0 ? `<span class="oc-chip unfair">⚠ ${o.unfair_count}</span>` : ''}
+        <span class="oc-count">${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'}</span>
       </div>
-      <div class="oc-reviews">${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'} · tap to read</div>
+      <button class="oc-view">View profile &rarr;</button>
     </div>
   `;}).join('');
 }
@@ -869,20 +871,47 @@ function getPulsePreferenceScore(type, key) {
   return (p[type] && p[type][key]) || 0;
 }
 
+// Cached preference totals for normalization (refreshed each render)
+let _pulsePrefCache = null;
+function _refreshPulsePrefCache() {
+  const p = _readPulsePrefs();
+  const sum = (obj) => Object.values(obj || {}).reduce((s, n) => s + n, 0);
+  _pulsePrefCache = {
+    prefs: p,
+    totalRole: sum(p.role) || 1,
+    totalSent: sum(p.sentiment) || 1,
+    totalAgency: sum(p.agency) || 1,
+  };
+}
+
 function _pulseMomentum(it) {
   const r = it.review;
-  // Base momentum: recency + replies + agency-acknowledged
+  if (!_pulsePrefCache) _refreshPulsePrefCache();
+  const { prefs, totalRole, totalSent, totalAgency } = _pulsePrefCache;
+
+  // Base momentum — story-intrinsic signals
   const ageHours = Math.max(1, (Date.now() - new Date(r.created_at || 0).getTime()) / 3600000);
-  const recencyScore = Math.max(0, 100 - ageHours);
-  const replyScore   = getReplyCount(it.officer.id, r.id) * 8;
-  const ackScore     = getResolutionStatus(it.officer.id, r.id, r) === 'acknowledged' ? 15 : 0;
-  // Personalization boost — surfaces what THIS user engages with
-  const rolePref      = getPulsePreferenceScore('role', it.role) * 5;
-  const sentimentPref = getPulsePreferenceScore('sentiment', r.verdict) * 3;
-  const agencyPref    = getPulsePreferenceScore('agency', it.officer.department) * 4;
-  // Subscribed agencies get a bigger boost
-  const subBoost      = getSubs().includes(it.officer.department) ? 20 : 0;
-  return recencyScore + replyScore + ackScore + rolePref + sentimentPref + agencyPref + subBoost;
+  const recencyScore = Math.max(0, 100 - Math.log2(ageHours) * 10);   // log-decay: doesn't punish older too hard
+  const replyScore   = Math.min(40, getReplyCount(it.officer.id, r.id) * 6);
+  const ackScore     = getResolutionStatus(it.officer.id, r.id, r) === 'acknowledged' ? 12 : 0;
+  const verifiedBoost= r.upload_url ? 4 : 0;
+
+  // Personalization signals — all *normalized* (share of your engagement), not raw counts.
+  // So nothing gets a fat thumb on the scale just because you clicked it once.
+  const rolePct   = (prefs.role?.[it.role] || 0) / totalRole;                            // 0..1
+  const sentPct   = (prefs.sentiment?.[r.verdict] || 0) / totalSent;                     // 0..1
+  const agencyPct = (prefs.agency?.[it.officer.department] || 0) / totalAgency;          // 0..1
+
+  // Cap each personalization signal at +18 max — none can dominate.
+  const rolePref   = rolePct * 18;
+  const sentPref   = sentPct * 10;
+  const agencyPref = agencyPct * 18;
+
+  // Subscriptions are just one more signal (+6), not a flat dominator.
+  const subPref = getSubs().includes(it.officer.department) ? 6 : 0;
+
+  return recencyScore + replyScore + ackScore + verifiedBoost
+       + rolePref + sentPref + agencyPref + subPref;
 }
 
 // Category-mix: no more than 2 in a row of the same role. Keeps the feed varied
@@ -950,6 +979,7 @@ function _renderOnePulseCard(it) {
 function renderPulse() {
   const stage = document.getElementById('pulseStage');
   if (!stage) return;
+  _refreshPulsePrefCache();
   // Gather all reviews
   const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
   const approved = getApprovedAsOfficers();
@@ -1082,20 +1112,22 @@ function renderContributors() {
     const trust = computeTrustScore(c.handle);
     const initial = c.handle.charAt(0).toUpperCase();
     return `
-      <div class="officer-card" onclick="openAuthorProfile('${escapeHtml(c.handle).replace(/'/g, "\\'")}');" style="cursor:pointer;">
-        <div class="oc-top">
-          <div class="oc-av" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;">${escapeHtml(initial)}</div>
-          <div style="flex:1;min-width:0;">
-            <div class="oc-name">${escapeHtml(c.handle)}</div>
-            <div class="oc-dept">Trust: <strong style="color:${trust.tier.color};">${trust.score}/100 · ${trust.tier.label}</strong></div>
-          </div>
+      <div class="officer-card role-contributor" onclick="openAuthorProfile('${escapeHtml(c.handle).replace(/'/g, "\\'")}');">
+        <div class="oc-eyebrow" style="color:${trust.tier.color};">${trust.tier.label} · TRUST ${trust.score}/100</div>
+        <div class="oc-name" style="display:flex;align-items:center;gap:10px;">
+          <span class="oc-initial" style="background:${trust.tier.color}22;color:${trust.tier.color};">${escapeHtml(initial)}</span>
+          ${escapeHtml(c.handle)}
         </div>
-        <div style="display:flex;gap:10px;font-size:0.78rem;margin-bottom:6px;">
-          <span style="color:var(--green);">★ ${c.fair}</span>
-          <span style="color:var(--red);">⚠ ${c.unfair}</span>
-          <span style="color:var(--gray);margin-left:auto;">Avg ${c.avgStars.toFixed(1)}★</span>
+        <div class="oc-dept">Average rating given: ${c.avgStars.toFixed(1)}★</div>
+        <div class="oc-stat-row">
+          <span class="oc-stars">${starsStr(Math.round(c.avgStars))}</span>
+          <span class="oc-avg">${c.avgStars.toFixed(1)}</span>
         </div>
-        <div class="oc-reviews">${c.total} stor${c.total === 1 ? 'y' : 'ies'} · tap to view</div>
+        <div class="oc-meta">
+          <span class="oc-chip fair">★ ${c.fair} recognitions</span>
+          ${c.unfair > 0 ? `<span class="oc-chip unfair">⚠ ${c.unfair} concerns</span>` : ''}
+        </div>
+        <button class="oc-view">View stories &rarr;</button>
       </div>
     `;
   }).join('');
