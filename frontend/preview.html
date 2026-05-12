@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>CivicVoice &mdash; Device Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&amp;family=Epilogue:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#fafaf7; --card:#fff; --border:#e5e3dd; --ink:#1a1a1d;
+    --gray:#7a7a82; --light:#3d3d45; --accent:#b8941e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+
+  .pv-top{position:sticky;top:0;z-index:10;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .pv-brand{display:flex;align-items:center;gap:10px;}
+  .pv-brand-mark{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:#fff;font-size:0.9rem;}
+  .pv-brand-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;letter-spacing:-0.4px;}
+  .pv-brand-name span{color:var(--accent);}
+  .pv-title{font-size:0.86rem;color:var(--gray);margin-right:auto;}
+
+  .pv-tabs{display:flex;gap:6px;background:#f3f3ee;border:1px solid var(--border);border-radius:10px;padding:4px;}
+  .pv-tabs button{background:transparent;border:none;color:var(--gray);font-family:'Epilogue',sans-serif;font-size:0.86rem;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.18s;display:inline-flex;align-items:center;gap:6px;}
+  .pv-tabs button:hover{color:var(--ink);}
+  .pv-tabs button.on{background:var(--ink);color:#fff;}
+
+  .pv-link{font-size:0.86rem;color:var(--accent);text-decoration:none;font-weight:700;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);}
+  .pv-link:hover{background:#fef9e7;border-color:rgba(184,148,30,0.4);}
+
+  .pv-stage{display:flex;align-items:flex-start;justify-content:center;padding:40px 20px 60px;min-height:calc(100vh - 80px);}
+  .pv-device{position:relative;transition:width 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1);}
+
+  /* Phone — looks like an iPhone */
+  .pv-device.phone{width:390px;height:844px;padding:14px;background:linear-gradient(180deg,#1a1a1d,#0f0f13);border-radius:46px;box-shadow:0 30px 80px rgba(15,15,19,0.25), inset 0 0 0 2px #2a2a2d;}
+  .pv-device.phone::before{content:'';position:absolute;top:14px;left:50%;transform:translateX(-50%);width:110px;height:28px;background:#000;border-radius:0 0 16px 16px;z-index:2;}
+  .pv-device.phone iframe{border-radius:34px;}
+
+  /* Tablet — looks like an iPad */
+  .pv-device.tablet{width:820px;height:1080px;max-height:calc(100vh - 140px);padding:18px;background:#1a1a1d;border-radius:32px;box-shadow:0 30px 80px rgba(15,15,19,0.22), inset 0 0 0 2px #2a2a2d;}
+  .pv-device.tablet iframe{border-radius:18px;}
+
+  /* Desktop — frameless monitor */
+  .pv-device.desktop{width:1280px;max-width:calc(100vw - 60px);height:800px;padding:0;background:transparent;border:1px solid var(--border);border-radius:10px;box-shadow:0 18px 50px rgba(15,15,19,0.12);overflow:hidden;}
+  .pv-device.desktop iframe{border-radius:8px;}
+
+  .pv-device iframe{display:block;width:100%;height:100%;border:none;background:#fff;}
+
+  .pv-meta{text-align:center;color:var(--gray);font-size:0.8rem;margin-top:18px;padding:0 20px;}
+  .pv-meta strong{color:var(--ink);font-weight:700;}
+
+  @media(max-width:880px){
+    .pv-top{padding:12px 16px;gap:10px;}
+    .pv-title{display:none;}
+    .pv-device.tablet,.pv-device.desktop{transform:scale(0.6);transform-origin:top center;margin-bottom:-40%;}
+    .pv-device.phone{transform:scale(0.85);transform-origin:top center;}
+  }
+</style>
+</head>
+<body>
+
+<div class="pv-top">
+  <div class="pv-brand">
+    <div class="pv-brand-mark">C</div>
+    <div class="pv-brand-name">Civic<span>Voice</span></div>
+  </div>
+  <div class="pv-title">Device Preview &middot; see the live site at any screen size</div>
+  <div class="pv-tabs">
+    <button class="on" id="b-phone"   onclick="setDevice('phone')">&#128241; Phone</button>
+    <button         id="b-tablet"  onclick="setDevice('tablet')">&#128250; Tablet</button>
+    <button         id="b-desktop" onclick="setDevice('desktop')">&#128187; Desktop</button>
+  </div>
+  <a class="pv-link" href="./index.html" target="_blank">Open live &rarr;</a>
+</div>
+
+<div class="pv-stage">
+  <div class="pv-device phone" id="pvDevice">
+    <iframe id="pvFrame" src="./index.html" title="CivicVoice preview" allow="clipboard-write; geolocation; web-share"></iframe>
+  </div>
+</div>
+
+<div class="pv-meta">
+  <strong id="pvMeta">Phone &middot; 390 &times; 844</strong>
+  &middot; this loads the actual live site at the chosen viewport width. Everything inside is interactive.
+</div>
+
+<script>
+  function setDevice(kind) {
+    const device = document.getElementById('pvDevice');
+    const meta = document.getElementById('pvMeta');
+    device.classList.remove('phone', 'tablet', 'desktop');
+    device.classList.add(kind);
+    document.querySelectorAll('.pv-tabs button').forEach(b => b.classList.remove('on'));
+    document.getElementById('b-' + kind).classList.add('on');
+    const labels = {
+      phone:   'Phone · 390 × 844',
+      tablet:  'Tablet · 820 × 1080',
+      desktop: 'Desktop · 1280 × 800',
+    };
+    meta.textContent = labels[kind];
+  }
+  // Switch via keyboard: 1/2/3
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '1') setDevice('phone');
+    else if (e.key === '2') setDevice('tablet');
+    else if (e.key === '3') setDevice('desktop');
+  });
+</script>
+
+</body>
+</html>

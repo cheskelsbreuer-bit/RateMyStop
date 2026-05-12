@@ -3166,21 +3166,21 @@ function renderRankings() {
   rows = rows.slice(0, 40);
 
   wrap.innerHTML = `
-    <div class="rank-row head" style="grid-template-columns:60px 1fr 140px 100px;">
+    <div class="rank-row head">
       <div class="rank-pos head">#</div>
       <div>DEPARTMENT</div>
       <div>AVG RATING</div>
-      <div>STORIES</div>
+      <div class="rk-stories">STORIES</div>
     </div>
     ${rows.map(d => `
-      <div class="rank-row" style="grid-template-columns:60px 1fr 140px 100px;cursor:pointer;" onclick="openDepartmentDetail('${escapeHtml(d.name).replace(/'/g, "\\'")}');">
+      <div class="rank-row" style="cursor:pointer;" onclick="openDepartmentDetail('${escapeHtml(d.name).replace(/'/g, "\\'")}');">
         <div class="rank-pos">${d._rank.toString().padStart(2, '0')}</div>
         <div>
           <div class="rank-name">${escapeHtml(d.name)}</div>
-          <div class="rank-name-sub">${d.officer_count} ${d.officer_count === 1 ? 'person' : 'people'} · tap to view stories</div>
+          <div class="rank-name-sub">${d.officer_count} ${d.officer_count === 1 ? 'person' : 'people'} · tap to view</div>
         </div>
-        <div class="rank-stars">${'★'.repeat(Math.round(d.avg)) + '☆'.repeat(5 - Math.round(d.avg))} <span style="color:var(--gray);font-size:0.78rem;">${d.avg.toFixed(1)}</span></div>
-        <div class="rank-num review-count">${d.review_count}</div>
+        <div class="rank-stars">${'★'.repeat(Math.round(d.avg)) + '☆'.repeat(5 - Math.round(d.avg))} <span style="color:var(--gray);font-size:0.78rem;margin-left:4px;">${d.avg.toFixed(1)}</span></div>
+        <div class="rank-num rk-stories">${d.review_count}</div>
       </div>
     `).join('')}
   `;
