@@ -21,6 +21,7 @@ const APPROVED_KEY = 'civicvoice_approved_v1'; // user-submitted reviews that ha
 const RESOLUTIONS_KEY = 'civicvoice_resolutions_v1';   // resolution status overrides per story
 const NOTIFS_KEY = 'civicvoice_notifs_v1';             // notifications for current user
 const NOTIF_PREFS_KEY = 'civicvoice_notif_prefs_v1';   // per-event notification preferences
+const PULSE_PREFS_KEY = 'civicvoice_pulse_prefs_v1';   // learned preferences (role/sentiment/agency)
 let _pendingAuthAction = null;
 
 function getCurrentUser() {
@@ -853,14 +854,49 @@ function setPulseFilter(el, key) {
   renderPulse();
 }
 
+// ── Pulse preference learning — what does THIS user actually engage with? ──
+function _readPulsePrefs() { try { return JSON.parse(localStorage.getItem(PULSE_PREFS_KEY) || '{}'); } catch { return {}; } }
+function _writePulsePrefs(p) { localStorage.setItem(PULSE_PREFS_KEY, JSON.stringify(p)); }
+function recordPulsePreference(type, key) {
+  if (!key) return;
+  const p = _readPulsePrefs();
+  p[type] = p[type] || {};
+  p[type][key] = (p[type][key] || 0) + 1;
+  _writePulsePrefs(p);
+}
+function getPulsePreferenceScore(type, key) {
+  const p = _readPulsePrefs();
+  return (p[type] && p[type][key]) || 0;
+}
+
 function _pulseMomentum(it) {
   const r = it.review;
-  // Momentum = recency + reactions + replies + agency-acknowledged
+  // Base momentum: recency + replies + agency-acknowledged
   const ageHours = Math.max(1, (Date.now() - new Date(r.created_at || 0).getTime()) / 3600000);
-  const recencyScore = Math.max(0, 100 - ageHours);  // newer = higher
+  const recencyScore = Math.max(0, 100 - ageHours);
   const replyScore   = getReplyCount(it.officer.id, r.id) * 8;
   const ackScore     = getResolutionStatus(it.officer.id, r.id, r) === 'acknowledged' ? 15 : 0;
-  return recencyScore + replyScore + ackScore;
+  // Personalization boost — surfaces what THIS user engages with
+  const rolePref      = getPulsePreferenceScore('role', it.role) * 5;
+  const sentimentPref = getPulsePreferenceScore('sentiment', r.verdict) * 3;
+  const agencyPref    = getPulsePreferenceScore('agency', it.officer.department) * 4;
+  // Subscribed agencies get a bigger boost
+  const subBoost      = getSubs().includes(it.officer.department) ? 20 : 0;
+  return recencyScore + replyScore + ackScore + rolePref + sentimentPref + agencyPref + subBoost;
+}
+
+// Category-mix: no more than 2 in a row of the same role. Keeps the feed varied
+// so police doesn't drown out EMT / Fire / DMV / Hospital / Gov't.
+function _mixByCategory(sortedItems, windowSize = 2) {
+  const result = [];
+  const pool = sortedItems.slice();
+  while (pool.length) {
+    const recent = result.slice(-windowSize).map(it => it.role);
+    let pickedIdx = pool.findIndex(it => !recent.includes(it.role));
+    if (pickedIdx === -1) pickedIdx = 0;  // ran out of variety — just take the next
+    result.push(pool.splice(pickedIdx, 1)[0]);
+  }
+  return result;
 }
 
 function _renderOnePulseCard(it) {
@@ -931,8 +967,10 @@ function renderPulse() {
   else if (_pulseFilter === 'concerns') items = items.filter(it => it.review.verdict === 'unfair');
   else if (_pulseFilter === 'open')      items = items.filter(it => getResolutionStatus(it.officer.id, it.review.id, it.review) === 'open');
   else if (_pulseFilter === 'subscribed') items = items.filter(it => subs.includes(it.officer.department));
-  // Sort by momentum
+  // Sort by momentum (recency + reactions + your prefs + subscriptions)
   items.sort((a, b) => _pulseMomentum(b) - _pulseMomentum(a));
+  // Mix categories so no role dominates — interleave Police / EMT / Fire / DMV / Hospital / Gov't
+  items = _mixByCategory(items, 2);
   items = items.slice(0, 100);
   _pulseItems = items;
   if (!items.length) {
@@ -1961,6 +1999,10 @@ function thanksTo(btn, evt) {
       const author = it.review.author_display || _legacyAuthor(it.officer.id, it.review.id);
       const u = getCurrentUser();
       const me = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : 'Anonymous';
+      // Learn what this user engages with — boosts similar stories in Pulse
+      recordPulsePreference('role', it.role);
+      recordPulsePreference('sentiment', it.review.verdict);
+      recordPulsePreference('agency', it.officer.department);
       if (author !== me) {
         addNotification(author, {
           type: 'same_here',
