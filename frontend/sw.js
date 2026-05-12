@@ -1,6 +1,6 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v12-eight';
+const CACHE = 'civicvoice-v13-focus';
 const ASSETS = [
   './',
   './index.html',

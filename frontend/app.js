@@ -16,6 +16,8 @@ const EMAIL_DIGEST_KEY = 'civicvoice_email_digest_v1';
 const SUBS_KEY = 'civicvoice_agency_subs_v1';
 const DMS_KEY = 'civicvoice_dms_v1';
 const PUSH_KEY = 'civicvoice_push_v1';
+const PENDING_KEY = 'civicvoice_pending_v1';   // user-submitted reviews awaiting moderation
+const APPROVED_KEY = 'civicvoice_approved_v1'; // user-submitted reviews that have been approved
 let _pendingAuthAction = null;
 
 function getCurrentUser() {
@@ -147,7 +149,7 @@ function getAuthorDisplay() {
 }
 
 // ── NAVIGATION ──
-const NAV_IDS = ['home', 'share', 'officers', 'map', 'rankings', 'complaint', 'orgs', 'deck'];
+const NAV_IDS = ['home', 'share', 'officers', 'contributors', 'rankings', 'complaint', 'orgs', 'deck'];
 
 function nav(id) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
@@ -160,9 +162,10 @@ function nav(id) {
   if (id === 'officers')  loadOfficers();
   if (id === 'home')      loadStats();
   if (id === 'complaint') renderDepartments();
-  if (id === 'rankings')  renderRankings();
-  if (id === 'orgs')      renderOrgState();
-  if (id === 'admin')     renderModQueue();
+  if (id === 'rankings')     renderRankings();
+  if (id === 'orgs')         renderOrgState();
+  if (id === 'admin')        renderModQueue();
+  if (id === 'contributors') renderContributors();
 }
 
 // ── RATE FORM STATE ──
@@ -676,18 +679,14 @@ async function submitReview() {
   };
 
   try {
+    // Also persist to the local pending queue so admins can approve and it shows up live
+    _addToPendingQueue(payload);
     const result = await api.submitReview(payload);
-    // Tailor success copy to demo mode vs live
     const isDemo = result && result.demo;
     const sTitle = document.getElementById('successTitle');
     const sSub   = document.getElementById('successSub');
-    if (isDemo) {
-      if (sTitle) sTitle.textContent = 'Your story is saved (preview mode).';
-      if (sSub)   sSub.innerHTML = 'When we go live, it joins the public record. For now, share it with your network below.';
-    } else {
-      if (sTitle) sTitle.textContent = 'Your story is on the record.';
-      if (sSub)   sSub.textContent = 'Public service is real because of moments like this. Help others see it.';
-    }
+    if (sTitle) sTitle.textContent = 'Your story is in moderation.';
+    if (sSub)   sSub.innerHTML = 'Pending review by our moderators. Once approved, it joins the public record. <a href="?admin=1" style="color:var(--accent);font-weight:700;">View admin queue &rarr;</a>';
     document.getElementById('successBox').classList.add('show');
     btn.style.display = 'none';
     setTimeout(() => {
@@ -742,15 +741,17 @@ async function loadOfficers() {
   if (stream) stream.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Loading stories…</div>';
   if (grid)   grid.innerHTML   = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Loading…</div>';
   try {
-    officerCache = await api.listOfficers();
+    const seed = await api.listOfficers();
+    const approved = getApprovedAsOfficers();
+    officerCache = [...approved, ...seed];  // user submissions surface at the top
     applyFilters();
   } catch (err) {
     if (stream) stream.innerHTML = `<div style="color:var(--red);text-align:center;padding:40px 0;">Couldn't load stories: ${err.message}</div>`;
   }
 }
 
-// Stream / grid toggle
-let storiesView = 'stream';
+// Stream / grid toggle — DEFAULT to grid (By person) per founder preference
+let storiesView = 'grid';
 function setStoriesView(el, view) {
   storiesView = view;
   document.querySelectorAll('.view-toggle .vt-btn').forEach(b => b.classList.remove('on'));
@@ -832,6 +833,74 @@ function closeModal(e) {
 }
 
 function searchOfficers() { applyFilters(); }
+
+// ── CONTRIBUTORS / COMMUNITY page ──
+let _contribSort = 'recent';
+function setContributorSort(el, key) {
+  document.querySelectorAll('#contributors .pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  _contribSort = key;
+  renderContributors();
+}
+function renderContributors() {
+  const grid = document.getElementById('contributorGrid');
+  if (!grid) return;
+  // Build a map: handle → { stories[], fair, total, avgStars, lastDate }
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const approved = getApprovedAsOfficers();
+  const all = [...approved, ...officers];
+  const map = new Map();
+  for (const o of all) {
+    for (const r of (o.reviews || [])) {
+      const handle = r.author_display || _legacyAuthor(o.id, r.id);
+      if (!map.has(handle)) map.set(handle, { handle, total: 0, fair: 0, unfair: 0, sumStars: 0, lastDate: null });
+      const entry = map.get(handle);
+      entry.total++;
+      if (r.verdict === 'fair') entry.fair++; else entry.unfair++;
+      entry.sumStars += (r.stars || 3);
+      const d = new Date(r.created_at || 0);
+      if (!entry.lastDate || d > entry.lastDate) entry.lastDate = d;
+    }
+  }
+  let list = Array.from(map.values()).map(e => ({ ...e, avgStars: e.total ? e.sumStars / e.total : 0 }));
+
+  // Filter by search
+  const q = (document.getElementById('contributorSearch')?.value || '').toLowerCase().trim();
+  if (q) list = list.filter(c => c.handle.toLowerCase().includes(q));
+
+  // Sort
+  if (_contribSort === 'most')          list.sort((a, b) => b.total - a.total);
+  else if (_contribSort === 'positive') list.sort((a, b) => b.fair - a.fair);
+  else                                  list.sort((a, b) => (b.lastDate || 0) - (a.lastDate || 0));
+  list = list.slice(0, 120);
+
+  if (!list.length) {
+    grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">No contributors found.</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(c => {
+    const trust = computeTrustScore(c.handle);
+    const initial = c.handle.charAt(0).toUpperCase();
+    return `
+      <div class="officer-card" onclick="openAuthorProfile('${escapeHtml(c.handle).replace(/'/g, "\\'")}');" style="cursor:pointer;">
+        <div class="oc-top">
+          <div class="oc-av" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;">${escapeHtml(initial)}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="oc-name">${escapeHtml(c.handle)}</div>
+            <div class="oc-dept">Trust: <strong style="color:${trust.tier.color};">${trust.score}/100 · ${trust.tier.label}</strong></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;font-size:0.78rem;margin-bottom:6px;">
+          <span style="color:var(--green);">★ ${c.fair}</span>
+          <span style="color:var(--red);">⚠ ${c.unfair}</span>
+          <span style="color:var(--gray);margin-left:auto;">Avg ${c.avgStars.toFixed(1)}★</span>
+        </div>
+        <div class="oc-reviews">${c.total} stor${c.total === 1 ? 'y' : 'ies'} · tap to view</div>
+      </div>
+    `;
+  }).join('');
+}
 
 // Click a #tag chip → jump to Stories with the tag pre-filtered in the search
 function filterByTag(tag) {
@@ -1016,7 +1085,14 @@ function openStoryDetail(officerId, reviewId) {
       </div>
       <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
       <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
-      <button class="sp-action primary" onclick="closeStoryDetail(); openOfficer(${o.id})">View full profile →</button>
+      ${(() => {
+        const u = getCurrentUser();
+        const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
+        const isMine = myHandle && myHandle === author;
+        return isMine
+          ? `<button class="sp-action primary" onclick="closeStoryDetail(); nav('complaint');">&#9993;&#65039; Send to agency</button>`
+          : `<button class="sp-action primary" onclick="closeStoryDetail(); openOfficer(${o.id})">View full profile →</button>`;
+      })()}
     </div>
     <div class="reply-thread">
       <div class="reply-thread-head">
@@ -1607,11 +1683,12 @@ async function loadStats() {
       deptCount = new Set(officers.map(o => o.department).filter(Boolean)).size;
     }
     const s = await api.stats();
-    const moments = s.total_reviews || 0;
+    const approvedExtra = _readApproved().length;
+    const moments = (s.total_reviews || 0) + approvedExtra;
     document.getElementById('statMoments').textContent      = moments.toLocaleString() + (moments >= 100 ? '+' : '');
-    document.getElementById('statRecognized').textContent   = recognizedCount.toLocaleString();
+    document.getElementById('statRecognized').textContent   = (recognizedCount + _readApproved().filter(a => a.payload.verdict === 'fair').length).toLocaleString();
     document.getElementById('statDepartments').textContent  = deptCount.toLocaleString();
-    document.getElementById('statOfficers').textContent     = (s.officer_count || 0).toLocaleString();
+    document.getElementById('statOfficers').textContent     = ((s.officer_count || 0) + approvedExtra).toLocaleString();
   } catch (err) {
     console.warn('Stats unavailable:', err.message);
   }
@@ -1956,51 +2033,154 @@ function renderOrgState() {
   }
 }
 
-// ─── MODERATION QUEUE (admin-only, accessed via ?admin=1) ───
+// ─── PENDING / APPROVED REVIEW QUEUES (real moderation flow) ───
+function _readPending() { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch { return []; } }
+function _writePending(arr) { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
+function _readApproved() { try { return JSON.parse(localStorage.getItem(APPROVED_KEY) || '[]'); } catch { return []; } }
+function _writeApproved(arr) { localStorage.setItem(APPROVED_KEY, JSON.stringify(arr)); }
+
+function _addToPendingQueue(payload) {
+  const pending = _readPending();
+  const user = getCurrentUser();
+  pending.unshift({
+    pending_id: 'p' + Date.now(),
+    payload,
+    author_handle: user?.handle || 'Anonymous',
+    author_display: payload.reviewer_name || (user ? (user.anonymous ? user.handle : (user.displayName || user.handle)) : 'Anonymous'),
+    submitted_at: new Date().toISOString(),
+  });
+  _writePending(pending);
+}
+
+// Approved user submissions get folded into the stories feed (alongside seed data).
+// We return them as synthetic "officers" with one review each, so the existing render
+// code Just Works without changes.
+function getApprovedAsOfficers() {
+  const approved = _readApproved();
+  return approved.map((a, idx) => {
+    const p = a.payload;
+    const id = 1000000 + idx;  // synthetic ID — won't collide with seed
+    return {
+      id,
+      name: p.officer_name || (p.role === 'police' ? 'Unknown Officer' : 'Unknown'),
+      badge: p.officer_badge || null,
+      department: p.department || 'Unknown agency',
+      avg_stars: p.stars || 3,
+      review_count: 1,
+      fair_count: p.verdict === 'fair' ? 1 : 0,
+      unfair_count: p.verdict === 'unfair' ? 1 : 0,
+      reviews: [{
+        id: 50000 + idx,
+        verdict: p.verdict || 'fair',
+        stars: p.stars || 3,
+        story: p.story,
+        location: p.location,
+        ticket_amount: p.ticket_amount,
+        ticket_violation: p.ticket_violation,
+        upload_url: p.upload_url,
+        evidence_type: p.evidence_type,
+        tags: p.tags || [],
+        author_display: a.author_display,
+        author_handle: a.author_handle,
+        created_at: a.approved_at || a.submitted_at,
+      }],
+    };
+  });
+}
+
+// ─── MODERATION QUEUE — admin view (access via ?admin=1) ───
 function renderModQueue() {
   const wrap = document.getElementById('modQueueList');
   if (!wrap) return;
-  // For the demo, we treat the 3 most recently posted stories as "pending" — in production
-  // this'd be a separate queue table. The point is to demonstrate the workflow.
-  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
-  const items = [];
-  for (const o of officers) {
-    for (const r of (o.reviews || [])) {
-      items.push({ officer: o, review: r, role: inferRole(o) });
-    }
-  }
-  items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
-  const pending = items.slice(0, 5);
-  wrap.innerHTML = pending.map(it => {
-    const o = it.officer, r = it.review;
-    return `
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:700;font-size:0.95rem;">${ROLE_ICON[it.role] || '👤'} ${escapeHtml(o.name || 'Unknown')}</div>
-            <div style="font-size:0.82rem;color:var(--gray);">${escapeHtml(o.department || '')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
-          </div>
-          <div style="font-size:0.74rem;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(184,148,30,0.3);border-radius:999px;padding:3px 10px;font-weight:700;">PENDING</div>
-        </div>
-        <div style="font-size:0.92rem;line-height:1.65;color:var(--light);margin-bottom:14px;">${escapeHtml((r.story || '(No description)').slice(0, 320))}${(r.story || '').length > 320 ? '…' : ''}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="sp-action" style="background:rgba(31,140,95,0.1);border-color:rgba(31,140,95,0.4);color:var(--green);" onclick="_modAction(this, 'approved')">✓ Approve</button>
-          <button class="sp-action" style="background:rgba(201,52,52,0.08);border-color:rgba(201,52,52,0.4);color:var(--red);" onclick="_modAction(this, 'rejected')">✕ Reject</button>
-          <button class="sp-action" onclick="closeStoryDetail(); openStoryDetail(${o.id}, ${r.id})">👁 View full</button>
-          <span style="margin-left:auto;font-size:0.78rem;color:var(--gray);align-self:center;">submitted ${formatDate(r.created_at)}</span>
-        </div>
+  const pending = _readPending();
+  const approved = _readApproved();
+
+  if (!pending.length && !approved.length) {
+    wrap.innerHTML = `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:30px;text-align:center;color:var(--gray);">
+        <div style="font-size:2rem;margin-bottom:10px;">&#128226;</div>
+        <div style="font-size:0.95rem;color:var(--ink);font-weight:600;margin-bottom:6px;">Queue is empty</div>
+        <div style="font-size:0.86rem;line-height:1.55;">Once someone submits a story through the <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;">Share form</button>, it'll show up here for your approval.</div>
       </div>
     `;
-  }).join('') || '<div style="color:var(--gray);text-align:center;padding:40px 0;">Queue empty.</div>';
+    return;
+  }
+
+  let html = '';
+
+  // Pending section
+  if (pending.length) {
+    html += `<h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin-bottom:14px;color:var(--accent);">&#9203; Pending review &middot; ${pending.length}</h3>`;
+    html += pending.map(p => {
+      const r = p.payload;
+      return `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:12px;" id="pq-${p.pending_id}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:700;font-size:0.95rem;">${ROLE_ICON[r.role] || '👤'} ${escapeHtml(r.officer_name || 'Unknown')}${r.officer_badge ? ' · ' + escapeHtml(r.officer_badge) : ''}</div>
+              <div style="font-size:0.82rem;color:var(--gray);">${escapeHtml(r.department || 'Unknown')}${r.location ? ' · ' + escapeHtml(r.location) : ''}</div>
+              <div style="font-size:0.74rem;color:var(--gray);margin-top:4px;">By <strong style="color:var(--ink);">${escapeHtml(p.author_display)}</strong> · ${formatDate(p.submitted_at)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.74rem;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(184,148,30,0.3);border-radius:999px;padding:3px 10px;font-weight:700;display:inline-block;">PENDING</div>
+              <div style="margin-top:6px;font-size:0.84rem;color:${r.verdict === 'fair' ? 'var(--green)' : 'var(--red)'};">${r.verdict === 'fair' ? '★ Recognition' : '⚠ Concern'} · ${'★'.repeat(r.stars || 3)}</div>
+            </div>
+          </div>
+          <div style="font-size:0.92rem;line-height:1.65;color:var(--light);margin-bottom:10px;">${escapeHtml((r.story || '(No description)'))}</div>
+          ${(r.tags && r.tags.length) ? `<div class="sp-tags-row">${r.tags.map(t => `<span class="spt">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+          ${r.upload_url ? `<div style="font-size:0.78rem;color:var(--blue);margin:8px 0;">🛡️ ${r.evidence_type || 'photo'} attached</div>` : ''}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+            <button class="sp-action" style="background:rgba(31,140,95,0.1);border-color:rgba(31,140,95,0.4);color:var(--green);font-weight:700;" onclick="approvePending('${p.pending_id}')">✓ Approve & publish</button>
+            <button class="sp-action" style="background:rgba(201,52,52,0.08);border-color:rgba(201,52,52,0.4);color:var(--red);" onclick="rejectPending('${p.pending_id}')">✕ Reject</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Approved section
+  if (approved.length) {
+    html += `<h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin:24px 0 14px;color:var(--green);">&#10003; Published &middot; ${approved.length}</h3>`;
+    html += approved.slice(0, 10).map(a => {
+      const r = a.payload;
+      return `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div style="font-weight:600;font-size:0.9rem;">${ROLE_ICON[r.role] || '👤'} ${escapeHtml(r.officer_name || 'Unknown')} · <span style="color:var(--gray);font-weight:500;">${escapeHtml(r.department || '')}</span></div>
+            <div style="font-size:0.78rem;color:var(--green);">✓ Live · approved ${formatDate(a.approved_at)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  wrap.innerHTML = html;
 }
-function _modAction(btn, action) {
-  const card = btn.closest('div[style*="background"]')?.parentElement?.parentElement;
-  const wrap = btn.closest('div[style*="background:var(--card)"]');
-  if (!wrap) return;
-  wrap.style.opacity = '0.5';
-  wrap.style.pointerEvents = 'none';
-  btn.closest('div[style*="display:flex"]').innerHTML =
-    `<span style="font-size:0.86rem;color:${action === 'approved' ? 'var(--green)' : 'var(--red)'};">${action === 'approved' ? '✓ Approved & published.' : '✕ Rejected.'} (demo &mdash; nothing actually saved)</span>`;
+function approvePending(pendingId) {
+  const pending = _readPending();
+  const idx = pending.findIndex(p => p.pending_id === pendingId);
+  if (idx === -1) return;
+  const item = pending[idx];
+  item.approved_at = new Date().toISOString();
+  // Move to approved
+  const approved = _readApproved();
+  approved.unshift(item);
+  _writeApproved(approved);
+  // Remove from pending
+  pending.splice(idx, 1);
+  _writePending(pending);
+  // Refresh views
+  renderModQueue();
+  loadOfficers();
+  loadStats();
+  // Visual feedback
+  alert('✓ Approved and published. Check the Stories tab — it\'s live now.');
+}
+function rejectPending(pendingId) {
+  if (!confirm('Reject this story? It will be removed from the queue.')) return;
+  const pending = _readPending().filter(p => p.pending_id !== pendingId);
+  _writePending(pending);
+  renderModQueue();
 }
 
 // ─── EMAIL DIGEST TOGGLE ───
@@ -2077,27 +2257,113 @@ function renderRankings() {
   }));
   if (_rankSort === 'best')         rows.sort((a, b) => b.avg - a.avg);
   else if (_rankSort === 'busiest') rows.sort((a, b) => b.review_count - a.review_count);
-  rows = rows.slice(0, 15);
+  rows.forEach((row, i) => row._rank = i + 1);
+  rows = rows.slice(0, 40);
 
   wrap.innerHTML = `
     <div class="rank-row head" style="grid-template-columns:60px 1fr 140px 100px;">
       <div class="rank-pos head">#</div>
       <div>DEPARTMENT</div>
       <div>AVG RATING</div>
-      <div>MOMENTS</div>
+      <div>STORIES</div>
     </div>
-    ${rows.map((d, i) => `
-      <div class="rank-row" style="grid-template-columns:60px 1fr 140px 100px;">
-        <div class="rank-pos">${(i + 1).toString().padStart(2, '0')}</div>
+    ${rows.map(d => `
+      <div class="rank-row" style="grid-template-columns:60px 1fr 140px 100px;cursor:pointer;" onclick="openDepartmentDetail('${escapeHtml(d.name).replace(/'/g, "\\'")}');">
+        <div class="rank-pos">${d._rank.toString().padStart(2, '0')}</div>
         <div>
           <div class="rank-name">${escapeHtml(d.name)}</div>
-          <div class="rank-name-sub">${d.officer_count} public servant${d.officer_count !== 1 ? 's' : ''} documented</div>
+          <div class="rank-name-sub">${d.officer_count} ${d.officer_count === 1 ? 'person' : 'people'} · tap to view stories</div>
         </div>
         <div class="rank-stars">${'★'.repeat(Math.round(d.avg)) + '☆'.repeat(5 - Math.round(d.avg))} <span style="color:var(--gray);font-size:0.78rem;">${d.avg.toFixed(1)}</span></div>
         <div class="rank-num review-count">${d.review_count}</div>
       </div>
     `).join('')}
   `;
+}
+
+// Click a department row → modal with all officers + recent stories from that department
+function openDepartmentDetail(deptName) {
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const approved = getApprovedAsOfficers();
+  const matches = [...approved, ...officers].filter(o => o.department === deptName);
+  if (!matches.length) return;
+
+  const totalReviews = matches.reduce((s, o) => s + (o.review_count || 0), 0);
+  const fair = matches.reduce((s, o) => s + (o.fair_count || 0), 0);
+  const unfair = matches.reduce((s, o) => s + (o.unfair_count || 0), 0);
+  const avgStars = totalReviews ? matches.reduce((s, o) => s + (o.avg_stars || 0) * (o.review_count || 0), 0) / totalReviews : 0;
+
+  // Latest stories from this dept
+  const allStories = [];
+  for (const o of matches) {
+    for (const r of (o.reviews || [])) {
+      allStories.push({ officer: o, review: r });
+    }
+  }
+  allStories.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
+  const recentStories = allStories.slice(0, 10);
+
+  const body = document.getElementById('storyDetailBody');
+  body.innerHTML = `
+    <div class="sd-eyebrow">Department record</div>
+    <div class="sd-head">
+      <div class="sd-icon">&#127970;</div>
+      <div class="sd-who">
+        <div class="sd-name" style="cursor:default;">${escapeHtml(deptName)}</div>
+        <div class="sd-agency">${matches.length} ${matches.length === 1 ? 'person' : 'people'} on record · ${totalReviews} stor${totalReviews === 1 ? 'y' : 'ies'}</div>
+        <div class="sd-sent">
+          <span class="sd-stars">${'★'.repeat(Math.round(avgStars)) + '☆'.repeat(5 - Math.round(avgStars))}</span>
+          <span class="sd-tag pos">${fair} ★</span>
+          <span class="sd-tag neg">${unfair} ⚠</span>
+          <span class="sd-stars" style="color:var(--gray);font-size:0.85rem;">${avgStars.toFixed(1)} avg</span>
+        </div>
+      </div>
+    </div>
+
+    <h4 style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:12px;">People (${matches.length})</h4>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
+      ${matches.slice(0, 12).map(o => {
+        const role = inferRole(o);
+        return `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="closeStoryDetail(); openOfficer(${o.id});">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <span style="font-size:1.2rem;">${ROLE_ICON[role] || '👤'}</span>
+              <span style="font-weight:600;font-size:0.92rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(o.name || 'Unknown')}</span>
+            </div>
+            <div style="display:flex;gap:10px;font-size:0.8rem;align-items:center;">
+              <span style="color:var(--accent);">${'★'.repeat(Math.round(o.avg_stars || 0))}</span>
+              <span style="color:var(--gray);">${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'}</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+      ${matches.length > 12 ? `<div style="font-size:0.82rem;color:var(--gray);text-align:center;padding:6px;">+ ${matches.length - 12} more</div>` : ''}
+    </div>
+
+    <h4 style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:12px;">Latest stories</h4>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${recentStories.map(it => {
+        const o = it.officer;
+        const r = it.review;
+        const isPos = r.verdict === 'fair';
+        return `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;" onclick="closeStoryDetail(); openStoryDetail(${o.id}, ${r.id});">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;">
+              <strong style="font-size:0.88rem;color:var(--ink);">${escapeHtml(o.name || 'Unknown')}</strong>
+              <span style="font-size:0.7rem;color:${isPos ? 'var(--green)' : 'var(--red)'};font-weight:700;">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
+            </div>
+            <div style="font-size:0.88rem;color:var(--light);line-height:1.55;">${escapeHtml((r.story || '').slice(0, 160))}${(r.story || '').length > 160 ? '…' : ''}</div>
+            <div style="font-size:0.72rem;color:var(--gray);margin-top:4px;">${formatDate(r.created_at)}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <div class="sd-foot" style="margin-top:18px;">
+      <button class="sp-action primary" onclick="closeStoryDetail(); nav('complaint');">&#9993;&#65039; Reach out to this agency</button>
+    </div>
+  `;
+  document.getElementById('storyDetailModal').classList.add('show');
 }
 
 // Show the demo badge if running without a backend

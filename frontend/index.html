@@ -39,7 +39,7 @@
     <button class="active" onclick="nav('home')">Home</button>
     <button onclick="nav('share')">Share</button>
     <button onclick="nav('officers')">Stories</button>
-    <button onclick="nav('map')">Map</button>
+    <button onclick="nav('contributors')">Community</button>
     <button onclick="nav('rankings')">Rankings</button>
     <button onclick="nav('complaint')">Reach Out</button>
     <button onclick="nav('orgs')">For Agencies</button>
@@ -99,10 +99,11 @@
 <section id="home" class="active">
   <div class="hero hero-plain">
     <div class="hero-eyebrow">A public record of public service</div>
-    <h1>Public service.<br><em>On the record.</em></h1>
-    <p class="hero-lead">Every day, ordinary people meet the people who serve them &mdash; an EMT in the middle of the night, a clerk at the DMV, a firefighter, an officer, a hospital tech. Most moments are forgotten. CivicVoice is where they live.</p>
-    <div style="text-align:center;margin-bottom:36px;">
-      <button class="btn-gold" style="font-size:1rem;padding:16px 38px;border-radius:12px;" onclick="nav('share')">Share a moment &rarr;</button>
+    <h1>Recognize the good.<br>Document the rest.<br><em>On the record.</em></h1>
+    <p class="hero-lead">CivicVoice is where moments people have with public servants &mdash; police, EMTs, firefighters, DMV staff, hospital workers, government caseworkers &mdash; become a public record. Praise. Concern. Stories. One place.</p>
+    <div style="text-align:center;margin-bottom:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn-gold" style="font-size:1rem;padding:16px 32px;border-radius:12px;" onclick="nav('share')">Share a story &rarr;</button>
+      <button class="btn-ghost" style="font-size:1rem;padding:16px 28px;border-radius:12px;" onclick="nav('officers')">Read stories</button>
     </div>
     <div class="categories-strip">
       <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police</span>
@@ -393,15 +394,15 @@
     </div>
 
     <div class="view-toggle">
-      <button class="vt-btn on" data-view="stream" onclick="setStoriesView(this, 'stream')">&#128221; Story stream</button>
-      <button class="vt-btn" data-view="grid" onclick="setStoriesView(this, 'grid')">&#128194; By person</button>
+      <button class="vt-btn on" data-view="grid" onclick="setStoriesView(this, 'grid')">&#128194; By person</button>
+      <button class="vt-btn" data-view="stream" onclick="setStoriesView(this, 'stream')">&#128221; Story stream</button>
     </div>
 
-    <div class="story-stream" id="storyStream">
+    <div class="officer-grid" id="officerGrid">
       <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading&hellip;</div>
     </div>
 
-    <div class="officer-grid" id="officerGrid" style="display:none;">
+    <div class="story-stream" id="storyStream" style="display:none;">
       <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading&hellip;</div>
     </div>
 
@@ -545,6 +546,28 @@
         </div>
       </div>
       <div class="error-box" id="complaintError" style="display:none;background:rgba(201,52,52,0.08);border:1.5px solid rgba(201,52,52,0.35);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMUNITY / CONTRIBUTORS — every handle on the site -->
+<section id="contributors">
+  <div class="wrap-wide">
+    <div class="ph">
+      <h2>Community</h2>
+      <p>Every contributor who has shared a story on CivicVoice. Tap any handle to read their stories or send them a message.</p>
+    </div>
+    <div class="search-bar-wrap">
+      <input type="text" id="contributorSearch" placeholder="Search by handle&hellip;" oninput="renderContributors()">
+      <button onclick="renderContributors()">Search</button>
+    </div>
+    <div class="pills" style="margin-bottom:22px;">
+      <span class="pill on" data-sort="recent" onclick="setContributorSort(this, 'recent')">Most recent</span>
+      <span class="pill" data-sort="most" onclick="setContributorSort(this, 'most')">Most stories</span>
+      <span class="pill" data-sort="positive" onclick="setContributorSort(this, 'positive')">Most recognitions</span>
+    </div>
+    <div class="officer-grid" id="contributorGrid">
+      <div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">Loading&hellip;</div>
     </div>
   </div>
 </section>
