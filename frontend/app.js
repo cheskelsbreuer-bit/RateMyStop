@@ -18,6 +18,9 @@ const DMS_KEY = 'civicvoice_dms_v1';
 const PUSH_KEY = 'civicvoice_push_v1';
 const PENDING_KEY = 'civicvoice_pending_v1';   // user-submitted reviews awaiting moderation
 const APPROVED_KEY = 'civicvoice_approved_v1'; // user-submitted reviews that have been approved
+const RESOLUTIONS_KEY = 'civicvoice_resolutions_v1';   // resolution status overrides per story
+const NOTIFS_KEY = 'civicvoice_notifs_v1';             // notifications for current user
+const NOTIF_PREFS_KEY = 'civicvoice_notif_prefs_v1';   // per-event notification preferences
 let _pendingAuthAction = null;
 
 function getCurrentUser() {
@@ -114,7 +117,10 @@ function renderAuthState() {
   const u = getCurrentUser();
   const pill = document.getElementById('userPill');
   const btn = document.getElementById('signInBtn');
+  const bell = document.getElementById('bellBtn');
   if (!pill || !btn) return;
+  if (bell) bell.style.display = u ? 'inline-flex' : 'none';
+  if (u) renderBellState();
   if (u) {
     pill.style.display = 'inline-flex';
     btn.style.display = 'none';
@@ -149,7 +155,7 @@ function getAuthorDisplay() {
 }
 
 // ── NAVIGATION ──
-const NAV_IDS = ['home', 'share', 'officers', 'contributors', 'rankings', 'complaint', 'orgs', 'deck'];
+const NAV_IDS = ['home', 'pulse', 'share', 'officers', 'contributors', 'rankings', 'complaint', 'orgs', 'deck'];
 
 function nav(id) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
@@ -166,6 +172,7 @@ function nav(id) {
   if (id === 'orgs')         renderOrgState();
   if (id === 'admin')        renderModQueue();
   if (id === 'contributors') renderContributors();
+  if (id === 'pulse')        renderPulse();
 }
 
 // ── RATE FORM STATE ──
@@ -834,6 +841,134 @@ function closeModal(e) {
 
 function searchOfficers() { applyFilters(); }
 
+// ── PULSE — substantive, one-at-a-time activity feed sorted by momentum ──
+let _pulseFilter = 'all';
+let _pulseItems = [];
+let _pulseIdx = 0;
+
+function setPulseFilter(el, key) {
+  document.querySelectorAll('#pulse .pulse-filters .pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  _pulseFilter = key;
+  renderPulse();
+}
+
+function _pulseMomentum(it) {
+  const r = it.review;
+  // Momentum = recency + reactions + replies + agency-acknowledged
+  const ageHours = Math.max(1, (Date.now() - new Date(r.created_at || 0).getTime()) / 3600000);
+  const recencyScore = Math.max(0, 100 - ageHours);  // newer = higher
+  const replyScore   = getReplyCount(it.officer.id, r.id) * 8;
+  const ackScore     = getResolutionStatus(it.officer.id, r.id, r) === 'acknowledged' ? 15 : 0;
+  return recencyScore + replyScore + ackScore;
+}
+
+function renderPulse() {
+  const stage = document.getElementById('pulseStage');
+  if (!stage) return;
+  // Gather all reviews
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const approved = getApprovedAsOfficers();
+  const all = [...approved, ...officers];
+  let items = [];
+  for (const o of all) {
+    for (const r of (o.reviews || [])) {
+      items.push({ officer: o, review: r, role: inferRole(o) });
+      _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role: inferRole(o) };
+    }
+  }
+  // Filter
+  const subs = getSubs();
+  if (_pulseFilter === 'recognitions') items = items.filter(it => it.review.verdict === 'fair');
+  else if (_pulseFilter === 'concerns') items = items.filter(it => it.review.verdict === 'unfair');
+  else if (_pulseFilter === 'open')      items = items.filter(it => getResolutionStatus(it.officer.id, it.review.id, it.review) === 'open');
+  else if (_pulseFilter === 'subscribed') items = items.filter(it => subs.includes(it.officer.department));
+  // Sort by momentum
+  items.sort((a, b) => _pulseMomentum(b) - _pulseMomentum(a));
+  items = items.slice(0, 50);
+  _pulseItems = items;
+  if (_pulseIdx >= items.length) _pulseIdx = 0;
+  if (!items.length) {
+    stage.innerHTML = `<div class="pulse-empty">No stories for this filter yet.</div>`;
+    document.getElementById('pulsePos').textContent = 0;
+    document.getElementById('pulseTotal').textContent = 0;
+    return;
+  }
+  _renderPulseCard();
+  document.getElementById('pulseTotal').textContent = items.length;
+}
+
+function _renderPulseCard() {
+  const stage = document.getElementById('pulseStage');
+  if (!stage || !_pulseItems.length) return;
+  const it = _pulseItems[_pulseIdx];
+  const o = it.officer, r = it.review;
+  const author = r.author_display || _legacyAuthor(o.id, r.id);
+  const isPos = r.verdict === 'fair';
+  const status = getResolutionStatus(o.id, r.id, r);
+  const meta = RES_META[status];
+  const replyCount = getReplyCount(o.id, r.id);
+  const trust = computeTrustScore(author);
+  const story = (r.story || '').trim() || '(No description.)';
+  const tags = r.tags || [];
+  stage.innerHTML = `
+    <article class="pulse-card" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}">
+      <div class="pulse-card-head">
+        <div class="pulse-card-role">
+          <span class="pulse-role-icon">${ROLE_ICON[it.role] || '👤'}</span>
+          <span class="pulse-role-name">${ROLE_NAME[it.role] || ''}</span>
+        </div>
+        <div class="pulse-sent ${isPos ? 'pos' : 'neg'}">
+          <span class="pulse-stars">${starsStr(r.stars || 3)}</span>
+          <span class="pulse-sent-tag">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
+        </div>
+      </div>
+      <h3 class="pulse-name" onclick="openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</h3>
+      <div class="pulse-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''} · ${formatDate(r.created_at)}</div>
+
+      <div class="pulse-body">${escapeHtml(story.slice(0, 420))}${story.length > 420 ? '…' : ''}</div>
+
+      ${tags.length ? `<div class="sp-tags-row" style="margin:8px 0 14px;">${tags.slice(0, 6).map(t => `<span class="spt">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+
+      <div class="pulse-byline">
+        <span class="pulse-author" onclick="openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(author.charAt(0).toUpperCase())}</span>${escapeHtml(author)} · Trust ${trust.score}/100</span>
+      </div>
+
+      <div class="resolution-banner" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};margin-top:14px;">
+        <span class="rb-icon">${meta.icon}</span>
+        <span class="rb-text"><strong>${meta.label}</strong></span>
+      </div>
+
+      <div class="pulse-actions">
+        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
+        <button class="sp-action" onclick="openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} &amp; thread</button>
+        <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
+        <button class="sp-action primary" onclick="openStoryDetail(${o.id}, ${r.id})">Read full →</button>
+      </div>
+    </article>
+  `;
+  document.getElementById('pulsePos').textContent = _pulseIdx + 1;
+}
+
+function pulseNext() {
+  if (!_pulseItems.length) return;
+  _pulseIdx = (_pulseIdx + 1) % _pulseItems.length;
+  _renderPulseCard();
+}
+function pulsePrev() {
+  if (!_pulseItems.length) return;
+  _pulseIdx = (_pulseIdx - 1 + _pulseItems.length) % _pulseItems.length;
+  _renderPulseCard();
+}
+
+// Keyboard nav on Pulse
+document.addEventListener('keydown', (e) => {
+  const onPulse = document.getElementById('pulse')?.classList.contains('active');
+  if (!onPulse) return;
+  if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); pulseNext(); }
+  else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); pulsePrev(); }
+});
+
 // ── CONTRIBUTORS / COMMUNITY page ──
 let _contribSort = 'recent';
 function setContributorSort(el, key) {
@@ -1034,7 +1169,7 @@ function renderStream(officers, q) {
         </div>
         <div class="sp-foot">
           <div class="sp-actions">
-            <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
+            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
             ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)} repl${getReplyCount(o.id, r.id) === 1 ? 'y' : 'ies'}</button>` : ''}
             <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
             <button class="sp-action primary" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">Read full →</button>
@@ -1071,6 +1206,21 @@ function openStoryDetail(officerId, reviewId) {
         </div>
       </div>
     </div>
+    ${(() => {
+      const status = getResolutionStatus(o.id, r.id, r);
+      const meta = RES_META[status];
+      const u = getCurrentUser();
+      const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
+      const isAuthor = myHandle && myHandle === author;
+      const canMarkResolved = isAuthor && status !== 'resolved';
+      return `
+        <div class="resolution-banner" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};">
+          <span class="rb-icon">${meta.icon}</span>
+          <span class="rb-text"><strong>Status: ${meta.label}</strong>${status === 'open' ? ' — waiting for the agency to respond' : status === 'acknowledged' ? ' — the agency has responded in the thread below' : status === 'resolved' ? ' — the author marked this resolved' : ' — no response from the agency after 30+ days'}</span>
+          ${canMarkResolved ? `<button class="rb-btn" onclick="markStoryResolved(${o.id}, ${r.id})">✓ Mark resolved</button>` : ''}
+        </div>
+      `;
+    })()}
     <div class="sd-body">${escapeHtml(story)}</div>
     <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <button class="sp-action" onclick="translateStory(${JSON.stringify(story).replace(/"/g, '&quot;')})">&#127760; Translate</button>
@@ -1083,7 +1233,7 @@ function openStoryDetail(officerId, reviewId) {
         · ${formatDate(r.created_at)}
         ${r.upload_url ? ' · <span style="color:var(--blue);">🛡️ Verified</span>' : ''}
       </div>
-      <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
+      <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
       <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
       ${(() => {
         const u = getCurrentUser();
@@ -1168,6 +1318,24 @@ function postReply(officerId, reviewId) {
   _writeAllReplies(map);
   ta.value = '';
   _renderReplies(officerId, reviewId);
+
+  // Notify the original author (unless it's the user replying to their own story)
+  const it = _streamIndex[`${officerId}:${reviewId}`];
+  if (it) {
+    const author = it.review.author_display || _legacyAuthor(it.officer.id, it.review.id);
+    const myHandle = user.anonymous ? user.handle : (user.displayName || user.handle);
+    if (author !== myHandle) {
+      addNotification(author, {
+        type: org && org.verified ? 'agency' : 'reply',
+        story: { officer_id: officerId, review_id: reviewId, name: it.officer.name },
+        from: org && org.verified ? org.agency_name : myHandle,
+      });
+    }
+    // If this is a verified agency reply, auto-bump resolution to acknowledged
+    if (org && org.verified) {
+      setResolutionStatus(officerId, reviewId, 'acknowledged', org.agency_name);
+    }
+  }
 }
 
 function _renderReplies(officerId, reviewId) {
@@ -1289,6 +1457,256 @@ function openAuthorProfile(handle) {
 }
 function closeAuthorProfile() {
   document.getElementById('authorProfileModal').classList.remove('show');
+}
+
+// ── RESOLUTION TRACKING ──
+// Each story carries a status: open | acknowledged | resolved | no_response (auto after 30d open)
+function _readResolutions() {
+  try { return JSON.parse(localStorage.getItem(RESOLUTIONS_KEY) || '{}'); } catch { return {}; }
+}
+function _writeResolutions(m) { localStorage.setItem(RESOLUTIONS_KEY, JSON.stringify(m)); }
+
+function getResolutionStatus(officerId, reviewId, review) {
+  const key = `${officerId}:${reviewId}`;
+  const overrides = _readResolutions();
+  if (overrides[key]) return overrides[key];
+  // Auto-derive:
+  //   - any agency-verified reply → acknowledged
+  //   - older than 30 days with no replies → no_response
+  //   - else open
+  const replies = getReplies(officerId, reviewId);
+  if (replies.some(r => r.is_agency_response)) return 'acknowledged';
+  if (review && review.created_at) {
+    const ageDays = (Date.now() - new Date(review.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (ageDays > 30) return 'no_response';
+  }
+  return 'open';
+}
+function setResolutionStatus(officerId, reviewId, status, byHandle) {
+  const key = `${officerId}:${reviewId}`;
+  const m = _readResolutions();
+  m[key] = status;
+  _writeResolutions(m);
+  // Notify the author when status changes (if author isn't us)
+  const it = _streamIndex[key];
+  if (it) {
+    const r = it.review;
+    const author = r.author_display || _legacyAuthor(it.officer.id, r.id);
+    addNotification(author, {
+      type: 'resolution',
+      story: { officer_id: it.officer.id, review_id: r.id, name: it.officer.name },
+      status,
+      from: byHandle || 'CivicVoice',
+    });
+  }
+}
+function markStoryResolved(officerId, reviewId) {
+  if (!requireAuth(() => markStoryResolved(officerId, reviewId), 'Sign in to mark resolved')) return;
+  const u = getCurrentUser();
+  const myHandle = u.anonymous ? u.handle : (u.displayName || u.handle);
+  setResolutionStatus(officerId, reviewId, 'resolved', myHandle);
+  // Re-render the open story detail
+  openStoryDetail(officerId, reviewId);
+}
+
+const RES_META = {
+  open:         { label: 'Open',                color: 'var(--accent)',  bg: 'rgba(184,148,30,0.08)',  border: 'rgba(184,148,30,0.3)', icon: '⏳' },
+  acknowledged: { label: 'Agency acknowledged', color: 'var(--blue)',    bg: 'rgba(37,109,217,0.08)',  border: 'rgba(37,109,217,0.32)',icon: '💬' },
+  resolved:     { label: 'Resolved',            color: 'var(--green)',   bg: 'rgba(31,140,95,0.1)',    border: 'rgba(31,140,95,0.35)', icon: '✅' },
+  no_response:  { label: 'No response',         color: 'var(--red)',     bg: 'rgba(201,52,52,0.08)',   border: 'rgba(201,52,52,0.32)', icon: '⚠️' },
+};
+
+// Per-agency resolution stats
+function computeAgencyResolutionStats(deptName) {
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  const approved = getApprovedAsOfficers();
+  const matches = [...approved, ...officers].filter(o => o.department === deptName);
+  let total = 0, acknowledged = 0, resolved = 0, open = 0, noResponse = 0;
+  for (const o of matches) {
+    for (const r of (o.reviews || [])) {
+      total++;
+      const s = getResolutionStatus(o.id, r.id, r);
+      if (s === 'acknowledged') acknowledged++;
+      else if (s === 'resolved') resolved++;
+      else if (s === 'no_response') noResponse++;
+      else open++;
+    }
+  }
+  const responded = acknowledged + resolved;
+  return {
+    total, acknowledged, resolved, open, noResponse,
+    responseRate: total ? Math.round((responded / total) * 100) : 0,
+  };
+}
+
+// ── NOTIFICATIONS ──
+function _allNotifs() { try { return JSON.parse(localStorage.getItem(NOTIFS_KEY) || '{}'); } catch { return {}; } }
+function _writeAllNotifs(m) { localStorage.setItem(NOTIFS_KEY, JSON.stringify(m)); }
+function _myNotifs() {
+  const u = getCurrentUser();
+  if (!u) return [];
+  const all = _allNotifs();
+  const me = u.anonymous ? u.handle : (u.displayName || u.handle);
+  return all[me] || [];
+}
+function _saveMyNotifs(arr) {
+  const u = getCurrentUser();
+  if (!u) return;
+  const all = _allNotifs();
+  const me = u.anonymous ? u.handle : (u.displayName || u.handle);
+  all[me] = arr;
+  _writeAllNotifs(all);
+}
+function addNotification(toHandle, payload) {
+  if (!toHandle) return;
+  const all = _allNotifs();
+  all[toHandle] = all[toHandle] || [];
+  all[toHandle].unshift({
+    id: 'n' + Date.now() + Math.random().toString(36).slice(2, 5),
+    ts: new Date().toISOString(),
+    read: false,
+    ...payload,
+  });
+  // Cap at 50
+  all[toHandle] = all[toHandle].slice(0, 50);
+  _writeAllNotifs(all);
+  renderBellState();
+  // Also fire a browser notification if user has opted in
+  if (getPushPref() && 'Notification' in window && Notification.permission === 'granted') {
+    const u = getCurrentUser();
+    const me = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
+    if (me === toHandle) {
+      const text = _notifText(payload);
+      try { new Notification('CivicVoice', { body: text, icon: 'icon-192.png' }); } catch {}
+    }
+  }
+}
+function _notifText(n) {
+  if (n.type === 'same_here') return `${n.from} said "same here" on your story about ${n.story.name || 'a public servant'}`;
+  if (n.type === 'reply')     return `${n.from} replied to your story about ${n.story.name || 'a public servant'}`;
+  if (n.type === 'agency')    return `${n.from} (verified agency) responded to your story`;
+  if (n.type === 'resolution')return `Status changed to ${RES_META[n.status]?.label || n.status}: ${n.story.name || 'a story'}`;
+  if (n.type === 'subscription') return `New story in ${n.agency} (you subscribe)`;
+  return 'Activity on your story';
+}
+function unreadNotifCount() { return _myNotifs().filter(n => !n.read).length; }
+function markAllNotifsRead() {
+  const arr = _myNotifs().map(n => ({ ...n, read: true }));
+  _saveMyNotifs(arr);
+  renderBellState();
+  renderBellDropdown();
+}
+function clearNotifs() {
+  _saveMyNotifs([]);
+  renderBellState();
+  renderBellDropdown();
+}
+
+// ── NOTIFICATION PREFS ──
+const DEFAULT_NOTIF_PREFS = {
+  same_here:    { bell: true,  push: false, email: false },
+  reply:        { bell: true,  push: true,  email: false },
+  agency:       { bell: true,  push: true,  email: true  },
+  resolution:   { bell: true,  push: false, email: false },
+  subscription: { bell: true,  push: false, email: true  },
+};
+function getNotifPrefs() {
+  try { return { ...DEFAULT_NOTIF_PREFS, ...(JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY) || '{}')) }; }
+  catch { return DEFAULT_NOTIF_PREFS; }
+}
+function setNotifPref(event, channel, on) {
+  const p = getNotifPrefs();
+  p[event] = { ...p[event], [channel]: on };
+  localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(p));
+  renderNotifPrefs();
+}
+function openNotifPrefs() {
+  closeUserMenu();
+  if (!requireAuth(() => openNotifPrefs(), 'Sign in to set notification preferences')) return;
+  document.getElementById('notifPrefsModal').classList.add('show');
+  renderNotifPrefs();
+}
+function closeNotifPrefs() {
+  document.getElementById('notifPrefsModal').classList.remove('show');
+}
+function renderNotifPrefs() {
+  const body = document.getElementById('notifPrefsBody');
+  if (!body) return;
+  const prefs = getNotifPrefs();
+  const EVENTS = [
+    { key: 'same_here',    label: 'Someone says "same here" on my story' },
+    { key: 'reply',        label: 'Someone replies to my story' },
+    { key: 'agency',       label: 'A verified agency responds to my story' },
+    { key: 'resolution',   label: 'My story\'s status changes' },
+    { key: 'subscription', label: 'New story in an agency I subscribe to' },
+  ];
+  body.innerHTML = `
+    <div class="np-grid-head">
+      <div></div>
+      <div>🔔 Bell</div>
+      <div>📱 Push</div>
+      <div>✉️ Email</div>
+    </div>
+    ${EVENTS.map(e => `
+      <div class="np-grid-row">
+        <div class="np-event">${escapeHtml(e.label)}</div>
+        ${['bell', 'push', 'email'].map(ch => `
+          <label class="np-cell">
+            <input type="checkbox" ${prefs[e.key]?.[ch] ? 'checked' : ''} onchange="setNotifPref('${e.key}','${ch}', this.checked)">
+            <span class="np-box"></span>
+          </label>
+        `).join('')}
+      </div>
+    `).join('')}
+    <div style="font-size:0.78rem;color:var(--gray);margin-top:14px;padding-top:14px;border-top:1px solid var(--border);line-height:1.55;">
+      Push and email channels are wired and will activate once the backend is deployed. Bell works now.
+    </div>
+  `;
+}
+
+// ── BELL ──
+function toggleBellDropdown() {
+  const d = document.getElementById('bellDropdown');
+  d.classList.toggle('show');
+  if (d.classList.contains('show')) {
+    renderBellDropdown();
+    // Auto-mark all as read 1 sec after opening
+    setTimeout(() => markAllNotifsRead(), 1200);
+  }
+}
+function closeBellDropdown() {
+  document.getElementById('bellDropdown')?.classList.remove('show');
+}
+function renderBellState() {
+  const badge = document.getElementById('bellBadge');
+  if (!badge) return;
+  const count = unreadNotifCount();
+  if (count > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = count > 9 ? '9+' : count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+function renderBellDropdown() {
+  const list = document.getElementById('bellList');
+  if (!list) return;
+  const u = getCurrentUser();
+  if (!u) {
+    list.innerHTML = '<div style="color:var(--gray);padding:18px;text-align:center;font-size:0.86rem;">Sign in to see notifications.</div>';
+    return;
+  }
+  const arr = _myNotifs();
+  if (!arr.length) {
+    list.innerHTML = '<div style="color:var(--gray);padding:30px 18px;text-align:center;font-size:0.86rem;">No notifications yet.<br><span style="font-size:0.76rem;">When someone reacts to or replies to your stories, you\'ll see it here.</span></div>';
+    return;
+  }
+  list.innerHTML = arr.slice(0, 20).map(n => `
+    <div class="bell-item ${n.read ? '' : 'unread'}" ${n.story ? `onclick="closeBellDropdown(); openStoryDetail(${n.story.officer_id}, ${n.story.review_id});"` : ''}>
+      <div class="bell-text">${_notifText(n)}</div>
+      <div class="bell-time">${formatDate(n.ts)}</div>
+    </div>
+  `).join('');
 }
 
 // ── SUBSCRIBE TO AGENCY ──
@@ -1498,6 +1916,7 @@ document.addEventListener('keydown', (e) => {
 
 // Lightweight engagement signal — increments a "same here" counter on the button.
 // Requires sign-in (you can read without an account, but engaging requires one).
+// Notifies the original author.
 function thanksTo(btn, evt) {
   if (evt) evt.stopPropagation();
   if (!requireAuth(() => thanksTo(btn), 'Sign in to react')) return;
@@ -1506,6 +1925,25 @@ function thanksTo(btn, evt) {
   btn.innerHTML = `👍 Same here · ${n}`;
   btn.style.color = 'var(--green)';
   btn.style.borderColor = 'rgba(31,140,95,0.4)';
+  // Notify the author
+  const ctx = btn.closest('[data-story-context]');
+  const oid = ctx ? +ctx.dataset.officerId : btn.dataset.officerId;
+  const rid = ctx ? +ctx.dataset.reviewId  : btn.dataset.reviewId;
+  if (oid && rid) {
+    const it = _streamIndex[`${oid}:${rid}`];
+    if (it) {
+      const author = it.review.author_display || _legacyAuthor(it.officer.id, it.review.id);
+      const u = getCurrentUser();
+      const me = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : 'Anonymous';
+      if (author !== me) {
+        addNotification(author, {
+          type: 'same_here',
+          story: { officer_id: oid, review_id: rid, name: it.officer.name },
+          from: me,
+        });
+      }
+    }
+  }
 }
 
 // ── NY AGENCY DIRECTORY ──
@@ -2303,6 +2741,7 @@ function openDepartmentDetail(deptName) {
   allStories.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
   const recentStories = allStories.slice(0, 10);
 
+  const resStats = computeAgencyResolutionStats(deptName);
   const body = document.getElementById('storyDetailBody');
   body.innerHTML = `
     <div class="sd-eyebrow">Department record</div>
@@ -2317,6 +2756,26 @@ function openDepartmentDetail(deptName) {
           <span class="sd-tag neg">${unfair} ⚠</span>
           <span class="sd-stars" style="color:var(--gray);font-size:0.85rem;">${avgStars.toFixed(1)} avg</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Resolution stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px;">
+      <div style="background:rgba(31,140,95,0.06);border:1px solid rgba(31,140,95,0.32);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--green);">${resStats.responseRate}%</div>
+        <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Response rate</div>
+      </div>
+      <div style="background:rgba(184,148,30,0.06);border:1px solid rgba(184,148,30,0.3);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--accent);">${resStats.open}</div>
+        <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Open</div>
+      </div>
+      <div style="background:rgba(37,109,217,0.06);border:1px solid rgba(37,109,217,0.32);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--blue);">${resStats.acknowledged}</div>
+        <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Acknowledged</div>
+      </div>
+      <div style="background:rgba(31,140,95,0.06);border:1px solid rgba(31,140,95,0.32);border-radius:10px;padding:14px;text-align:center;">
+        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--green);">${resStats.resolved}</div>
+        <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Resolved</div>
       </div>
     </div>
 

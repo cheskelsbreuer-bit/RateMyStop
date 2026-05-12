@@ -37,6 +37,7 @@
   </div>
   <nav class="topnav">
     <button class="active" onclick="nav('home')">Home</button>
+    <button onclick="nav('pulse')">Pulse</button>
     <button onclick="nav('share')">Share</button>
     <button onclick="nav('officers')">Stories</button>
     <button onclick="nav('contributors')">Community</button>
@@ -46,6 +47,17 @@
     <button onclick="nav('deck')">Sponsors</button>
   </nav>
   <div class="topbar-auth">
+    <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown()" aria-label="Notifications" style="display:none;">
+      &#128276;
+      <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+    </button>
+    <div class="bell-dropdown" id="bellDropdown">
+      <div class="bell-head">
+        <span class="bell-title">Notifications</span>
+        <button class="bell-clear" onclick="clearNotifs()">Clear all</button>
+      </div>
+      <div class="bell-list" id="bellList"></div>
+    </div>
     <button class="sign-in-btn" id="signInBtn" onclick="openAuthModal()">Sign in</button>
     <button class="user-pill" id="userPill" onclick="toggleUserMenu()" style="display:none;">
       <span class="up-avatar" id="upAvatar">A</span>
@@ -60,6 +72,7 @@
       <button class="um-item" onclick="toggleAnonymousMode()" id="umAnonToggle">&#128737; Stay anonymous</button>
       <button class="um-item" onclick="openDMs();">&#128172; Messages</button>
       <button class="um-item" onclick="nav('share'); closeUserMenu();">&#9998; Share another story</button>
+      <button class="um-item" onclick="openNotifPrefs()">&#9881;&#65039; Notification preferences</button>
       <button class="um-item" onclick="togglePushNotifications()" id="umPush">&#128276; Push notifications: off</button>
       <button class="um-item" onclick="toggleEmailDigest()" id="umEmailDigest">&#9993;&#65039; Weekly digest: off</button>
       <button class="um-item" onclick="signOut(); closeUserMenu();">&#128682; Sign out</button>
@@ -436,6 +449,17 @@
   </div>
 </div>
 
+<!-- Notification preferences modal -->
+<div class="story-detail-overlay" id="notifPrefsModal" onclick="if(event.target.id==='notifPrefsModal') closeNotifPrefs();">
+  <div class="story-detail" style="max-width:520px;">
+    <button class="auth-close" onclick="closeNotifPrefs()" aria-label="Close">&times;</button>
+    <div class="sd-eyebrow">SETTINGS</div>
+    <h3 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);">Notification preferences</h3>
+    <p style="color:var(--light);font-size:0.92rem;line-height:1.55;margin-bottom:18px;">Pick where each kind of event reaches you. Bell shows in the topbar, Push wakes your phone, Email arrives on a weekly digest.</p>
+    <div id="notifPrefsBody"></div>
+  </div>
+</div>
+
 <!-- Photo redaction modal — manual rectangle blur on uploaded images -->
 <div class="story-detail-overlay" id="redactModal" onclick="if(event.target.id==='redactModal') closeRedact();">
   <div class="story-detail" style="max-width:760px;">
@@ -546,6 +570,31 @@
         </div>
       </div>
       <div class="error-box" id="complaintError" style="display:none;background:rgba(201,52,52,0.08);border:1.5px solid rgba(201,52,52,0.35);border-radius:12px;padding:18px 22px;margin-top:16px;color:var(--red);font-size:0.9rem;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PULSE — substantive, one-at-a-time activity feed -->
+<section id="pulse">
+  <div class="wrap-wide">
+    <div class="ph">
+      <h2>Pulse</h2>
+      <p>What's happening right now &mdash; recent stories, ranked by momentum. One at a time. Slow down and listen.</p>
+    </div>
+    <div class="pulse-filters">
+      <span class="pill on" data-pfilter="all" onclick="setPulseFilter(this, 'all')">All</span>
+      <span class="pill" data-pfilter="recognitions" onclick="setPulseFilter(this, 'recognitions')">&#11088; Recognitions</span>
+      <span class="pill" data-pfilter="concerns" onclick="setPulseFilter(this, 'concerns')">&#9888;&#65039; Concerns</span>
+      <span class="pill" data-pfilter="open" onclick="setPulseFilter(this, 'open')">&#9203; Open / waiting</span>
+      <span class="pill" data-pfilter="subscribed" onclick="setPulseFilter(this, 'subscribed')">&#128276; My subscriptions</span>
+    </div>
+    <div id="pulseStage" class="pulse-stage">
+      <div style="text-align:center;color:var(--gray);padding:40px 0;">Loading the pulse&hellip;</div>
+    </div>
+    <div class="pulse-controls">
+      <button class="pulse-nav" onclick="pulsePrev()" aria-label="Previous">&uarr; Previous</button>
+      <span class="pulse-counter"><span id="pulsePos">0</span> / <span id="pulseTotal">0</span></span>
+      <button class="pulse-nav" onclick="pulseNext()" aria-label="Next">Next &darr;</button>
     </div>
   </div>
 </section>
