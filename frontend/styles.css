@@ -311,6 +311,11 @@ section.active{display:block;}
 .reply-form-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;}
 .reply-as{font-size:0.78rem;color:var(--gray);}
 
+/* Subscribe-to-agency button */
+.sub-btn{background:transparent;color:var(--gray);border:1.5px solid var(--border);font-family:'Epilogue',sans-serif;font-weight:600;font-size:0.78rem;padding:8px 14px;border-radius:10px;cursor:pointer;transition:all 0.18s;white-space:nowrap;}
+.sub-btn:hover{color:var(--accent);border-color:rgba(184,148,30,0.5);background:var(--accent-soft);}
+.sub-btn.subscribed{background:rgba(31,140,95,0.08);color:var(--green);border-color:rgba(31,140,95,0.35);}
+
 /* Geolocation button next to location field */
 .geo-btn{background:var(--accent-soft);border:1px solid rgba(184,148,30,0.32);color:var(--accent);font-family:'Epilogue',sans-serif;font-weight:600;font-size:0.85rem;padding:0 14px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:all 0.18s;}
 .geo-btn:hover:not(:disabled){background:rgba(184,148,30,0.14);}

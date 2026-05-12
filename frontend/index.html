@@ -58,7 +58,9 @@
         <div class="um-meta" id="umMeta">&mdash;</div>
       </div>
       <button class="um-item" onclick="toggleAnonymousMode()" id="umAnonToggle">&#128737; Stay anonymous</button>
+      <button class="um-item" onclick="openDMs();">&#128172; Messages</button>
       <button class="um-item" onclick="nav('share'); closeUserMenu();">&#9998; Share another story</button>
+      <button class="um-item" onclick="togglePushNotifications()" id="umPush">&#128276; Push notifications: off</button>
       <button class="um-item" onclick="toggleEmailDigest()" id="umEmailDigest">&#9993;&#65039; Weekly digest: off</button>
       <button class="um-item" onclick="signOut(); closeUserMenu();">&#128682; Sign out</button>
     </div>
@@ -220,6 +222,11 @@
             <span class="tag" data-w="-0.5" data-pol="neg" onclick="toggle(this)">&#128549; Made things worse</span>
             <span class="tag" data-w="-0.4" data-pol="neg" onclick="toggle(this)">&#128580; Disorganized</span>
           </div>
+        </div>
+        <div class="fl">
+          <label>Tags <span style="color:var(--gray);font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;">&nbsp;optional &middot; help others find this</span></label>
+          <input type="text" id="storyTags" placeholder="e.g. went-above-and-beyond, dmv-line, profiled, late-night-stop" autocomplete="off">
+          <div style="font-size:0.74rem;color:var(--gray);margin-top:5px;">Comma-separated. Click a tag on any story to see related ones.</div>
         </div>
         <button class="submit-main" onclick="goStep(3)">Next &rarr;</button>
       </div>
@@ -425,6 +432,27 @@
   <div class="story-detail">
     <button class="auth-close" onclick="closeAuthorProfile()" aria-label="Close">&times;</button>
     <div id="authorProfileBody"></div>
+  </div>
+</div>
+
+<!-- Photo redaction modal — manual rectangle blur on uploaded images -->
+<div class="story-detail-overlay" id="redactModal" onclick="if(event.target.id==='redactModal') closeRedact();">
+  <div class="story-detail" style="max-width:760px;">
+    <button class="auth-close" onclick="closeRedact()" aria-label="Close">&times;</button>
+    <div class="sd-eyebrow">PRIVACY · PHOTO REDACTION</div>
+    <h3 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);">Hide what shouldn't be seen</h3>
+    <p style="color:var(--light);font-size:0.92rem;line-height:1.55;margin-bottom:18px;">Draw rectangles over faces, license plates, or anything else that shouldn't be public. The redacted version is what we save — the original never leaves this device.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <button class="sp-action ${''}" id="redactModePixel" onclick="setRedactMode('pixel')">🟦 Pixelate</button>
+      <button class="sp-action" id="redactModeBlack" onclick="setRedactMode('black')">⬛ Black box</button>
+      <button class="sp-action" id="redactUndo" onclick="redactUndo()">↶ Undo last</button>
+      <button class="sp-action" id="redactReset" onclick="redactReset()">⟲ Start over</button>
+      <button class="sp-action primary" style="margin-left:auto;" id="redactApply" onclick="redactApply()">✓ Apply &amp; save</button>
+    </div>
+    <div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <canvas id="redactCanvas" style="display:block;max-width:100%;cursor:crosshair;"></canvas>
+    </div>
+    <div style="font-size:0.78rem;color:var(--gray);margin-top:10px;text-align:center;">Click and drag on the image to mark a region. You can add as many as needed.</div>
   </div>
 </div>
 

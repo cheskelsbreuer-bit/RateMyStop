@@ -13,6 +13,9 @@ const AUTH_KEY = 'civicvoice_user_v1';
 const REPLIES_KEY = 'civicvoice_replies_v1';
 const ORG_KEY = 'civicvoice_org_v1';
 const EMAIL_DIGEST_KEY = 'civicvoice_email_digest_v1';
+const SUBS_KEY = 'civicvoice_agency_subs_v1';
+const DMS_KEY = 'civicvoice_dms_v1';
+const PUSH_KEY = 'civicvoice_push_v1';
 let _pendingAuthAction = null;
 
 function getCurrentUser() {
@@ -128,6 +131,8 @@ function renderAuthState() {
     if (anonBtn) anonBtn.innerHTML = u.anonymous ? '👁️ Show my name instead' : '🛡️ Stay anonymous';
     const dig = document.getElementById('umEmailDigest');
     if (dig) dig.innerHTML = getEmailDigestPref() ? '✉️ Weekly digest: on' : '✉️ Weekly digest: off';
+    const push = document.getElementById('umPush');
+    if (push) push.innerHTML = getPushPref() ? '🔔 Push notifications: on' : '🔔 Push notifications: off';
   } else {
     pill.style.display = 'none';
     btn.style.display = 'inline-flex';
@@ -373,11 +378,23 @@ const EVIDENCE_LABELS = {
   other:      { label: '📷 Photo-verified',      desc: 'A photo from the moment is attached.' },
 };
 
+let _lastUploadedFile = null;
+
 async function onFileUpload(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
+  _lastUploadedFile = file;
   document.getElementById('uploadName').textContent = `Uploading ${file.name}…`;
   document.getElementById('uploadPreview').classList.add('show');
+  // If it's an image, offer redaction before final upload
+  if (file.type.startsWith('image/')) {
+    openRedact(file);
+    return;  // upload happens after redact apply (or skip)
+  }
+  await _doUpload(file);
+}
+
+async function _doUpload(file) {
   try {
     const result = await api.uploadFile(file);
     uploadedFileUrl = result.url;
@@ -388,6 +405,200 @@ async function onFileUpload(input) {
     uploadedFileUrl = null;
     _refreshVerificationTier();
   }
+}
+
+// ── PHOTO REDACTION ──
+let _redactCanvas, _redactCtx, _redactImg, _redactRects = [], _redactMode = 'pixel', _redactDrag = null;
+
+function openRedact(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      _redactImg = img;
+      _redactRects = [];
+      _redactMode = 'pixel';
+      const c = document.getElementById('redactCanvas');
+      const ctx = c.getContext('2d');
+      // Fit within ~ 700w
+      const maxW = 700;
+      const scale = Math.min(1, maxW / img.naturalWidth);
+      c.width  = Math.round(img.naturalWidth  * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      _redactCanvas = c;
+      _redactCtx = ctx;
+      _attachRedactHandlers();
+      setRedactMode('pixel');
+      document.getElementById('redactModal').classList.add('show');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function _attachRedactHandlers() {
+  if (_redactCanvas._wired) return;
+  _redactCanvas._wired = true;
+  const rectAt = (evt) => {
+    const r = _redactCanvas.getBoundingClientRect();
+    const sx = _redactCanvas.width / r.width;
+    const sy = _redactCanvas.height / r.height;
+    const px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
+    const py = (evt.touches ? evt.touches[0].clientY : evt.clientY) - r.top;
+    return { x: px * sx, y: py * sy };
+  };
+  const onDown = (e) => { e.preventDefault(); const p = rectAt(e); _redactDrag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y }; };
+  const onMove = (e) => { if (!_redactDrag) return; const p = rectAt(e); _redactDrag.x1 = p.x; _redactDrag.y1 = p.y; _redrawRedact(); };
+  const onUp   = () => {
+    if (!_redactDrag) return;
+    const r = _redactDrag;
+    if (Math.abs(r.x1 - r.x0) > 5 && Math.abs(r.y1 - r.y0) > 5) {
+      _redactRects.push({ x: Math.min(r.x0,r.x1), y: Math.min(r.y0,r.y1), w: Math.abs(r.x1-r.x0), h: Math.abs(r.y1-r.y0), mode: _redactMode });
+    }
+    _redactDrag = null;
+    _redrawRedact();
+  };
+  _redactCanvas.addEventListener('mousedown', onDown);
+  _redactCanvas.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  _redactCanvas.addEventListener('touchstart', onDown, { passive: false });
+  _redactCanvas.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('touchend', onUp);
+}
+function setRedactMode(mode) {
+  _redactMode = mode;
+  document.getElementById('redactModePixel').classList.toggle('primary', mode === 'pixel');
+  document.getElementById('redactModeBlack').classList.toggle('primary', mode === 'black');
+}
+function redactUndo() { _redactRects.pop(); _redrawRedact(); }
+function redactReset() { _redactRects = []; _redrawRedact(); }
+function _redrawRedact() {
+  _redactCtx.drawImage(_redactImg, 0, 0, _redactCanvas.width, _redactCanvas.height);
+  // Apply each saved rect
+  for (const r of _redactRects) _applyRedact(r);
+  // Draw the in-progress drag rect
+  if (_redactDrag) {
+    _redactCtx.save();
+    _redactCtx.strokeStyle = 'rgba(184,148,30,0.9)';
+    _redactCtx.setLineDash([6, 4]);
+    _redactCtx.lineWidth = 2;
+    _redactCtx.strokeRect(_redactDrag.x0, _redactDrag.y0, _redactDrag.x1 - _redactDrag.x0, _redactDrag.y1 - _redactDrag.y0);
+    _redactCtx.restore();
+  }
+}
+function _applyRedact(r) {
+  if (r.mode === 'black') {
+    _redactCtx.fillStyle = '#000';
+    _redactCtx.fillRect(r.x, r.y, r.w, r.h);
+    return;
+  }
+  // Pixelate: redraw the rect at low res
+  const cell = Math.max(8, Math.round(Math.min(r.w, r.h) / 14));
+  for (let yy = r.y; yy < r.y + r.h; yy += cell) {
+    for (let xx = r.x; xx < r.x + r.w; xx += cell) {
+      const data = _redactCtx.getImageData(xx, yy, 1, 1).data;
+      _redactCtx.fillStyle = `rgb(${data[0]},${data[1]},${data[2]})`;
+      _redactCtx.fillRect(xx, yy, cell, cell);
+    }
+  }
+}
+function closeRedact() {
+  document.getElementById('redactModal').classList.remove('show');
+  // If user closed without applying, still upload the original
+  if (_lastUploadedFile && !uploadedFileUrl) {
+    _doUpload(_lastUploadedFile);
+  }
+}
+async function redactApply() {
+  _redactCanvas.toBlob(async (blob) => {
+    const file = new File([blob], 'redacted-' + (_lastUploadedFile?.name || 'photo.png'), { type: blob.type });
+    document.getElementById('redactModal').classList.remove('show');
+    await _doUpload(file);
+    document.getElementById('uploadName').textContent = `${file.name} (redacted) ✓`;
+  }, 'image/jpeg', 0.9);
+}
+
+// ── PER-STORY SHARE CARDS (canvas-generated) ──
+function generateShareCard(officer, review) {
+  const c = document.createElement('canvas');
+  c.width = 1200; c.height = 675;
+  const ctx = c.getContext('2d');
+  // Background
+  ctx.fillStyle = '#fafaf7'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = '#fef9e7'; ctx.fillRect(0, c.height - 60, c.width, 60);  // gold strip bottom
+  // Top brand row
+  ctx.fillStyle = '#b8941e';
+  ctx.fillRect(60, 60, 40, 40);
+  ctx.fillStyle = '#1a1a1d';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText('C', 73, 90);
+  ctx.fillStyle = '#1a1a1d';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText('CivicVoice', 116, 92);
+  ctx.fillStyle = '#7a7a82';
+  ctx.font = '15px sans-serif';
+  ctx.fillText('your voice on every public servant', 116, 113);
+  // Role + agency
+  const role = inferRole(officer);
+  const isPos = review.verdict === 'fair';
+  ctx.fillStyle = isPos ? '#1f8c5f' : '#c93434';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText((isPos ? '★ RECOGNITION' : '⚠ CONCERN') + ' · ' + (role || '').toUpperCase(), 60, 180);
+  // Officer name
+  ctx.fillStyle = '#1a1a1d';
+  ctx.font = 'bold 52px sans-serif';
+  ctx.fillText(officer.name || 'Unknown', 60, 240);
+  // Department
+  ctx.fillStyle = '#3d3d45';
+  ctx.font = '22px sans-serif';
+  ctx.fillText(officer.department || '', 60, 274);
+  // Quoted story
+  ctx.fillStyle = '#1a1a1d';
+  ctx.font = 'italic 28px Georgia, serif';
+  const text = (review.story || '').slice(0, 280);
+  wrapText(ctx, '“' + text + '”', 60, 340, c.width - 120, 38);
+  // Footer
+  ctx.fillStyle = '#7a7a82';
+  ctx.font = '16px sans-serif';
+  ctx.fillText('Read on CivicVoice → ' + (window.location.host || 'civicvoice.com'), 60, c.height - 28);
+  return c;
+}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  let lines = 0;
+  for (const w of words) {
+    const test = line + w + ' ';
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, y);
+      line = w + ' ';
+      y += lineHeight; lines++;
+      if (lines >= 6) { ctx.fillText(line + '…', x, y); return; }
+    } else line = test;
+  }
+  ctx.fillText(line, x, y);
+}
+async function shareStoryCard(officerId, reviewId) {
+  const it = _streamIndex[`${officerId}:${reviewId}`];
+  if (!it) return shareTo('native');
+  const c = generateShareCard(it.officer, it.review);
+  c.toBlob(async (blob) => {
+    const file = new File([blob], 'civicvoice-story.jpg', { type: 'image/jpeg' });
+    const url = window.location.origin + window.location.pathname;
+    const text = `${it.officer.name || 'A public servant'} — ${(it.review.story || '').slice(0, 100)}${(it.review.story || '').length > 100 ? '…' : ''}`;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ title: 'CivicVoice', text, url, files: [file] }); return; }
+      catch { /* fall through to download */ }
+    }
+    // Fallback — download the card so the user can attach it manually
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'civicvoice-story.jpg';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }, 'image/jpeg', 0.9);
 }
 
 function _refreshVerificationTier() {
@@ -458,6 +669,7 @@ async function submitReview() {
     ticket_number: document.getElementById('ticketNumberIn').value || null,
     upload_url: uploadedFileUrl,
     evidence_type: document.getElementById('evidenceType')?.value || null,
+    tags: (document.getElementById('storyTags')?.value || '').split(',').map(s => s.trim().toLowerCase().replace(/^#/, '')).filter(Boolean),
     anonymous,
     reviewer_name: anonymous ? null : (document.getElementById('reviewerName')?.value || null),
     body_cam: bodyCamAnswer,
@@ -496,7 +708,7 @@ async function submitReview() {
       const anonT = document.getElementById('anonToggle'); if (anonT) { anonT.checked = true; const rnw = document.getElementById('reviewerNameWrap'); if (rnw) rnw.style.display = 'none'; }
       const evType = document.getElementById('evidenceType'); if (evType) evType.value = '';
       const vTier  = document.getElementById('verificationTier'); if (vTier) vTier.style.display = 'none';
-      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','ticketNumberIn','quickStory','reviewerName']
+      ['officerName','badgeIn','deptIn','locationIn','ticketAmount','ticketViolation','ticketNumberIn','quickStory','reviewerName','storyTags']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       // Clear role selection — user picks fresh each time
       currentRole = null;
@@ -621,6 +833,16 @@ function closeModal(e) {
 
 function searchOfficers() { applyFilters(); }
 
+// Click a #tag chip → jump to Stories with the tag pre-filtered in the search
+function filterByTag(tag) {
+  nav('officers');
+  const input = document.getElementById('officerSearch');
+  if (input) {
+    input.value = '#' + tag;
+    setTimeout(() => applyFilters(), 50);
+  }
+}
+
 function pillClick(el) {
   // Only update pills within the same pill group (don't cross-touch the rankings pills)
   const group = el.parentElement;
@@ -686,9 +908,16 @@ function renderStream(officers, q) {
     }
   }
   if (q) {
-    items = items.filter(it => (it.review.story || '').toLowerCase().includes(q) ||
-                               (it.officer.name || '').toLowerCase().includes(q) ||
-                               (it.officer.department || '').toLowerCase().includes(q));
+    // Tag search: query starts with '#' → match against story.tags
+    if (q.startsWith('#')) {
+      const wanted = q.slice(1).trim();
+      items = items.filter(it => (it.review.tags || []).some(t => t.toLowerCase().includes(wanted)));
+    } else {
+      items = items.filter(it => (it.review.story || '').toLowerCase().includes(q) ||
+                                 (it.officer.name || '').toLowerCase().includes(q) ||
+                                 (it.officer.department || '').toLowerCase().includes(q) ||
+                                 ((it.review.tags || []).some(t => t.toLowerCase().includes(q))));
+    }
   }
   items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
   items = items.slice(0, 60);
@@ -727,6 +956,7 @@ function renderStream(officers, q) {
           </div>
         </div>
         <div class="sp-body">${escapeHtml(shown)}${truncated ? ' <button class="sp-readmore" onclick="event.stopPropagation(); openStoryDetail(' + o.id + ', ' + r.id + ')">Read full</button>' : ''}</div>
+        ${(r.tags && r.tags.length) ? `<div class="sp-tags-row">${r.tags.slice(0, 5).map(t => `<span class="spt" onclick="event.stopPropagation(); filterByTag('${escapeHtml(t).replace(/'/g, "\\'")}');">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
         <div class="sp-byline">
           <span class="sp-author" style="cursor:pointer;" onclick="event.stopPropagation(); openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(authorInitial)}</span>${escapeHtml(author)}</span>
           <span class="sp-sep">·</span>
@@ -737,7 +967,7 @@ function renderStream(officers, q) {
           <div class="sp-actions">
             <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
             ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)} repl${getReplyCount(o.id, r.id) === 1 ? 'y' : 'ies'}</button>` : ''}
-            <button class="sp-action" onclick="event.stopPropagation(); shareTo('native')">🔗 Share</button>
+            <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
             <button class="sp-action primary" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">Read full →</button>
           </div>
         </div>
@@ -773,6 +1003,10 @@ function openStoryDetail(officerId, reviewId) {
       </div>
     </div>
     <div class="sd-body">${escapeHtml(story)}</div>
+    <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="sp-action" onclick="translateStory(${JSON.stringify(story).replace(/"/g, '&quot;')})">&#127760; Translate</button>
+      ${(r.tags && r.tags.length) ? r.tags.map(t => `<span class="spt" onclick="closeStoryDetail(); filterByTag('${escapeHtml(t).replace(/'/g, "\\'")}');">#${escapeHtml(t)}</span>`).join('') : ''}
+    </div>
     <div class="sd-foot">
       <div class="sd-byline">
         <span class="sd-author-avatar">${escapeHtml(authorInitial)}</span>
@@ -781,7 +1015,7 @@ function openStoryDetail(officerId, reviewId) {
         ${r.upload_url ? ' · <span style="color:var(--blue);">🛡️ Verified</span>' : ''}
       </div>
       <button class="sp-action up" onclick="thanksTo(this, event)">👍 Same here</button>
-      <button class="sp-action" onclick="shareTo('native')">🔗 Share</button>
+      <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
       <button class="sp-action primary" onclick="closeStoryDetail(); openOfficer(${o.id})">View full profile →</button>
     </div>
     <div class="reply-thread">
@@ -960,15 +1194,219 @@ function openAuthorProfile(handle) {
     `}
     <div class="sd-foot" style="margin-top:18px;">
       <div class="sd-byline" style="flex:1;">
-        ${isCurrentUser ? 'This is your contributor profile.' : 'This is a public contributor on CivicVoice.'}
+        ${(() => {
+          const t = computeTrustScore(handle);
+          return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:0.78rem;color:var(--gray);">Trust score:</span>
+            <strong style="color:${t.tier.color};font-size:0.95rem;">${t.score}/100 · ${t.tier.label}</strong>
+            <span style="flex:1;min-width:100px;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;">
+              <span style="display:block;width:${t.score}%;height:100%;background:${t.tier.color};"></span>
+            </span>
+          </div>`;
+        })()}
       </div>
-      ${!isCurrentUser ? '<button class="sp-action">Report contributor</button>' : ''}
+      ${!isCurrentUser ? `<button class="sp-action" onclick="openDMThread('${escapeHtml(handle).replace(/'/g, "\\'")}');">💌 Message</button>` : ''}
+      ${!isCurrentUser ? '<button class="sp-action">Report</button>' : ''}
     </div>
   `;
   document.getElementById('authorProfileModal').classList.add('show');
 }
 function closeAuthorProfile() {
   document.getElementById('authorProfileModal').classList.remove('show');
+}
+
+// ── SUBSCRIBE TO AGENCY ──
+function getSubs() {
+  try { return JSON.parse(localStorage.getItem(SUBS_KEY) || '[]'); } catch { return []; }
+}
+function _setSubs(arr) { localStorage.setItem(SUBS_KEY, JSON.stringify(arr)); }
+function isSubscribed(agencyName) { return getSubs().includes(agencyName); }
+function toggleSubscribe(agencyName, btn) {
+  if (!requireAuth(() => toggleSubscribe(agencyName, btn), 'Sign in to subscribe')) return;
+  let subs = getSubs();
+  if (subs.includes(agencyName)) {
+    subs = subs.filter(s => s !== agencyName);
+    if (btn) { btn.innerHTML = '🔔 Subscribe'; btn.classList.remove('subscribed'); }
+  } else {
+    subs.push(agencyName);
+    if (btn) { btn.innerHTML = '✓ Subscribed'; btn.classList.add('subscribed'); }
+  }
+  _setSubs(subs);
+}
+
+// ── TRUST SCORE — compute author trustworthiness from existing data ──
+function computeTrustScore(handle) {
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  let total = 0, verified = 0, fair = 0;
+  for (const o of officers) {
+    for (const r of (o.reviews || [])) {
+      const a = r.author_display || _legacyAuthor(o.id, r.id);
+      if (a === handle) {
+        total++;
+        if (r.upload_url) verified++;
+        if (r.verdict === 'fair') fair++;
+      }
+    }
+  }
+  // Score formula:
+  //   30 base (has account)
+  //   +2 per story posted, cap +40 (20 stories)
+  //   +5 per verified story, cap +20 (4 verified)
+  //   +10 for balanced sentiment (fair % between 30-70)
+  let score = 30;
+  score += Math.min(total * 2, 40);
+  score += Math.min(verified * 5, 20);
+  if (total >= 3) {
+    const fairPct = fair / total;
+    if (fairPct >= 0.3 && fairPct <= 0.7) score += 10;
+  }
+  score = Math.min(100, Math.max(0, score));
+  const tier =
+    score >= 85 ? { label: 'Expert',   color: 'var(--green)' } :
+    score >= 60 ? { label: 'Trusted',  color: 'var(--accent)' } :
+    score >= 30 ? { label: 'Active',   color: 'var(--blue)' } :
+                  { label: 'New',      color: 'var(--gray)' };
+  return { score, tier, total, verified, fair };
+}
+
+// ── TRANSLATE — opens Google Translate with the story text ──
+function translateStory(text) {
+  const t = encodeURIComponent((text || '').slice(0, 5000));
+  window.open(`https://translate.google.com/?sl=auto&tl=en&text=${t}&op=translate`, '_blank', 'noopener');
+}
+
+// ── PUSH NOTIFICATIONS — request permission, show a sample, document real backend ──
+function getPushPref() {
+  try { return JSON.parse(localStorage.getItem(PUSH_KEY) || 'false'); } catch { return false; }
+}
+function _setPushPref(on) { localStorage.setItem(PUSH_KEY, JSON.stringify(!!on)); }
+async function togglePushNotifications() {
+  closeUserMenu();
+  if (!('Notification' in window)) { alert('Your browser does not support notifications.'); return; }
+  if (getPushPref()) {
+    _setPushPref(false);
+    alert('Push notifications turned off.');
+    renderAuthState();
+    return;
+  }
+  let perm = Notification.permission;
+  if (perm === 'default') perm = await Notification.requestPermission();
+  if (perm !== 'granted') { alert('Please allow notifications in your browser settings.'); return; }
+  _setPushPref(true);
+  renderAuthState();
+  // Demo notification so the user sees it works
+  new Notification('CivicVoice', {
+    body: 'Notifications enabled. We\'ll ping you when there\'s activity on your stories.',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+  });
+}
+
+// ── DIRECT MESSAGES — local-only demo (real cross-device DMs need the backend) ──
+function _readDMs() { try { return JSON.parse(localStorage.getItem(DMS_KEY) || '{}'); } catch { return {}; } }
+function _writeDMs(m) { localStorage.setItem(DMS_KEY, JSON.stringify(m)); }
+function _dmThreadKey(a, b) { return [a, b].sort().join(' ↔ '); }
+function sendDM(toHandle) {
+  if (!requireAuth(() => sendDM(toHandle), 'Sign in to send a message')) return;
+  const ta = document.getElementById('dmComposeText');
+  const body = (ta?.value || '').trim();
+  if (!body) { alert('Type a message first.'); return; }
+  const me = getCurrentUser();
+  const fromHandle = me.anonymous ? me.handle : (me.displayName || me.handle);
+  const key = _dmThreadKey(fromHandle, toHandle);
+  const all = _readDMs();
+  all[key] = all[key] || [];
+  all[key].push({ id: 'm' + Date.now(), from: fromHandle, to: toHandle, body, ts: new Date().toISOString() });
+  _writeDMs(all);
+  ta.value = '';
+  openDMThread(toHandle);
+}
+function openDMs() {
+  closeUserMenu();
+  if (!requireAuth(() => openDMs(), 'Sign in to use messages')) return;
+  const me = getCurrentUser();
+  const myHandle = me.anonymous ? me.handle : (me.displayName || me.handle);
+  const all = _readDMs();
+  const myThreads = Object.entries(all)
+    .filter(([key]) => key.includes(myHandle))
+    .map(([key, msgs]) => {
+      const other = key.split(' ↔ ').find(h => h !== myHandle);
+      const last = msgs[msgs.length - 1];
+      return { other, last, count: msgs.length };
+    })
+    .sort((a, b) => new Date(b.last.ts) - new Date(a.last.ts));
+
+  const body = document.getElementById('authorProfileBody');
+  body.innerHTML = `
+    <div class="sd-eyebrow">YOUR INBOX</div>
+    <div class="sd-head" style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px;">
+      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;">${escapeHtml(myHandle.charAt(0).toUpperCase())}</div>
+      <div class="sd-who">
+        <div class="sd-name" style="cursor:default;">Messages</div>
+        <div class="sd-agency">${myThreads.length} thread${myThreads.length === 1 ? '' : 's'}</div>
+      </div>
+    </div>
+    ${myThreads.length === 0 ? `
+      <div style="text-align:center;padding:30px 0;color:var(--gray);font-size:0.92rem;">
+        No messages yet.<br><br>
+        <span style="font-size:0.82rem;">Open any contributor's profile and tap <strong>Message</strong> to start a thread.</span>
+      </div>
+    ` : `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${myThreads.map(t => `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;" onclick="openDMThread('${escapeHtml(t.other).replace(/'/g, "\\'")}');">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <strong style="color:var(--ink);">${escapeHtml(t.other)}</strong>
+              <span style="font-size:0.74rem;color:var(--gray);">${formatDate(t.last.ts)}</span>
+            </div>
+            <div style="font-size:0.88rem;color:var(--light);line-height:1.5;">${escapeHtml(t.last.body.slice(0, 100))}${t.last.body.length > 100 ? '…' : ''}</div>
+            <div style="font-size:0.72rem;color:var(--gray);margin-top:4px;">${t.count} message${t.count === 1 ? '' : 's'}</div>
+          </div>
+        `).join('')}
+      </div>
+    `}
+    <div style="font-size:0.76rem;color:var(--gray);margin-top:18px;padding-top:14px;border-top:1px solid var(--border);line-height:1.5;">
+      💡 Messages are stored on this device. Cross-device sync arrives with the real backend.
+    </div>
+  `;
+  document.getElementById('authorProfileModal').classList.add('show');
+}
+function openDMThread(otherHandle) {
+  if (!requireAuth(() => openDMThread(otherHandle), 'Sign in to message')) return;
+  const me = getCurrentUser();
+  const myHandle = me.anonymous ? me.handle : (me.displayName || me.handle);
+  const key = _dmThreadKey(myHandle, otherHandle);
+  const all = _readDMs();
+  const msgs = all[key] || [];
+  const body = document.getElementById('authorProfileBody');
+  body.innerHTML = `
+    <div class="sd-eyebrow"><button onclick="openDMs()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:inherit;font-size:inherit;letter-spacing:inherit;font-weight:inherit;">&larr; Inbox</button></div>
+    <div class="sd-head" style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px;">
+      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;">${escapeHtml(otherHandle.charAt(0).toUpperCase())}</div>
+      <div class="sd-who">
+        <div class="sd-name" onclick="openAuthorProfile('${escapeHtml(otherHandle).replace(/'/g, "\\'")}');">${escapeHtml(otherHandle)}</div>
+        <div class="sd-agency">${msgs.length} message${msgs.length === 1 ? '' : 's'}</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding:0 4px;margin-bottom:14px;">
+      ${msgs.length === 0 ? '<div style="color:var(--gray);text-align:center;padding:14px 0;font-size:0.88rem;">No messages yet — say hi.</div>' :
+        msgs.map(m => `
+          <div style="background:${m.from === myHandle ? 'var(--accent-soft)' : 'var(--bg2)'};border:1px solid var(--border);border-radius:12px;padding:10px 14px;align-self:${m.from === myHandle ? 'flex-end' : 'flex-start'};max-width:80%;">
+            <div style="font-size:0.92rem;line-height:1.55;color:var(--ink);white-space:pre-wrap;">${escapeHtml(m.body)}</div>
+            <div style="font-size:0.7rem;color:var(--gray);margin-top:4px;">${formatDate(m.ts)}</div>
+          </div>
+        `).join('')
+      }
+    </div>
+    <div class="reply-form">
+      <textarea id="dmComposeText" placeholder="Type a message…" style="min-height:60px;"></textarea>
+      <div class="reply-form-foot">
+        <span class="reply-as">Posting as <strong style="color:var(--accent);">${escapeHtml(myHandle)}</strong></span>
+        <button class="rcm-confirm" style="padding:9px 18px;font-size:0.85rem;" onclick="sendDM('${escapeHtml(otherHandle).replace(/'/g, "\\'")}');">Send &rarr;</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('authorProfileModal').classList.add('show');
 }
 // Escape closes modal
 document.addEventListener('keydown', (e) => {
@@ -1065,7 +1503,10 @@ function renderDepartments() {
           </div>
         `).join('')}
         <div class="cc-row" style="font-size:0.78rem;color:var(--gray);margin-top:6px;">&#128205; ${escapeHtml(d.address)}</div>
-        <button class="cc-send" onclick="openComplaintForm(${JSON.stringify(recipientName).replace(/"/g, '&quot;')}, ${JSON.stringify(recipientEmail).replace(/"/g, '&quot;')})">Send Complaint &rarr;</button>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <button class="cc-send" style="flex:1;" onclick="openComplaintForm(${JSON.stringify(recipientName).replace(/"/g, '&quot;')}, ${JSON.stringify(recipientEmail).replace(/"/g, '&quot;')})">Send message &rarr;</button>
+          <button class="sub-btn ${isSubscribed(d.name) ? 'subscribed' : ''}" title="${isSubscribed(d.name) ? 'Subscribed — you get updates on new stories about this agency' : 'Get updates when new stories mention this agency'}" onclick="toggleSubscribe(${JSON.stringify(d.name).replace(/"/g, '&quot;')}, this)">${isSubscribed(d.name) ? '✓ Subscribed' : '🔔 Subscribe'}</button>
+        </div>
       </div>
     `;
   }).join('');
