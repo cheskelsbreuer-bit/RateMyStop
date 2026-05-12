@@ -124,6 +124,18 @@ function toggleMoreMenu(evt) {
 function closeMoreMenu() {
   document.getElementById('navMoreMenu')?.classList.remove('show');
 }
+
+// Mobile drawer — slides in from the right on phones
+function openMobileDrawer() {
+  document.getElementById('mobileDrawer')?.classList.add('show');
+  document.getElementById('mobileDrawerBackdrop')?.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobileDrawer() {
+  document.getElementById('mobileDrawer')?.classList.remove('show');
+  document.getElementById('mobileDrawerBackdrop')?.classList.remove('show');
+  document.body.style.overflow = '';
+}
 function renderAuthState() {
   const u = getCurrentUser();
   const pill = document.getElementById('userPill');
@@ -2111,6 +2123,8 @@ document.addEventListener('keydown', (e) => {
     if (am && am.classList.contains('show')) closeAuthModal();
     const ap = document.getElementById('authorProfileModal');
     if (ap && ap.classList.contains('show')) closeAuthorProfile();
+    const md = document.getElementById('mobileDrawer');
+    if (md && md.classList.contains('show')) closeMobileDrawer();
   }
 });
 

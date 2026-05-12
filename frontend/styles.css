@@ -27,6 +27,29 @@ body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--ink);min
 /* TOPBAR */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 40px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.92);position:sticky;top:0;z-index:200;backdrop-filter:blur(12px) saturate(150%);gap:16px;}
 .topbar-auth{position:relative;display:flex;align-items:center;gap:8px;}
+/* Hamburger button — hidden on desktop, visible on mobile */
+.mobile-menu-btn{display:none;background:transparent;border:1px solid var(--border);width:38px;height:38px;border-radius:50%;cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;}
+.mobile-menu-btn:hover{background:var(--accent-soft);border-color:rgba(184,148,30,0.4);}
+.mmb-line{display:block;width:18px;height:2px;background:var(--ink);border-radius:1px;}
+
+/* Mobile drawer */
+.mobile-drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(15,15,19,0.45);z-index:480;backdrop-filter:blur(4px);}
+.mobile-drawer-backdrop.show{display:block;animation:fadeUp 0.18s ease;}
+.mobile-drawer{display:none;position:fixed;top:0;right:0;height:100vh;width:min(86vw, 360px);background:var(--card);border-left:1px solid var(--border);z-index:490;box-shadow:-20px 0 50px rgba(15,15,19,0.18);flex-direction:column;}
+.mobile-drawer.show{display:flex;animation:slideInRight 0.25s cubic-bezier(0.4,0,0.2,1);}
+@keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}
+.md-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
+.md-brand{display:flex;align-items:center;gap:10px;}
+.md-brand .brand-mark{width:30px;height:30px;font-size:0.85rem;}
+.md-brand .brand-name{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:-0.4px;}
+.md-close{background:rgba(15,15,19,0.06);border:none;color:var(--ink);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1.5rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
+.md-close:hover{background:rgba(15,15,19,0.1);}
+.md-nav{display:flex;flex-direction:column;padding:14px 12px;gap:2px;flex:1;overflow-y:auto;}
+.md-nav button{display:flex;align-items:center;background:transparent;border:none;color:var(--ink);font-family:'Epilogue',sans-serif;font-size:1rem;font-weight:600;padding:14px 16px;border-radius:10px;cursor:pointer;text-align:left;transition:background 0.15s;width:100%;}
+.md-nav button:hover{background:var(--accent-soft);color:var(--accent);}
+.md-divider{height:1px;background:var(--border);margin:8px 16px;}
+.md-foot{padding:14px 22px;border-top:1px solid var(--border);}
+
 .sign-in-btn{background:var(--accent-soft);color:var(--accent);border:1px solid rgba(184,148,30,0.32);font-family:'Epilogue',sans-serif;font-weight:600;font-size:0.85rem;padding:8px 16px;border-radius:999px;cursor:pointer;transition:all 0.18s;}
 .sign-in-btn:hover{background:rgba(184,148,30,0.14);border-color:rgba(184,148,30,0.5);}
 .user-pill{display:none;align-items:center;gap:8px;background:rgba(15,15,19,0.04);border:1px solid var(--border);color:var(--ink);font-family:'Epilogue',sans-serif;font-weight:500;font-size:0.85rem;padding:5px 12px 5px 5px;border-radius:999px;cursor:pointer;transition:all 0.18s;}
@@ -724,7 +747,14 @@ section.active{display:block;}
 /* RESPONSIVE */
 @media(max-width:900px){
   .topnav{display:none;}
-  .mobile-menu-btn{display:flex !important;}
+  .mobile-menu-btn{display:inline-flex !important;}
+  /* Bigger touch targets on modal close buttons (Apple guideline: 44x44 min) */
+  .modal-close,.auth-close,.md-close{width:44px !important;height:44px !important;font-size:1.55rem !important;}
+  .modal{padding:24px 20px;}
+  .story-detail{padding:24px 22px 22px;}
+  .auth-modal{padding:28px 22px 22px;}
+  /* Hide the bell on the very small phones — drawer has its own access pattern */
+  .bell-dropdown{right:14px;width:calc(100vw - 28px);}
 }
 @media(max-width:700px){
   .topbar{padding:12px 16px;}
