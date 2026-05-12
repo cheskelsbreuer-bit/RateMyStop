@@ -896,7 +896,24 @@ async function openOfficer(id) {
           </div>
         `;
       }).join('')}
-      <button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">Send a message to this agency →</button>
+      ${(() => {
+        // Only the original author of a story on this profile can route a message to the agency.
+        // Anyone else can share, browse, or post their own story. (Future option: open this after 30+
+        // days unresolved so the community can amplify — disabled for now per founder request.)
+        const u = getCurrentUser();
+        const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
+        const myReviews = (o.reviews || []).filter(r => (r.author_display || _legacyAuthor(o.id, r.id)) === myHandle);
+        if (myHandle && myReviews.length) {
+          return `<button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">&#9993;&#65039; Send a message to ${escapeHtml(o.department || 'this agency')} about your story &rarr;</button>`;
+        }
+        return `<div style="margin-top:18px;padding:16px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;gap:12px;align-items:flex-start;">
+          <span style="font-size:1.2rem;flex-shrink:0;">&#128737;&#65039;</span>
+          <div style="font-size:0.86rem;line-height:1.55;color:var(--light);">
+            <strong style="color:var(--ink);">Only the original story author can route a message to the agency.</strong>
+            <div style="margin-top:6px;">You can share this profile, react with &quot;Same here&quot; on a story that resonates, or <button onclick="document.getElementById('officerModal').classList.remove('show'); nav('share');" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-family:inherit;font-size:inherit;font-weight:600;">share your own story</button>.</div>
+          </div>
+        </div>`;
+      })()}
     `;
   } catch (err) {
     modal.innerHTML = `<div style="color:var(--red);padding:30px 0;text-align:center;">
