@@ -36,15 +36,20 @@
     <div class="brand-name">Civic<span>Voice</span></div>
   </div>
   <nav class="topnav">
-    <button class="active" onclick="nav('home')">Home</button>
-    <button onclick="nav('pulse')">Pulse</button>
-    <button onclick="nav('share')">Share</button>
-    <button onclick="nav('officers')">Stories</button>
-    <button onclick="nav('contributors')">Community</button>
-    <button onclick="nav('rankings')">Rankings</button>
-    <button onclick="nav('complaint')">Reach Out</button>
-    <button onclick="nav('orgs')">For Agencies</button>
-    <button onclick="nav('deck')">Sponsors</button>
+    <button class="active" data-section="home"      onclick="nav('home')">Home</button>
+    <button                 data-section="pulse"     onclick="nav('pulse')">Pulse</button>
+    <button                 data-section="officers"  onclick="nav('officers')">Stories</button>
+    <button                 data-section="share"     onclick="nav('share')">Share</button>
+    <button                 data-section="complaint" onclick="nav('complaint')">Reach Out</button>
+    <div class="nav-more-wrap">
+      <button class="nav-more-btn" id="navMoreBtn" onclick="toggleMoreMenu(event)">More <span class="nav-more-caret">&#9662;</span></button>
+      <div class="nav-more-menu" id="navMoreMenu">
+        <button onclick="nav('contributors'); closeMoreMenu();">&#128101; Community</button>
+        <button onclick="nav('rankings'); closeMoreMenu();">&#128202; Rankings</button>
+        <button onclick="nav('orgs'); closeMoreMenu();">&#127970; For Agencies</button>
+        <button onclick="nav('deck'); closeMoreMenu();">&#128188; Sponsors</button>
+      </div>
+    </div>
   </nav>
   <div class="topbar-auth">
     <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown()" aria-label="Notifications" style="display:none;">

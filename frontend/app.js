@@ -107,13 +107,23 @@ function toggleUserMenu() {
 function closeUserMenu() {
   document.getElementById('userMenu').classList.remove('show');
 }
-// Close menu when clicking outside
+// Close menus when clicking outside
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('userMenu');
   const pill = document.getElementById('userPill');
-  if (!menu || !pill) return;
-  if (!menu.contains(e.target) && !pill.contains(e.target)) closeUserMenu();
+  if (menu && pill && !menu.contains(e.target) && !pill.contains(e.target)) closeUserMenu();
+  const moreMenu = document.getElementById('navMoreMenu');
+  const moreBtn  = document.getElementById('navMoreBtn');
+  if (moreMenu && moreBtn && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) closeMoreMenu();
 });
+
+function toggleMoreMenu(evt) {
+  if (evt) evt.stopPropagation();
+  document.getElementById('navMoreMenu')?.classList.toggle('show');
+}
+function closeMoreMenu() {
+  document.getElementById('navMoreMenu')?.classList.remove('show');
+}
 function renderAuthState() {
   const u = getCurrentUser();
   const pill = document.getElementById('userPill');
@@ -156,15 +166,22 @@ function getAuthorDisplay() {
 }
 
 // ── NAVIGATION ──
-const NAV_IDS = ['home', 'pulse', 'share', 'officers', 'contributors', 'rankings', 'complaint', 'orgs', 'deck'];
+// Primary nav: Home · Pulse · Stories · Share · Reach Out · More ▾
+// "More" dropdown contains: Community · Rankings · For Agencies · Sponsors
+const MORE_SECTIONS = ['contributors', 'rankings', 'orgs', 'deck'];
 
 function nav(id) {
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.topnav button').forEach((b, i) => {
-    b.classList.toggle('active', NAV_IDS[i] === id);
+  // Highlight by matching data-section, not by index
+  document.querySelectorAll('.topnav button[data-section]').forEach(b => {
+    b.classList.toggle('active', b.dataset.section === id);
   });
+  // If destination is inside More, highlight the More toggle instead
+  const moreBtn = document.getElementById('navMoreBtn');
+  if (moreBtn) moreBtn.classList.toggle('active', MORE_SECTIONS.includes(id));
   const section = document.getElementById(id);
   if (section) section.classList.add('active');
+  closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
   if (id === 'home')      loadStats();

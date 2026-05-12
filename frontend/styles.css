@@ -75,7 +75,18 @@ body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--ink);min
 .brand-name span{color:var(--accent);}
 .topnav{display:flex;gap:4px;}
 .topnav button{background:none;border:none;color:var(--gray);font-family:'Epilogue',sans-serif;font-size:0.83rem;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all 0.2s;}
-.topnav button.active,.topnav button:hover{background:rgba(15,15,19,0.045);color:var(--white);}
+.topnav button.active,.topnav button:hover{background:rgba(15,15,19,0.045);color:var(--ink);}
+
+/* "More" dropdown in nav */
+.nav-more-wrap{position:relative;display:inline-block;}
+.nav-more-btn{background:none;border:none;color:var(--gray);font-family:'Epilogue',sans-serif;font-size:0.83rem;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:4px;}
+.nav-more-btn:hover,.nav-more-btn.active{background:rgba(15,15,19,0.045);color:var(--ink);}
+.nav-more-caret{font-size:0.7rem;transition:transform 0.18s;}
+.nav-more-btn.active .nav-more-caret,.nav-more-menu.show ~ .nav-more-btn .nav-more-caret{transform:rotate(180deg);}
+.nav-more-menu{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--card);border:1px solid var(--border);border-radius:12px;min-width:220px;box-shadow:var(--shadow-lg);padding:6px;z-index:250;animation:fadeUp 0.18s ease;}
+.nav-more-menu.show{display:block;}
+.nav-more-menu button{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--light);font-family:'Epilogue',sans-serif;font-size:0.88rem;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
+.nav-more-menu button:hover{background:rgba(15,15,19,0.04);color:var(--ink);}
 .btn-gold{background:var(--accent);color:var(--bg);font-family:'Epilogue',sans-serif;font-weight:700;font-size:0.88rem;padding:11px 24px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(184,148,30,0.22);}
 .btn-gold:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 8px 24px rgba(184,148,30,0.4);}
 .btn-gold:active{transform:translateY(0);}
