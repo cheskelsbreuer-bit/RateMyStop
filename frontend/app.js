@@ -752,6 +752,20 @@ async function loadOfficers() {
     const seed = await api.listOfficers();
     const approved = getApprovedAsOfficers();
     officerCache = [...approved, ...seed];  // user submissions surface at the top
+    // Pre-populate the stream index so the story detail modal works from any entry point.
+    // (Seed officers don't yet have reviews here; that's filled in on demand by openOfficer.)
+    for (const o of approved) {
+      for (const r of (o.reviews || [])) {
+        _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role: inferRole(o) };
+      }
+    }
+    // Also index any seeded officers that did include reviews inline (e.g. STATIC_DATA + extras)
+    const fullSeed = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+    for (const o of fullSeed) {
+      for (const r of (o.reviews || [])) {
+        _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role: inferRole(o) };
+      }
+    }
     applyFilters();
   } catch (err) {
     if (stream) stream.innerHTML = `<div style="color:var(--red);text-align:center;padding:40px 0;">Couldn't load stories: ${err.message}</div>`;
@@ -799,12 +813,44 @@ function renderOfficers(list) {
   `;}).join('');
 }
 
+// Make sure _streamIndex is populated even if the user hasn't visited Stories/Pulse yet
+function _ensureStreamIndex() {
+  if (Object.keys(_streamIndex).length > 0) return;
+  const officers = officerCache.length ? officerCache : ((window.STATIC_DATA && window.STATIC_DATA.officers) || []);
+  const approved = getApprovedAsOfficers();
+  for (const o of [...approved, ...officers]) {
+    for (const r of (o.reviews || [])) {
+      _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role: inferRole(o) };
+    }
+  }
+}
+
 async function openOfficer(id) {
   const modal = document.getElementById('modalContent');
   modal.innerHTML = '<div style="color:var(--gray);padding:40px 0;text-align:center;">Loading…</div>';
   document.getElementById('officerModal').classList.add('show');
+  _ensureStreamIndex();
+
+  // Approved user-submissions live in officerCache with their reviews already inlined.
+  // The API only knows seed data, so for synthetic IDs (1000000+) we must use cache directly.
+  const cached = officerCache.find(x => x.id === Number(id));
+  const isApproved = cached && cached.reviews && cached.reviews.length && Number(id) >= 1000000;
   try {
-    const o = await api.getOfficer(id);
+    let o;
+    if (isApproved) {
+      o = cached;
+    } else if (cached && cached.reviews && cached.reviews.length) {
+      // From extras or any cached officer that already has reviews
+      o = cached;
+    } else {
+      o = await api.getOfficer(id);
+    }
+    // Make sure stream index has every review on this officer for future detail-modal opens
+    if (o && o.reviews) {
+      for (const r of o.reviews) {
+        _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role: inferRole(o) };
+      }
+    }
     modal.innerHTML = `
       <div class="mo-head">
         <div class="mo-av">${(o.name || 'Unknown').split(' ').pop().slice(0, 2).toUpperCase()}</div>
@@ -818,23 +864,47 @@ async function openOfficer(id) {
         <div class="ms-box"><div class="ms-n">${o.review_count}</div><div class="ms-l">Stories</div></div>
         <div class="ms-box"><div class="ms-n">${o.fair_count}</div><div class="ms-l">Recognitions</div></div>
       </div>
-      ${o.reviews.map(r => `
-        <div class="mo-review">
-          <div class="mr-top">
-            <div class="mr-stars">${starsStr(r.stars)}</div>
-            <div>
-              <span class="mr-verdict ${r.verdict}">${r.verdict === 'fair' ? '★ Recognition' : '⚠ Concern'}</span>
-              ${r.upload_url ? '<span class="flag-verified" style="margin-left:6px;">🛡️ Verified</span>' : ''}
+      ${o.reviews.map(r => {
+        const status = getResolutionStatus(o.id, r.id, r);
+        const meta = RES_META[status];
+        const author = r.author_display || _legacyAuthor(o.id, r.id);
+        const u = getCurrentUser();
+        const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
+        const isAuthor = myHandle && myHandle === author;
+        const replyCount = getReplyCount(o.id, r.id);
+        return `
+          <div class="mo-review">
+            <div class="mr-top">
+              <div class="mr-stars">${starsStr(r.stars)}</div>
+              <div>
+                <span class="mr-verdict ${r.verdict}">${r.verdict === 'fair' ? '★ Recognition' : '⚠ Concern'}</span>
+                ${r.upload_url ? '<span class="flag-verified" style="margin-left:6px;">🛡️ Verified</span>' : ''}
+              </div>
+            </div>
+            <div class="mr-text">${escapeHtml(r.story || 'No description provided.')}</div>
+            <div class="mr-date">By <strong style="color:var(--ink);cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="document.getElementById('officerModal').classList.remove('show'); openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');">${escapeHtml(author)}</strong> · ${formatDate(r.created_at)}</div>
+            <div class="resolution-banner" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};margin-top:10px;font-size:0.82rem;padding:8px 12px;">
+              <span class="rb-icon">${meta.icon}</span>
+              <span class="rb-text"><strong>${meta.label}</strong></span>
+              ${isAuthor && status !== 'resolved' ? `<button class="rb-btn" onclick="markStoryResolved(${o.id}, ${r.id}); document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openOfficer(${o.id}), 80);">✓ Mark resolved</button>` : ''}
+            </div>
+            <div class="mr-actions">
+              <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
+              <button class="sp-action" onclick="document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openStoryDetail(${o.id}, ${r.id}), 80);">💬 ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'} & thread</button>
+              <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
             </div>
           </div>
-          <div class="mr-text">${escapeHtml(r.story || 'No description provided.')}</div>
-          <div class="mr-date">${formatDate(r.created_at)}</div>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
       <button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">Send a message to this agency →</button>
     `;
   } catch (err) {
-    modal.innerHTML = `<div style="color:var(--red);padding:40px 0;text-align:center;">Couldn't load officer: ${err.message}</div>`;
+    modal.innerHTML = `<div style="color:var(--red);padding:30px 0;text-align:center;">
+      <div style="font-size:1.6rem;margin-bottom:10px;">😕</div>
+      <strong>This profile couldn't be loaded.</strong>
+      <div style="font-size:0.85rem;color:var(--gray);margin-top:6px;">${escapeHtml(err.message || 'Unknown error')}</div>
+      <button class="btn-ghost" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('officers');">Back to Stories</button>
+    </div>`;
   }
 }
 

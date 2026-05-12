@@ -561,6 +561,7 @@ section.active{display:block;}
 .mr-verdict.unfair{background:rgba(224,82,82,0.1);color:var(--red);}
 .mr-text{font-size:0.87rem;color:var(--light);line-height:1.6;margin-bottom:6px;}
 .mr-date{font-size:0.74rem;color:var(--gray);}
+.mr-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .mo-flag{background:rgba(224,82,82,0.08);border:1px solid rgba(224,82,82,0.2);border-radius:10px;padding:12px 16px;font-size:0.82rem;color:var(--light);margin-top:16px;display:flex;gap:10px;align-items:flex-start;}
 .flag-verified{display:inline-flex;align-items:center;gap:5px;background:rgba(91,138,240,0.1);border:1px solid rgba(91,138,240,0.3);border-radius:6px;padding:2px 8px;font-size:0.72rem;color:var(--blue);}
 
