@@ -130,30 +130,6 @@
 <!-- Persistent escape pill (phone only, shown when on Pulse — no matter how deep you've scrolled) -->
 <button class="pulse-escape" onclick="nav('home');" aria-label="Back to home">&larr; Home</button>
 
-<!-- DESKTOP RIGHT RAIL — only shown at >=1100px viewport. Sticky companion to main feed. -->
-<aside class="desktop-rail" id="desktopRail" aria-label="Quick stats">
-  <div class="dr-card" id="drStreakCard" style="display:none;">
-    <div class="dr-streak">
-      <div class="dr-streak-n" id="drStreakDays">0</div>
-      <div class="dr-streak-l">Days on the record</div>
-    </div>
-  </div>
-  <div class="dr-card" id="drTopCard">
-    <div class="dr-head">&#128293; Top reacted <span class="dr-sub">this week</span></div>
-    <div id="drTopList"></div>
-  </div>
-  <div class="dr-card">
-    <div class="dr-head">&#128499;&#65039; Open polls</div>
-    <div id="drPollList"></div>
-  </div>
-  <div class="dr-card">
-    <div class="dr-head">&#128205; Coming soon</div>
-    <div class="dr-item" onclick="openNotifyMe('Stories near me','near-me')"><span class="dr-name">Stories near me</span><span class="dr-meta">Tap to get notified</span></div>
-    <div class="dr-item" onclick="openNotifyMe('Live town hall stream','town-hall')"><span class="dr-name">Live town hall stream</span><span class="dr-meta">Tap to get notified</span></div>
-    <div class="dr-item" onclick="openNotifyMe('Verified by photo / badge','verified-photo')"><span class="dr-name">Verified by photo</span><span class="dr-meta">Tap to get notified</span></div>
-  </div>
-</aside>
-
 <!-- BOTTOM TAB BAR — phone only. Native-app one-tap nav between primary surfaces. -->
 <nav class="bottom-tabs" id="bottomTabs" aria-label="Primary navigation">
   <button class="bt-tab" data-bt="home"     onclick="nav('home')"     aria-label="Home"><span class="bt-icon">&#127968;</span><span class="bt-label">Home</span></button>

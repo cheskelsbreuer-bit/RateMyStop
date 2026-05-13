@@ -132,16 +132,19 @@ function reactionTotalsHtml(officerId, reviewId) {
   if (c.curious) parts.push(`<span title="Curious">🤔 ${c.curious}</span>`);
   return `<div class="reaction-summary">${parts.join('<span class="rs-sep">·</span>')}</div>`;
 }
-// Seed baseline reactions on existing stories so the app doesn't look dead on first open
+// Seed baseline reactions on existing stories so the app doesn't look dead on first open.
+// Idempotent: only adds reactions for stories that don't have any yet (so newly added seed stories get seeded too).
 function _seedReactionsIfNeeded() {
   const all = _readReactions();
-  if (Object.keys(all).length > 0) return;  // already seeded
   const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  let added = 0;
   officers.forEach(o => (o.reviews || []).forEach(r => {
+    const key = `${o.id}:${r.id}`;
+    if (all[key]) return;  // already seeded — leave alone
+    added++;
     // Plausible spread: more reactions on 5-star or 1-star stories, fewer on 3-star
     const stars = r.stars || 3;
     const heat = stars >= 5 || stars <= 2 ? (3 + Math.floor(Math.random() * 9)) : (1 + Math.floor(Math.random() * 4));
-    const key = `${o.id}:${r.id}`;
     if (r.verdict === 'fair') {
       all[key] = {
         up:      heat + Math.floor(Math.random() * 4),
@@ -387,7 +390,7 @@ function nav(id) {
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
-  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); _refreshDesktopRail(); }
+  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); }
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')     renderRankings();
   if (id === 'orgs')         renderOrgState();
@@ -2967,9 +2970,9 @@ refreshLiveRating();   // initial state: 4/5 charitable default
 updateStreakChip();    // show streak in topbar if user has any engagement
 _attachPulseSwipe();   // left/right swipe between cards on phone
 _seedReactionsIfNeeded();  // seed plausible reaction counts on first load
-_maybeFireDailyNotif();    // daily local push notification if >24h since last open
 _initSoundToggle();        // wire reaction-sound toggle
-_refreshDesktopRail();     // desktop right rail (only renders at >=1100px)
+// _maybeFireDailyNotif depends on STATIC_DATA — defer to ensure data has loaded
+setTimeout(() => { _maybeFireDailyNotif(); }, 100);
 
 // Admin URL gate — open admin queue when ?admin=1
 if (location.search.includes('admin=1')) {
@@ -4258,68 +4261,6 @@ function openStreakModal() {
 function closeStreakModal() {
   document.getElementById('streakOverlay').classList.remove('show');
 }
-
-// Desktop right rail — only rendered at >=1100px viewports. Sticky companion to main feed.
-function _refreshDesktopRail() {
-  const rail = document.getElementById('desktopRail');
-  if (!rail) return;
-  const wide = window.matchMedia('(min-width:1100px)').matches;
-  if (!wide) { document.body.classList.remove('with-rail'); return; }
-  document.body.classList.add('with-rail');
-  // Streak card — same gate as the home banner
-  const days = _activeDays();
-  const sCard = document.getElementById('drStreakCard');
-  if (sCard) {
-    if (days >= 3) {
-      sCard.style.display = 'block';
-      document.getElementById('drStreakDays').textContent = days;
-    } else {
-      sCard.style.display = 'none';
-    }
-  }
-  // Top reacted (top 4 by total reactions, last 14 days)
-  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
-  const approved = getApprovedAsOfficers();
-  const all = [...approved, ...officers];
-  const now = Date.now();
-  const items = [];
-  for (const o of all) {
-    for (const r of (o.reviews || [])) {
-      const age = (now - new Date(r.created_at || 0).getTime()) / (1000 * 60 * 60 * 24);
-      if (age > 14) continue;
-      const c = getReactionCounts(o.id, r.id);
-      const total = c.up + c.down + c.thanks + c.strong + c.curious;
-      if (total < 1) continue;
-      items.push({ o, r, total });
-    }
-  }
-  items.sort((a, b) => b.total - a.total);
-  const top = items.slice(0, 4);
-  const topListEl = document.getElementById('drTopList');
-  if (topListEl) {
-    topListEl.innerHTML = top.length ? top.map(({ o, r, total }) => `
-      <div class="dr-item" onclick="openStoryDetail(${o.id}, ${r.id})">
-        <span class="dr-name">${escapeHtml(o.name || 'Unknown')}</span>
-        <span class="dr-meta">${escapeHtml((o.department || '').slice(0, 28))} · ${total} reactions</span>
-      </div>`).join('') : '<div style="font-size:0.78rem;color:var(--gray);">Quiet right now.</div>';
-  }
-  // Open polls (first 3)
-  const polls = [..._readApprovedPolls(), ...POLLS_SEED].slice(0, 3);
-  const pollListEl = document.getElementById('drPollList');
-  if (pollListEl) {
-    pollListEl.innerHTML = polls.map(p => {
-      const counts = _readPollsVotes()[p.id] || {};
-      const total = Object.values(counts).reduce((s, n) => s + n, 0);
-      return `
-        <div class="dr-item" onclick="nav('polls')">
-          <span class="dr-name">${escapeHtml((p.q || '').slice(0, 56))}${(p.q || '').length > 56 ? '…' : ''}</span>
-          <span class="dr-meta">${total} takes</span>
-        </div>`;
-    }).join('');
-  }
-}
-// Refresh rail on viewport change (e.g. user resizes window)
-window.addEventListener('resize', () => { _refreshDesktopRail(); });
 
 // Home page consistency banner — hidden until user hits 3+ active days. No panic, just recognition.
 function _refreshConsistencyBanner() {

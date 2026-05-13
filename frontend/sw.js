@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v37-device-ui';
-const ASSETS_BUMP_NOTE = 'Phone bottom-tab bar · Desktop right rail (Top reacted + streak + polls + coming-soon) · Tablet 2-col Pulse · audit fixes (stale Same-here label, @author search in stream, reactions in story-detail)';
+const CACHE = 'civicvoice-v38-pulse-polls-fix';
+const ASSETS_BUMP_NOTE = 'CRITICAL fix: duplicate const key broke entire app.js parse → Pulse + Polls were never rendering. Plus removed desktop right rail per user. Seed reactions now idempotent.';
 const ASSETS = [
   './',
   './index.html',
