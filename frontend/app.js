@@ -3715,13 +3715,45 @@ function renderAdmEngagement() {
       ${_admStatCard('Your engagement', streak.total || 0, '🔥')}
     </div>
     <div style="background:${fakeOn ? 'rgba(31,140,95,0.08)' : 'var(--bg2)'};border:1.5px solid ${fakeOn ? 'rgba(31,140,95,0.35)' : 'var(--border)'};border-radius:12px;padding:14px 18px;margin-bottom:24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
         <div>
-          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:var(--ink);font-size:0.95rem;">${fakeOn ? '🟢 25 demo users active' : '⏸️ 25 demo users paused'}</div>
-          <div style="font-size:0.8rem;color:var(--gray);margin-top:2px;">25 personas react, vote, comment, reply to threads, submit stories, every 5-12s. <strong>${_fakeActionCount}</strong> actions fired this session.</div>
+          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:var(--ink);font-size:0.95rem;">${fakeOn ? `🟢 ${getFakeActive()} of 25 demo users active` : '⏸️ Demo users paused'}</div>
+          <div style="font-size:0.8rem;color:var(--gray);margin-top:2px;">Bots react, vote, comment, reply, submit stories. <strong>${_fakeActionCount}</strong> actions fired this session.</div>
         </div>
-        <button class="ac-btn" onclick="toggleFakeUsers(); setTimeout(()=>renderAdmEngagement(),200);">${fakeOn ? 'Pause' : 'Resume'}</button>
+        <button class="ac-btn" onclick="toggleFakeUsers(); setTimeout(()=>renderAdmEngagement(),200);">${fakeOn ? 'Pause all' : 'Resume'}</button>
       </div>
+
+      <!-- RATE CONTROL -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;">
+        <div>
+          <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;display:block;margin-bottom:6px;">Rate (actions)</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" id="admFakeRateValue" value="${getFakeRate()}" min="0.1" max="60" step="0.5" style="flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:0.9rem;font-weight:700;outline:none;" onchange="_applyFakeRateInput()">
+            <select id="admFakeRateUnit" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:0.86rem;outline:none;" onchange="_applyFakeRateInput()">
+              <option value="min" selected>per min</option>
+              <option value="hour">per hour</option>
+            </select>
+          </div>
+          <div style="font-size:0.72rem;color:var(--gray);margin-top:5px;">Current: ~${(60 / getFakeRate()).toFixed(getFakeRate() >= 10 ? 0 : 1)}s between actions</div>
+        </div>
+        <div>
+          <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;display:block;margin-bottom:6px;">Active bots (of 25)</label>
+          <input type="number" id="admFakeActive" value="${getFakeActive()}" min="0" max="25" step="1" style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:0.9rem;font-weight:700;outline:none;" onchange="setFakeActive(this.value); _startFakeUserSim(); renderAdmEngagement();">
+          <div style="font-size:0.72rem;color:var(--gray);margin-top:5px;">Set to 0 to silence all bots</div>
+        </div>
+      </div>
+
+      <!-- PRESETS -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="font-size:0.72rem;color:var(--gray);align-self:center;margin-right:4px;font-weight:600;">Quick presets:</span>
+        <button class="btn-ghost" style="padding:5px 10px;font-size:0.74rem;border-radius:7px;" onclick="setFakeRate(60); renderAdmEngagement();">60/min (very busy)</button>
+        <button class="btn-ghost" style="padding:5px 10px;font-size:0.74rem;border-radius:7px;" onclick="setFakeRate(12); renderAdmEngagement();">12/min</button>
+        <button class="btn-ghost" style="padding:5px 10px;font-size:0.74rem;border-radius:7px;" onclick="setFakeRate(6); renderAdmEngagement();">6/min (default)</button>
+        <button class="btn-ghost" style="padding:5px 10px;font-size:0.74rem;border-radius:7px;" onclick="setFakeRate(2); renderAdmEngagement();">2/min (gentle)</button>
+        <button class="btn-ghost" style="padding:5px 10px;font-size:0.74rem;border-radius:7px;" onclick="setFakeRate(0.5); renderAdmEngagement();">30/hour</button>
+        <button class="btn-ghost" style="padding:5px 10px;font-size:0.74rem;border-radius:7px;" onclick="setFakeRate(0.166); renderAdmEngagement();">10/hour (quiet)</button>
+      </div>
+
       <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;">
         <button class="btn-ghost" style="padding:8px 14px;font-size:0.82rem;border-radius:8px;" onclick="_runFakeBurst(25); setTimeout(()=>renderAdmEngagement(),3000);">⚡ Run 25 actions NOW</button>
         <button class="btn-ghost" style="padding:8px 14px;font-size:0.82rem;border-radius:8px;" onclick="_runFakeBurst(100); setTimeout(()=>renderAdmEngagement(),9000);">⚡⚡ Run 100 actions NOW</button>
@@ -4258,6 +4290,34 @@ if (window.api && window.api.isStatic && window.api.isStatic()) {
 // ─────────────────────────────────────────────────────────────────────────────
 const FAKE_USERS_KEY = 'civicvoice_fake_users_v1';     // 'on' (default) | 'off'
 const FAKE_USERS_STATE_KEY = 'civicvoice_fake_users_state_v1';  // per-user last-action timestamps
+const FAKE_RATE_KEY = 'civicvoice_fake_rate_v1';       // { perMin: number }  default 6/min ≈ 10s avg
+const FAKE_ACTIVE_KEY = 'civicvoice_fake_active_v1';   // how many personas are active (1..25)
+
+function getFakeRate() {
+  try { const v = JSON.parse(localStorage.getItem(FAKE_RATE_KEY) || 'null'); return (v && typeof v.perMin === 'number') ? v.perMin : 6; }
+  catch { return 6; }
+}
+function setFakeRate(perMin) {
+  perMin = Math.max(0.01, Math.min(120, Number(perMin) || 6));
+  localStorage.setItem(FAKE_RATE_KEY, JSON.stringify({ perMin }));
+  _startFakeUserSim();  // restart with new cadence
+}
+function getFakeActive() {
+  const v = parseInt(localStorage.getItem(FAKE_ACTIVE_KEY) || '25', 10);
+  return Math.max(1, Math.min(25, isNaN(v) ? 25 : v));
+}
+function setFakeActive(n) {
+  n = Math.max(0, Math.min(25, parseInt(n, 10) || 25));
+  localStorage.setItem(FAKE_ACTIVE_KEY, String(n));
+}
+// Admin helper: read the input + unit dropdown, convert to per-min, apply
+function _applyFakeRateInput() {
+  const v = parseFloat(document.getElementById('admFakeRateValue')?.value || '6');
+  const unit = document.getElementById('admFakeRateUnit')?.value || 'min';
+  const perMin = unit === 'hour' ? (v / 60) : v;
+  setFakeRate(perMin);
+  if (typeof renderAdmEngagement === 'function') renderAdmEngagement();
+}
 
 const FAKE_PERSONAS = [
   // Each: handle, affil, reactionLean (which reactions they favor), commentVoice, activeHoursLocal (24h range), avgMinutesBetween, storyLean (positive/negative bias)
@@ -4693,7 +4753,11 @@ function _startFakeUserSim() {
   // Fire the first action quickly (1-3s) so the user sees life immediately
   const tick = () => {
     if (!isFakeUsersOn()) return;
-    const persona = FAKE_PERSONAS[Math.floor(Math.random() * FAKE_PERSONAS.length)];
+    // Only pick from the configured-active subset of personas
+    const activeN = getFakeActive();
+    if (activeN === 0) { _fakeUserTimer = setTimeout(tick, 30000); return; }
+    const activePool = FAKE_PERSONAS.slice(0, activeN);
+    const persona = activePool[Math.floor(Math.random() * activePool.length)];
     let result;
     try { result = _fakeUserAction(persona); } catch (e) { console.warn('fake-user action error:', e); }
     if (result) {
@@ -4756,11 +4820,16 @@ function _startFakeUserSim() {
         }
       }
     }
-    // 5-12s between actions for a really lifelike feel with 25 personas
-    _fakeUserTimer = setTimeout(tick, 5000 + Math.random() * 7000);
+    // Cadence is computed from the configured rate (actions per minute)
+    // perMin=6 → 10s avg · perMin=2 → 30s avg · perMin=60 → 1s avg · perMin=0.5 → 2min avg
+    const perMin = getFakeRate();
+    const avgMs = 60000 / perMin;
+    // Add ±25% jitter so it doesn't feel robotic
+    const nextDelay = avgMs * (0.75 + Math.random() * 0.5);
+    _fakeUserTimer = setTimeout(tick, nextDelay);
   };
   _fakeUserTimer = setTimeout(tick, 1500 + Math.random() * 2000);
-  console.log('[CivicVoice] 🟢 Fake user simulation started — 25 personas, 5-12s cadence');
+  console.log(`[CivicVoice] 🟢 Fake user sim started — ${getFakeActive()}/25 personas, ${getFakeRate()}/min`);
 }
 function _stopFakeUserSim() {
   if (_fakeUserTimer) { clearTimeout(_fakeUserTimer); _fakeUserTimer = null; }

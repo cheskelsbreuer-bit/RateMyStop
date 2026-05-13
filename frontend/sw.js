@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v47-contextual-bots-collapse';
-const ASSETS_BUMP_NOTE = 'Bots now reply contextually to the last 3 comments (real thread feel) + poll comments collapse to last 3 with Show all expand button.';
+const CACHE = 'civicvoice-v48-admin-rate-controls';
+const ASSETS_BUMP_NOTE = 'Admin → Engagement: configure bot rate (X per min or hour) + active bot count (0-25). Quick presets included.';
 const ASSETS = [
   './',
   './index.html',
