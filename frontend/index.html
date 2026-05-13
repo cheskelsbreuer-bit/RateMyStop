@@ -41,6 +41,7 @@
     <button class="active" data-section="home"      onclick="nav('home')">Home</button>
     <button                 data-section="pulse"     onclick="nav('pulse')">Pulse</button>
     <button                 data-section="officers"  onclick="nav('officers')">Stories</button>
+    <button                 data-section="polls"     onclick="nav('polls')">Polls</button>
     <button                 data-section="share"     onclick="nav('share')">Share</button>
     <button                 data-section="complaint" onclick="nav('complaint')">Reach Out</button>
     <div class="nav-more-wrap">
@@ -154,6 +155,7 @@
     <button onclick="nav('home');       closeMobileDrawer();">&#127968; Home</button>
     <button onclick="nav('pulse');      closeMobileDrawer();">&#128293; Pulse</button>
     <button onclick="nav('officers');   closeMobileDrawer();">&#128218; Stories</button>
+    <button onclick="nav('polls');      closeMobileDrawer();">&#128499;&#65039; Polls &amp; Takes</button>
     <button onclick="nav('share');      closeMobileDrawer();">&#9998;&#65039; Share a story</button>
     <button onclick="nav('complaint');  closeMobileDrawer();">&#9993;&#65039; Reach Out</button>
     <div class="md-divider"></div>
@@ -686,6 +688,37 @@
       <button class="pulse-nav" onclick="pulsePrev()" aria-label="Previous">&uarr; Previous</button>
       <span class="pulse-counter"><span id="pulsePos">0</span> / <span id="pulseTotal">0</span></span>
       <button class="pulse-nav" onclick="pulseNext()" aria-label="Next">Next &darr;</button>
+    </div>
+  </div>
+</section>
+
+<!-- POLLS & TAKES — Gallup self-report meets Polymarket without money -->
+<section id="polls">
+  <div class="polls-wrap">
+    <div class="ph">
+      <h2>Polls &amp; Takes</h2>
+      <p>Forget calling 50,000 people. The country answers here &mdash; you say who you are, you say what you think. Live counts, broken down by who's saying it.</p>
+    </div>
+
+    <!-- Self-identification chip — read once, store, surface in every vote -->
+    <div id="affilPicker" style="background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:18px;">
+      <div style="font-size:0.74rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);margin-bottom:8px;">Tell us who's voting (optional &mdash; lets us break down the takes by group)</div>
+      <div class="poll-affil" id="affilChips">
+        <span data-affil="republican" onclick="setAffiliation('republican')">&#128055; Republican</span>
+        <span data-affil="democrat"   onclick="setAffiliation('democrat')">&#128048; Democrat</span>
+        <span data-affil="independent" onclick="setAffiliation('independent')">&#127968; Independent</span>
+        <span data-affil="conservative" onclick="setAffiliation('conservative')">Conservative</span>
+        <span data-affil="progressive" onclick="setAffiliation('progressive')">Progressive</span>
+        <span data-affil="libertarian" onclick="setAffiliation('libertarian')">Libertarian</span>
+        <span data-affil="other"       onclick="setAffiliation('other')">Other / Skip</span>
+      </div>
+    </div>
+
+    <div id="pollsList"></div>
+
+    <div style="margin-top:28px;padding:18px;background:var(--bg2);border-radius:12px;border:1px solid var(--border);font-size:0.84rem;color:var(--light);line-height:1.6;">
+      <strong style="color:var(--accent);">Got a question the country should answer?</strong> Submitting your own polls is opening with the next release.
+      <button class="ac-btn" style="margin-top:10px;" onclick="openNotifyMe('Submit your own polls', 'submit-polls')">Notify me when this opens &rarr;</button>
     </div>
   </div>
 </section>

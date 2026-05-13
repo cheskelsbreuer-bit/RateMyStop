@@ -254,6 +254,7 @@ function nav(id) {
   if (id === 'admin')        renderModQueue();
   if (id === 'contributors') renderContributors();
   if (id === 'pulse')        renderPulse();
+  if (id === 'polls')        renderPolls();
 }
 
 // ── RATE FORM STATE ──
@@ -1052,6 +1053,14 @@ function setPulseFilter(el, key) {
   _pulseFilter = key;
   renderPulse();
 }
+// Programmatic version for empty-state CTAs
+function _setPulseFilter(key) {
+  const target = document.querySelector(`#pulse .pulse-filters .pill[data-pfilter="${key}"]`);
+  if (target) { setPulseFilter(target, key); return; }
+  // Fallback: just set state
+  _pulseFilter = key;
+  renderPulse();
+}
 
 // ── Pulse preference learning — what does THIS user actually engage with? ──
 function _readPulsePrefs() { try { return JSON.parse(localStorage.getItem(PULSE_PREFS_KEY) || '{}'); } catch { return {}; } }
@@ -1136,7 +1145,7 @@ function _renderOnePulseCard(it) {
   const story = (r.story || '').trim() || '(No description.)';
   const tags = r.tags || [];
   return `
-    <article class="pulse-card role-${it.role}" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}">
+    <article class="pulse-card role-${it.role}" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}" onclick="openStoryDetail(${o.id}, ${r.id})">
       <div class="pulse-card-head">
         <div class="pulse-card-role">
           <span class="pulse-role-icon">${ROLE_ICON[it.role] || '👤'}</span>
@@ -1147,7 +1156,7 @@ function _renderOnePulseCard(it) {
           <span class="pulse-sent-tag">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
         </div>
       </div>
-      <h3 class="pulse-name" onclick="openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</h3>
+      <h3 class="pulse-name" onclick="event.stopPropagation(); openOfficer(${o.id})">${escapeHtml(o.name || 'Unknown')}</h3>
       <div class="pulse-agency">${escapeHtml(o.department || 'Unknown agency')}${r.location ? ' · ' + escapeHtml(r.location) : ''} · ${formatDate(r.created_at)}</div>
 
       <div class="pulse-body">${escapeHtml(story.slice(0, 480))}${story.length > 480 ? '…' : ''}</div>
@@ -1155,7 +1164,7 @@ function _renderOnePulseCard(it) {
       ${tags.length ? `<div class="sp-tags-row" style="margin:8px 0 14px;">${tags.slice(0, 6).map(t => `<span class="spt">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
 
       <div class="pulse-byline">
-        <span class="pulse-author" onclick="openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(author.charAt(0).toUpperCase())}</span>${escapeHtml(author)} · Trust ${trust.score}/100</span>
+        <span class="pulse-author" onclick="event.stopPropagation(); openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');"><span class="sp-author-avatar">${escapeHtml(author.charAt(0).toUpperCase())}</span>${escapeHtml(author)} · Trust ${trust.score}/100</span>
       </div>
 
       <div class="resolution-banner" style="background:${meta.bg};border:1px solid ${meta.border};color:${meta.color};margin-top:14px;">
@@ -1164,10 +1173,10 @@ function _renderOnePulseCard(it) {
       </div>
 
       <div class="pulse-actions">
-        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
-        <button class="sp-action" onclick="openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} &amp; thread</button>
-        <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
-        <button class="sp-action primary" onclick="openStoryDetail(${o.id}, ${r.id})">Read full →</button>
+        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 I had this too</button>
+        <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
+        <button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}</button>
+        <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
       </div>
     </article>
   `;
@@ -1201,7 +1210,25 @@ function renderPulse() {
   items = items.slice(0, 100);
   _pulseItems = items;
   if (!items.length) {
-    stage.innerHTML = `<div class="pulse-empty">No stories for this filter yet.</div>`;
+    // Filter-aware empty state with a clear next action
+    const emptyByFilter = {
+      subscribed: `
+        <div class="pulse-empty">
+          <div class="pe-icon">🔔</div>
+          <div class="pe-title">You're not subscribed to any agencies yet.</div>
+          <div class="pe-sub">Subscriptions let you follow specific agencies (a precinct, your local school board, an ER) and see only their stories here.</div>
+          <div class="pe-actions">
+            <button class="btn-gold" onclick="nav('officers')">Browse Stories</button>
+            <button class="btn-ghost" onclick="nav('complaint')">Browse Agencies</button>
+          </div>
+          <div class="pe-howto">Open any agency or person → tap <strong>🔔 Subscribe</strong> on their card. Come back here to see only their stories.</div>
+        </div>`,
+      recognitions: `<div class="pulse-empty"><div class="pe-icon">⭐</div><div class="pe-title">No recognitions match yet.</div><div class="pe-sub">Try "All" or share one of your own.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button><button class="btn-ghost" onclick="nav('share')">Share a story</button></div></div>`,
+      concerns:     `<div class="pulse-empty"><div class="pe-icon">⚠️</div><div class="pe-title">No concerns match yet.</div><div class="pe-sub">Try "All" or document one you witnessed.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button><button class="btn-ghost" onclick="nav('share')">Share a story</button></div></div>`,
+      open:         `<div class="pulse-empty"><div class="pe-icon">⏳</div><div class="pe-title">No open stories right now.</div><div class="pe-sub">Open = waiting on an agency response. They've all been acknowledged or resolved.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button></div></div>`,
+      all:          `<div class="pulse-empty"><div class="pe-icon">📭</div><div class="pe-title">No stories yet.</div><div class="pe-sub">Be the first.</div><div class="pe-actions"><button class="btn-gold" onclick="nav('share')">Share a story</button></div></div>`,
+    };
+    stage.innerHTML = emptyByFilter[_pulseFilter] || emptyByFilter.all;
     document.getElementById('pulsePos').textContent = 0;
     document.getElementById('pulseTotal').textContent = 0;
     return;
@@ -1466,10 +1493,10 @@ function renderStream(officers, q) {
         </div>
         <div class="sp-foot">
           <div class="sp-actions">
-            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
-            ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)} repl${getReplyCount(o.id, r.id) === 1 ? 'y' : 'ies'}</button>` : ''}
-            <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
-            <button class="sp-action primary" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">Read full →</button>
+            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 I had this too</button>
+            <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
+            ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)}</button>` : ''}
+            <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
           </div>
         </div>
       </article>
@@ -1664,8 +1691,18 @@ function _renderReplies(officerId, reviewId) {
 // ── AUTHOR PROFILE — click any handle to see their full history ──
 function openAuthorProfile(handle) {
   if (!handle) return;
-  // Gather every story attributed to this handle
-  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
+  // Gather every story attributed to this handle — seed data AND user submissions (approved)
+  const seedOfficers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const approvedOfficers = getApprovedAsOfficers();
+  const allOfficers = [...approvedOfficers, ...seedOfficers, ...officerCache];
+  // De-dupe by id (a user-submission officer may appear in both approved + officerCache)
+  const seen = new Set();
+  const officers = [];
+  for (const o of allOfficers) {
+    if (seen.has(o.id)) continue;
+    seen.add(o.id);
+    officers.push(o);
+  }
   const items = [];
   for (const o of officers) {
     for (const r of (o.reviews || [])) {
@@ -2216,14 +2253,51 @@ document.addEventListener('keydown', (e) => {
 // Lightweight engagement signal — increments a "same here" counter on the button.
 // Requires sign-in (you can read without an account, but engaging requires one).
 // Notifies the original author.
-function thanksTo(btn, evt) {
+// New reaction handler — handles both 👍 ('up') and 👎 ('down') with a tap burst animation
+function reactTo(btn, evt) {
   if (evt) evt.stopPropagation();
-  if (!requireAuth(() => thanksTo(btn), 'Sign in to react')) return;
+  if (!requireAuth(() => reactTo(btn), 'Sign in to react')) return;
+  const kind = btn.dataset.kind || 'up';
   const n = parseInt(btn.dataset.count || '0', 10) + 1;
   btn.dataset.count = n;
-  btn.innerHTML = `👍 Same here · ${n}`;
-  btn.style.color = 'var(--green)';
-  btn.style.borderColor = 'rgba(31,140,95,0.4)';
+  if (kind === 'up') {
+    btn.innerHTML = `👍 I had this too · ${n}`;
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'rgba(31,140,95,0.4)';
+    btn.style.background = 'rgba(31,140,95,0.08)';
+  } else {
+    btn.innerHTML = `👎 Not me · ${n}`;
+    btn.style.color = 'var(--red)';
+    btn.style.borderColor = 'rgba(201,52,52,0.4)';
+    btn.style.background = 'rgba(201,52,52,0.06)';
+  }
+  // TikTok-style burst — emoji float-and-fade
+  _emojiBurst(btn, kind === 'up' ? '👍' : '👎');
+  // Tap-feedback scale
+  btn.classList.add('tap-pulse');
+  setTimeout(() => btn.classList.remove('tap-pulse'), 320);
+  // Continue the legacy notification + preference learning flow only on 'up' (positive reaction)
+  if (kind === 'up') _legacyThanksFollowup(btn);
+}
+function _emojiBurst(btn, emoji) {
+  const rect = btn.getBoundingClientRect();
+  for (let i = 0; i < 5; i++) {
+    const e = document.createElement('span');
+    e.className = 'emoji-burst';
+    e.textContent = emoji;
+    e.style.left = (rect.left + rect.width / 2 + (Math.random() * 40 - 20)) + 'px';
+    e.style.top = (rect.top + 8) + 'px';
+    e.style.animationDelay = (i * 35) + 'ms';
+    document.body.appendChild(e);
+    setTimeout(() => e.remove(), 1100);
+  }
+}
+// Back-compat: older HTML may still call thanksTo() — keep as an 'up' alias for reactTo
+function thanksTo(btn, evt) {
+  btn.dataset.kind = 'up';
+  return reactTo(btn, evt);
+}
+function _legacyThanksFollowup(btn) {
   // Notify the author
   const ctx = btn.closest('[data-story-context]');
   const oid = ctx ? +ctx.dataset.officerId : btn.dataset.officerId;
@@ -3381,6 +3455,113 @@ function openDepartmentDetail(deptName) {
 if (window.api && window.api.isStatic && window.api.isStatic()) {
   const badge = document.getElementById('demoBadge');
   if (badge) badge.classList.add('show');
+}
+
+// ── POLLS & TAKES ──
+// Local civic questions. Users self-ID, vote, see live breakdowns by affiliation.
+// Gallup × Polymarket without money — civic, free, anonymous.
+const POLLS_VOTES_KEY = 'civicvoice_polls_votes_v1';
+const POLLS_MY_KEY    = 'civicvoice_polls_my_v1';
+const POLLS_BREAKDOWN_KEY = 'civicvoice_polls_breakdown_v1';
+const POLLS_AFFIL_KEY = 'civicvoice_polls_affil_v1';
+
+const POLLS_SEED = [
+  { id:'p1', cat:'LOCAL — EAST RAMAPO', q:'Should East Ramapo CSD reverse the November busing change for special-ed routes?',
+    options:[{id:'yes',label:'Yes, reverse it'},{id:'no',label:'No, keep it'},{id:'unsure',label:'I need more info'}], closes:'Open' },
+  { id:'p2', cat:'LOCAL — SPRING VALLEY', q:'Has Mayor Simon actually fixed the Skylark Drive flooding within the 60-day promise?',
+    options:[{id:'yes',label:'Yes, fixed'},{id:'partial',label:'Partial — still water issues'},{id:'no',label:'No, nothing changed'}], closes:'Open' },
+  { id:'p3', cat:'LOCAL — RAMAPO', q:'Should the Town of Ramapo approve the Route 59 development?',
+    options:[{id:'yes',label:'Yes'},{id:'no',label:'No'},{id:'with-changes',label:'Only with major changes'}], closes:'Open' },
+  { id:'p4', cat:'NEW YORK STATE', q:'Is Gov. Hochul handling NYC migrant funding the right way?',
+    options:[{id:'yes',label:'Yes'},{id:'no',label:'No'},{id:'mixed',label:'Mixed — some yes, some no'}], closes:'Open' },
+  { id:'p5', cat:'NEW YORK STATE', q:'Should the NY State Legislature pass tougher bail-reform rollback this session?',
+    options:[{id:'yes',label:'Yes, roll back'},{id:'no',label:'No, leave it'},{id:'tweak',label:'Tweak it, don\'t roll back'}], closes:'Open' },
+  { id:'p6', cat:'FEDERAL — PREDICTION', q:'Will Congress pass a federal budget without a shutdown this cycle?',
+    options:[{id:'yes',label:'Yes, on time'},{id:'no',label:'No, shutdown'},{id:'last-minute',label:'Yes — but only at the last minute'}], closes:'Open' },
+  { id:'p7', cat:'FEDERAL — POLICY', q:'Should the federal government take direct action on the southern border before year-end?',
+    options:[{id:'yes',label:'Yes, urgent'},{id:'no',label:'No, current is fine'},{id:'state',label:'It\'s a state-level issue'}], closes:'Open' },
+  { id:'p8', cat:'EDUCATION', q:'Should school board members be required to publicly justify every "no" vote on parent-submitted measures?',
+    options:[{id:'yes',label:'Yes'},{id:'no',label:'No'},{id:'sometimes',label:'Only on contentious votes'}], closes:'Open' },
+];
+
+function _readPollsVotes()     { try { return JSON.parse(localStorage.getItem(POLLS_VOTES_KEY) || '{}'); } catch { return {}; } }
+function _readPollsMy()        { try { return JSON.parse(localStorage.getItem(POLLS_MY_KEY) || '{}'); } catch { return {}; } }
+function _readPollsBreakdown() { try { return JSON.parse(localStorage.getItem(POLLS_BREAKDOWN_KEY) || '{}'); } catch { return {}; } }
+function getAffiliation()      { return localStorage.getItem(POLLS_AFFIL_KEY) || ''; }
+function setAffiliation(a) {
+  localStorage.setItem(POLLS_AFFIL_KEY, a);
+  document.querySelectorAll('#affilChips span').forEach(s => s.classList.toggle('selected', s.dataset.affil === a));
+}
+
+function _seedPollCounts(pollId) {
+  const votes = _readPollsVotes();
+  if (votes[pollId]) return votes[pollId];
+  const poll = POLLS_SEED.find(p => p.id === pollId);
+  if (!poll) return {};
+  const totals = {};
+  let remaining = 120 + Math.floor(Math.random() * 300);
+  poll.options.forEach((o, i) => {
+    const share = i === poll.options.length - 1 ? remaining : Math.floor(remaining * (0.2 + Math.random() * 0.5));
+    totals[o.id] = share;
+    remaining -= share;
+  });
+  votes[pollId] = totals;
+  localStorage.setItem(POLLS_VOTES_KEY, JSON.stringify(votes));
+  return totals;
+}
+
+function votePoll(pollId, optionId) {
+  if (!requireAuth(() => votePoll(pollId, optionId), 'Sign in to vote')) return;
+  const my = _readPollsMy();
+  if (my[pollId]) return;
+  const votes = _readPollsVotes();
+  votes[pollId] = votes[pollId] || _seedPollCounts(pollId);
+  votes[pollId][optionId] = (votes[pollId][optionId] || 0) + 1;
+  localStorage.setItem(POLLS_VOTES_KEY, JSON.stringify(votes));
+  my[pollId] = optionId;
+  localStorage.setItem(POLLS_MY_KEY, JSON.stringify(my));
+  const affil = getAffiliation() || 'unknown';
+  const bd = _readPollsBreakdown();
+  bd[pollId] = bd[pollId] || {};
+  bd[pollId][affil] = bd[pollId][affil] || {};
+  bd[pollId][affil][optionId] = (bd[pollId][affil][optionId] || 0) + 1;
+  localStorage.setItem(POLLS_BREAKDOWN_KEY, JSON.stringify(bd));
+  renderPolls();
+}
+
+function renderPolls() {
+  const affil = getAffiliation();
+  document.querySelectorAll('#affilChips span').forEach(s => s.classList.toggle('selected', s.dataset.affil === affil));
+  const list = document.getElementById('pollsList');
+  if (!list) return;
+  const my = _readPollsMy();
+  list.innerHTML = POLLS_SEED.map(p => {
+    const counts = _readPollsVotes()[p.id] || _seedPollCounts(p.id);
+    const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;
+    const myVote = my[p.id];
+    const optionsHtml = p.options.map(o => {
+      const c = counts[o.id] || 0;
+      const pct = Math.round((c / total) * 100);
+      const isMine = myVote === o.id;
+      return `
+        <div class="poll-opt ${isMine ? 'voted' : ''}" onclick="votePoll('${p.id}','${o.id}')">
+          <div class="po-bar" style="width:${myVote ? pct : 0}%;"></div>
+          <span class="po-label">${escapeHtml(o.label)}${isMine ? ' &middot; <strong style="color:var(--accent);">your vote</strong>' : ''}</span>
+          ${myVote ? `<span class="po-pct">${pct}%</span>` : ''}
+        </div>`;
+    }).join('');
+    return `
+      <article class="poll-card">
+        <div class="pc-cat">${escapeHtml(p.cat)}</div>
+        <div class="pc-q">${escapeHtml(p.q)}</div>
+        <div class="pc-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${p.closes}</div>
+        <div class="poll-options">${optionsHtml}</div>
+        <div class="pc-foot">
+          <span>${myVote ? 'You voted.' : 'Tap an option to take your stand.'}</span>
+          <span>${affil ? `Voting as: <strong style="color:var(--ink);">${escapeHtml(affil)}</strong>` : '<span style="color:var(--accent);cursor:pointer;" onclick="document.getElementById(\'affilPicker\').scrollIntoView({behavior:\'smooth\'});">Set affiliation &uarr;</span>'}</span>
+        </div>
+      </article>`;
+  }).join('');
 }
 
 // Register service worker (for PWA / offline / installability)
