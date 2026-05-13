@@ -125,7 +125,7 @@ function reactionTotalsHtml(officerId, reviewId) {
   const total = c.up + c.down + c.thanks + c.strong + c.curious;
   if (!total) return '';
   const parts = [];
-  if (c.up)      parts.push(`<span title="People who had the same experience">👍 ${c.up}</span>`);
+  if (c.up)      parts.push(`<span title="People who had the same experience">🙋 ${c.up}</span>`);
   if (c.down)    parts.push(`<span title="People with a different experience">👎 ${c.down}</span>`);
   if (c.thanks)  parts.push(`<span title="Thank-yous">🙏 ${c.thanks}</span>`);
   if (c.strong)  parts.push(`<span title="Strong / powerful">💪 ${c.strong}</span>`);
@@ -1139,7 +1139,7 @@ async function openOfficer(id) {
             </div>
             ${reactionTotalsHtml(o.id, r.id)}
             <div class="mr-actions">
-              <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">👍 Yes, same</button>
+              <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">🙋 Me too</button>
               <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
               <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
               <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
@@ -1315,10 +1315,10 @@ function _renderOnePulseCard(it) {
 
       ${reactionTotalsHtml(o.id, r.id)}
       <div class="reaction-legend" onclick="event.stopPropagation();">
-        How does this story land with you? <span class="rl-key">👍 Same · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span>
+        How does this story land with you? <span class="rl-key">🙋 Me too · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span>
       </div>
       <div class="pulse-actions">
-        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">👍 Yes, same</button>
+        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">🙋 Me too</button>
         <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
         <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you to the person in this story">🙏 Thanks</button>
         <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="This story is powerful / strong">💪 Strong</button>
@@ -1490,15 +1490,31 @@ function _renderOnePulsePollCard(p) {
 }
 
 // Swipe gestures on Pulse — left = next, right = previous. Vertical scroll still works.
+// Also pull-to-refresh — drag down from top of page → release → reload feed.
 function _attachPulseSwipe() {
   const stage = document.getElementById('pulseStage');
   if (!stage) return;
   let startX = 0, startY = 0, startT = 0;
+  let ptrStartY = 0, ptrActive = false;
   stage.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     startT = Date.now();
+    // Pull-to-refresh only triggers when page is at top
+    if (window.scrollY <= 4 && document.body.classList.contains('on-pulse')) {
+      ptrStartY = e.touches[0].clientY;
+      ptrActive = true;
+    }
+  }, { passive: true });
+  stage.addEventListener('touchmove', (e) => {
+    if (!ptrActive) return;
+    const dy = e.touches[0].clientY - ptrStartY;
+    if (dy > 12 && window.scrollY <= 4) {
+      _showPtrIndicator(dy >= 70 ? 'release' : 'pull');
+    } else if (dy <= 12) {
+      _hidePtrIndicator();
+    }
   }, { passive: true });
   stage.addEventListener('touchend', (e) => {
     if (!startT) return;
@@ -1507,10 +1523,42 @@ function _attachPulseSwipe() {
     const dy = t.clientY - startY;
     const dt = Date.now() - startT;
     startT = 0;
-    // Only horizontal swipes >60px, faster than 500ms, with vertical movement <40px
+    if (ptrActive) {
+      ptrActive = false;
+      if (dy > 70 && window.scrollY <= 4) {
+        _doPtrRefresh();
+      } else {
+        _hidePtrIndicator();
+      }
+      return;
+    }
+    // Horizontal swipe (left/right) between cards
     if (Math.abs(dx) < 60 || dt > 500 || Math.abs(dy) > 40) return;
     if (dx < 0) pulseNext(); else pulsePrev();
   }, { passive: true });
+}
+function _showPtrIndicator(state) {
+  let el = document.getElementById('ptrIndicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'ptrIndicator';
+    el.className = 'ptr-indicator';
+    el.innerHTML = '<span class="ptr-icon">🔄</span><span class="ptr-text">Pull to refresh</span>';
+    document.body.appendChild(el);
+  }
+  el.classList.add('pulling');
+  el.querySelector('.ptr-text').textContent = state === 'release' ? 'Release to refresh' : 'Pull to refresh';
+}
+function _hidePtrIndicator() {
+  const el = document.getElementById('ptrIndicator');
+  if (el) el.classList.remove('pulling', 'refreshing');
+}
+function _doPtrRefresh() {
+  const el = document.getElementById('ptrIndicator');
+  if (el) { el.classList.remove('pulling'); el.classList.add('refreshing'); el.querySelector('.ptr-text').textContent = 'Refreshing…'; }
+  // Soft haptic on refresh
+  if (navigator.vibrate) try { navigator.vibrate([15, 40, 15]); } catch {}
+  setTimeout(() => { renderPulse(); _hidePtrIndicator(); }, 350);
 }
 
 function _attachPulseScrollObserver() {
@@ -1782,7 +1830,7 @@ function renderStream(officers, q) {
         ${reactionTotalsHtml(o.id, r.id)}
         <div class="sp-foot">
           <div class="sp-actions">
-            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 Yes, same</button>
+            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">🙋 Me too</button>
             <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
             <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
             <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
@@ -2546,48 +2594,77 @@ document.addEventListener('keydown', (e) => {
 // Lightweight engagement signal — increments a "same here" counter on the button.
 // Requires sign-in (you can read without an account, but engaging requires one).
 // Notifies the original author.
-// Reaction handler — handles all 5 reactions (👍 👎 🙏 💪 🤔) with tap burst animation + haptics
+// Reaction handler — handles all 5 reactions (🙋 👎 🙏 💪 🤔) with tap burst animation + haptics.
+// One reaction per kind per user per story — second tap is a no-op (prevents spam).
+const REACTION_STYLES = {
+  up:      { emoji:'🙋', label:'Me too',      color:'var(--green)', bd:'rgba(31,140,95,0.5)',  bg:'rgba(31,140,95,0.12)'  },
+  down:    { emoji:'👎', label:'Not me',      color:'var(--red)',   bd:'rgba(201,52,52,0.5)',  bg:'rgba(201,52,52,0.10)'  },
+  thanks:  { emoji:'🙏', label:'Thank you',   color:'#7a51c8',      bd:'rgba(122,81,200,0.5)', bg:'rgba(122,81,200,0.12)' },
+  strong:  { emoji:'💪', label:'Strong',      color:'#e07a1a',      bd:'rgba(224,122,26,0.5)', bg:'rgba(224,122,26,0.12)' },
+  curious: { emoji:'🤔', label:'Curious',     color:'#2563d9',      bd:'rgba(37,109,217,0.5)', bg:'rgba(37,109,217,0.10)' },
+};
 function reactTo(btn, evt) {
   if (evt) evt.stopPropagation();
   if (!requireAuth(() => reactTo(btn), 'Sign in to react')) return;
-  recordEngagement('react');
-  // Soft haptic on supported devices (mostly Android)
-  if (navigator.vibrate) try { navigator.vibrate(12); } catch {}
-  // Optional reaction sound — opt-in via user menu
-  playReactionSound();
   const kind = btn.dataset.kind || 'up';
-  // Push to global reaction count
   const oid = btn.dataset.officerId;
   const rid = btn.dataset.reviewId;
-  if (oid && rid) _bumpReactionCount(oid, rid, kind);
-  const n = parseInt(btn.dataset.count || '0', 10) + 1;
-  btn.dataset.count = n;
-  const styles = {
-    up:      { emoji:'👍', label:'Yes, same',      color:'var(--green)', bd:'rgba(31,140,95,0.4)', bg:'rgba(31,140,95,0.08)' },
-    down:    { emoji:'👎', label:'Not me',         color:'var(--red)',   bd:'rgba(201,52,52,0.4)', bg:'rgba(201,52,52,0.06)' },
-    thanks:  { emoji:'🙏', label:'Thank you',      color:'#7a51c8',      bd:'rgba(122,81,200,0.4)', bg:'rgba(122,81,200,0.08)' },
-    strong:  { emoji:'💪', label:'Strong',         color:'#e07a1a',      bd:'rgba(224,122,26,0.4)', bg:'rgba(224,122,26,0.08)' },
-    curious: { emoji:'🤔', label:'Curious',        color:'#2563d9',      bd:'rgba(37,109,217,0.4)', bg:'rgba(37,109,217,0.08)' },
-  };
-  const s = styles[kind] || styles.up;
-  // Different render modes: full label only for up/down on Pulse; emoji-only for the others
-  if (kind === 'up' || kind === 'down') {
-    btn.innerHTML = `${s.emoji} ${s.label} · ${n}`;
-  } else {
-    btn.innerHTML = `${s.emoji} ${n}`;
+  // ONE per kind per user per story — block second tap
+  const mine = _readMyReactions();
+  const key = `${oid}:${rid}`;
+  if (mine[key] && mine[key][kind]) {
+    // Already reacted this way — give a soft "already counted" shake, don't bump count
+    btn.classList.add('tap-pulse');
+    setTimeout(() => btn.classList.remove('tap-pulse'), 280);
+    return;
   }
+  // Me-too and Not-me are mutually exclusive — tapping one clears the other for THIS user
+  // (we don't subtract counts; we just don't allow flip-flopping to inflate)
+  if ((kind === 'up' || kind === 'down') && mine[key]) {
+    const opp = kind === 'up' ? 'down' : 'up';
+    if (mine[key][opp]) {
+      // Already picked the opposite — block it. Mutually exclusive.
+      btn.classList.add('tap-pulse');
+      setTimeout(() => btn.classList.remove('tap-pulse'), 280);
+      _showStreakToast(`You already marked "${REACTION_STYLES[opp].label}" on this story. One stance per story.`);
+      return;
+    }
+  }
+  recordEngagement('react');
+  if (navigator.vibrate) try { navigator.vibrate(12); } catch {}
+  playReactionSound();
+  if (oid && rid) _bumpReactionCount(oid, rid, kind);
+  const s = REACTION_STYLES[kind] || REACTION_STYLES.up;
+  const counts = getReactionCounts(oid, rid);
+  const n = counts[kind];
+  // Render: full label for up/down (they're the headline reactions); compact for the rest
+  btn.innerHTML = (kind === 'up' || kind === 'down') ? `${s.emoji} ${s.label} · ${n}` : `${s.emoji} ${n}`;
   btn.style.color = s.color;
   btn.style.borderColor = s.bd;
   btn.style.background = s.bg;
-  // TikTok-style burst — emoji float-and-fade
+  btn.classList.add('reacted');
+  btn.title = 'You already reacted this way';
   _emojiBurst(btn, s.emoji);
-  // Tap-feedback scale
   btn.classList.add('tap-pulse');
   setTimeout(() => btn.classList.remove('tap-pulse'), 320);
-  // Continue the legacy notification + preference learning flow on positive reactions
   if (kind === 'up' || kind === 'thanks' || kind === 'strong') _legacyThanksFollowup(btn);
-  // Streak milestone celebration — fire confetti at 3, 10, weekly streak
   _checkStreakMilestones();
+  // Re-render the visible reaction summary on this card so counts update immediately
+  _refreshReactionSummary(btn);
+}
+
+// Update the visible reaction-summary block next to this card after a reaction
+function _refreshReactionSummary(btn) {
+  const oid = btn.dataset.officerId;
+  const rid = btn.dataset.reviewId;
+  if (!oid || !rid) return;
+  // Find the nearest container that has this story's summary
+  const card = btn.closest('.pulse-card, .story-post, .mo-review');
+  if (!card) return;
+  const summary = card.querySelector('.reaction-summary');
+  const fresh = reactionTotalsHtml(oid, rid);
+  if (!fresh) return;
+  if (summary) summary.outerHTML = fresh;
 }
 
 // Celebrate when user hits 3, 10, or 25 engagements today, or 7-day streak
@@ -3844,9 +3921,16 @@ function toggleEmailDigest() {
   const cur = getEmailDigestPref();
   setEmailDigestPref(!cur);
   closeUserMenu();
-  alert((!cur)
-    ? '✓ Weekly digest enabled. (Real emails will start sending once we deploy the backend mail service.)'
-    : 'Weekly digest disabled.');
+  if (!cur) {
+    // Compute the next Sunday so the message is concrete
+    const now = new Date();
+    const daysUntilSun = (7 - now.getDay()) % 7 || 7;
+    const next = new Date(now); next.setDate(now.getDate() + daysUntilSun);
+    const when = next.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+    _showStreakToast(`✓ Weekly digest on. Next one: ${when} morning.`);
+  } else {
+    _showStreakToast('Weekly digest off.');
+  }
   renderAuthState();
 }
 
@@ -4195,6 +4279,29 @@ function votePoll(pollId, optionId) {
 // User-submitted polls (pending moderation)
 const POLLS_PENDING_KEY  = 'civicvoice_polls_pending_v1';
 const POLLS_APPROVED_KEY = 'civicvoice_polls_approved_v1';
+const POLLS_COMMENTS_KEY = 'civicvoice_polls_comments_v1';   // { pollId: [{handle, optionId, text, ts}] }
+function _readPollComments() { try { return JSON.parse(localStorage.getItem(POLLS_COMMENTS_KEY) || '{}'); } catch { return {}; } }
+function addPollComment(pollId, optionId, text) {
+  if (!text || text.length < 4) return;
+  if (text.length > 280) text = text.slice(0, 280);
+  if (!requireAuth(() => addPollComment(pollId, optionId, text), 'Sign in to comment')) return;
+  const u = getCurrentUser();
+  const handle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : 'Anonymous';
+  const all = _readPollComments();
+  all[pollId] = all[pollId] || [];
+  all[pollId].push({ handle, optionId, text, ts: new Date().toISOString(), affil: getAffiliation() || '' });
+  localStorage.setItem(POLLS_COMMENTS_KEY, JSON.stringify(all));
+  renderPolls();
+}
+function submitPollComment(pollId) {
+  const input = document.getElementById(`pc-input-${pollId}`);
+  if (!input) return;
+  const text = (input.value || '').trim();
+  if (!text) return;
+  const my = _readPollsMy();
+  addPollComment(pollId, my[pollId] || 'none', text);
+  input.value = '';
+}
 function _readPendingPolls()  { try { return JSON.parse(localStorage.getItem(POLLS_PENDING_KEY) || '[]'); } catch { return []; } }
 function _readApprovedPolls() { try { return JSON.parse(localStorage.getItem(POLLS_APPROVED_KEY) || '[]'); } catch { return []; } }
 
@@ -4260,12 +4367,31 @@ function renderPolls() {
           ${myVote ? `<span class="po-pct">${pct}%</span>` : ''}
         </div>`;
     }).join('');
+    // Optional comments — appear after voting. Shows top 3, expandable.
+    const allComments = _readPollComments()[p.id] || [];
+    const commentsHtml = myVote ? `
+      <div class="poll-comments">
+        <div class="pcm-add">
+          <input type="text" id="pc-input-${p.id}" maxlength="280" placeholder="Want to say why? Optional, anonymous, 1-2 sentences." onkeydown="if(event.key==='Enter'){event.preventDefault();submitPollComment('${p.id}');}">
+          <button class="pcm-send" onclick="submitPollComment('${p.id}')">Post</button>
+        </div>
+        ${allComments.length ? `
+          <div class="pcm-list">
+            <div class="pcm-head">${allComments.length} ${allComments.length === 1 ? 'reason' : 'reasons'} shared</div>
+            ${allComments.slice(-3).reverse().map(cmt => `
+              <div class="pcm-item">
+                <span class="pcm-handle">${escapeHtml(cmt.handle)}${cmt.affil ? ` · <span class="pcm-affil">${escapeHtml(cmt.affil)}</span>` : ''}</span>
+                <span class="pcm-text">${escapeHtml(cmt.text)}</span>
+              </div>`).join('')}
+          </div>` : ''}
+      </div>` : '';
     return `
       <article class="poll-card">
         <div class="pc-cat">${escapeHtml(p.cat)}</div>
         <div class="pc-q">${escapeHtml(p.q)}</div>
-        <div class="pc-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${p.closes}</div>
+        <div class="pc-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${allComments.length} ${allComments.length === 1 ? 'comment' : 'comments'} &middot; ${p.closes}</div>
         <div class="poll-options">${optionsHtml}</div>
+        ${commentsHtml}
         <div class="pc-foot">
           <span>${myVote ? 'You voted.' : 'Tap an option to take your stand.'}</span>
           <span>${affil ? `Voting as: <strong style="color:var(--ink);">${escapeHtml(affil)}</strong>` : '<span style="color:var(--accent);cursor:pointer;" onclick="document.getElementById(\'affilPicker\').scrollIntoView({behavior:\'smooth\'});">Set affiliation &uarr;</span>'}</span>

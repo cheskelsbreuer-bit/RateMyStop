@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v34-social-proof';
-const ASSETS_BUMP_NOTE = 'Visible reaction counts on every story + Top Reacted rail in Pulse + daily local push + @author search + opt-in reaction sound';
+const CACHE = 'civicvoice-v35-reaction-lock-comments-ptr';
+const ASSETS_BUMP_NOTE = 'One reaction per kind per user · 🙋 Me too rename · poll comments · weekly digest UX · pull-to-refresh Pulse · cross-device polish';
 const ASSETS = [
   './',
   './index.html',
