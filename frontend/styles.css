@@ -463,6 +463,16 @@ section.active{display:block;}
 .pulse-card-role{display:flex;align-items:center;gap:10px;}
 .pulse-role-icon{font-size:1.6rem;}
 .pulse-role-name{font-size:0.72rem;font-weight:700;letter-spacing:1.2px;color:var(--gray);text-transform:uppercase;background:var(--bg2);border:1px solid var(--border);border-radius:999px;padding:3px 10px;}
+/* Per-role color hints on the Pulse role badge */
+.role-tinted-police{color:#2563d9 !important;background:rgba(37,109,217,0.08) !important;border-color:rgba(37,109,217,0.3) !important;}
+.role-tinted-emt{color:#c93434 !important;background:rgba(201,52,52,0.06) !important;border-color:rgba(201,52,52,0.3) !important;}
+.role-tinted-fire{color:#e07a1a !important;background:rgba(224,122,26,0.08) !important;border-color:rgba(224,122,26,0.3) !important;}
+.role-tinted-dmv{color:#7a51c8 !important;background:rgba(122,81,200,0.08) !important;border-color:rgba(122,81,200,0.3) !important;}
+.role-tinted-hospital{color:#1f8c5f !important;background:rgba(31,140,95,0.06) !important;border-color:rgba(31,140,95,0.3) !important;}
+.role-tinted-gov{color:#8a6a1e !important;background:rgba(138,106,30,0.08) !important;border-color:rgba(138,106,30,0.3) !important;}
+.role-tinted-school{color:#2e7d32 !important;background:rgba(46,125,50,0.08) !important;border-color:rgba(46,125,50,0.3) !important;}
+.role-tinted-elected{color:#1a6fb8 !important;background:rgba(26,111,184,0.08) !important;border-color:rgba(26,111,184,0.3) !important;}
+.role-tinted-federal{color:#9b2c2c !important;background:rgba(155,44,44,0.07) !important;border-color:rgba(155,44,44,0.3) !important;}
 .pulse-sent{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
 .pulse-stars{color:var(--accent);font-size:1.05rem;letter-spacing:2px;line-height:1;}
 .pulse-sent-tag{font-size:0.72rem;font-weight:700;letter-spacing:0.5px;padding:3px 10px;border-radius:999px;text-transform:uppercase;}
@@ -508,6 +518,24 @@ section.active{display:block;}
 .role-pill{background:rgba(15,15,19,0.03);border:1.5px solid var(--border);border-radius:999px;padding:8px 14px;font-size:0.85rem;cursor:pointer;color:var(--light);transition:all 0.2s;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
 .role-pill:hover{border-color:rgba(78,201,138,0.3);}
 .role-pill.on{background:rgba(78,201,138,0.1);border-color:rgba(78,201,138,0.45);color:var(--green);font-weight:600;}
+/* Per-role tinting on selection — uses inline data-role attribute */
+.role-pill[data-role="police"].on{background:rgba(37,109,217,0.1);border-color:rgba(37,109,217,0.5);color:#2563d9;}
+.role-pill[data-role="emt"].on{background:rgba(201,52,52,0.08);border-color:rgba(201,52,52,0.5);color:#c93434;}
+.role-pill[data-role="fire"].on{background:rgba(224,122,26,0.1);border-color:rgba(224,122,26,0.5);color:#e07a1a;}
+.role-pill[data-role="dmv"].on{background:rgba(122,81,200,0.1);border-color:rgba(122,81,200,0.5);color:#7a51c8;}
+.role-pill[data-role="hospital"].on{background:rgba(31,140,95,0.1);border-color:rgba(31,140,95,0.5);color:#1f8c5f;}
+.role-pill[data-role="gov"].on{background:rgba(138,106,30,0.12);border-color:rgba(138,106,30,0.5);color:#8a6a1e;}
+.role-pill[data-role="school"].on{background:rgba(46,125,50,0.1);border-color:rgba(46,125,50,0.5);color:#2e7d32;}
+.role-pill[data-role="elected"].on{background:rgba(26,111,184,0.1);border-color:rgba(26,111,184,0.5);color:#1a6fb8;}
+/* Same per-role tinting for the discovery filter pills (Stories tab) */
+.pill[data-rolefilter="police"].on{background:rgba(37,109,217,0.12);border-color:rgba(37,109,217,0.5);color:#2563d9;}
+.pill[data-rolefilter="emt"].on{background:rgba(201,52,52,0.08);border-color:rgba(201,52,52,0.5);color:#c93434;}
+.pill[data-rolefilter="fire"].on{background:rgba(224,122,26,0.12);border-color:rgba(224,122,26,0.5);color:#e07a1a;}
+.pill[data-rolefilter="dmv"].on{background:rgba(122,81,200,0.12);border-color:rgba(122,81,200,0.5);color:#7a51c8;}
+.pill[data-rolefilter="hospital"].on{background:rgba(31,140,95,0.1);border-color:rgba(31,140,95,0.5);color:#1f8c5f;}
+.pill[data-rolefilter="gov"].on{background:rgba(138,106,30,0.14);border-color:rgba(138,106,30,0.5);color:#8a6a1e;}
+.pill[data-rolefilter="school"].on{background:rgba(46,125,50,0.12);border-color:rgba(46,125,50,0.5);color:#2e7d32;}
+.pill[data-rolefilter="elected"].on{background:rgba(26,111,184,0.12);border-color:rgba(26,111,184,0.5);color:#1a6fb8;}
 
 /* Praise submit button — green theme */
 .submit-praise{background:var(--green) !important;color:var(--bg) !important;}
@@ -810,8 +838,8 @@ section.active{display:block;}
   .pulse-card-head{margin-bottom:14px;gap:10px;}
   .pulse-role-icon{font-size:1.3rem;}
   .pulse-stars{font-size:0.95rem;letter-spacing:1.5px;}
-  /* Persistent "back to home" pill that floats above Pulse on phone — always visible no matter how deep you scroll */
-  .pulse-escape{position:fixed;bottom:18px;right:14px;z-index:150;background:var(--ink);color:#fff;border:none;border-radius:999px;padding:11px 18px;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.82rem;box-shadow:0 10px 28px rgba(15,15,19,0.32);cursor:pointer;display:none;align-items:center;gap:6px;}
+  /* Persistent "back to home" pill that floats above Pulse on phone — bottom-LEFT so it doesn't fight with the Preview badge on the right */
+  .pulse-escape{position:fixed;bottom:18px;left:14px;z-index:550;background:var(--ink);color:#fff;border:none;border-radius:999px;padding:11px 18px;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.82rem;box-shadow:0 10px 28px rgba(15,15,19,0.32);cursor:pointer;display:none;align-items:center;gap:6px;}
   .pulse-escape:hover{background:var(--accent);}
   body.on-pulse .pulse-escape{display:inline-flex;}
 

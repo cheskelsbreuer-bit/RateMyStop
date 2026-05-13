@@ -5,24 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>CivicVoice &mdash; Device Preview</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&amp;family=Epilogue:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#fafaf7; --card:#fff; --border:#e5e3dd; --ink:#1a1a1d;
     --gray:#7a7a82; --light:#3d3d45; --accent:#b8941e;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
 
   .pv-top{position:sticky;top:0;z-index:10;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
   .pv-brand{display:flex;align-items:center;gap:10px;}
-  .pv-brand-mark{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:#fff;font-size:0.9rem;}
-  .pv-brand-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;letter-spacing:-0.4px;}
+  .pv-brand-mark{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:#fff;font-size:0.9rem;}
+  .pv-brand-name{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1rem;font-weight:800;letter-spacing:-0.4px;}
   .pv-brand-name span{color:var(--accent);}
   .pv-title{font-size:0.86rem;color:var(--gray);margin-right:auto;}
 
   .pv-tabs{display:flex;gap:6px;background:#f3f3ee;border:1px solid var(--border);border-radius:10px;padding:4px;}
-  .pv-tabs button{background:transparent;border:none;color:var(--gray);font-family:'Epilogue',sans-serif;font-size:0.86rem;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.18s;display:inline-flex;align-items:center;gap:6px;}
+  .pv-tabs button{background:transparent;border:none;color:var(--gray);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:0.86rem;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.18s;display:inline-flex;align-items:center;gap:6px;}
   .pv-tabs button:hover{color:var(--ink);}
   .pv-tabs button.on{background:var(--ink);color:#fff;}
 

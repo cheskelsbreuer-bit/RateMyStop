@@ -48,6 +48,13 @@ function closeNotifyMe() {
   const overlay = document.getElementById('notifyOverlay');
   if (overlay) overlay.classList.remove('show');
 }
+// ESC closes the Notify modal — native-app expectation
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('notifyOverlay');
+    if (overlay && overlay.classList.contains('show')) closeNotifyMe();
+  }
+});
 function submitNotifyMe() {
   const emailEl = document.getElementById('notifyEmail');
   const email = (emailEl && emailEl.value || '').trim();
@@ -416,6 +423,8 @@ const ROLE_CONFIG = {
   dmv:      { who: 'DMV worker',   ref: 'Confirmation number',              name_ph: 'e.g. their first name',  id_label: 'Window / Station', id_ph: 'e.g. Window 5',         agency_label: 'DMV office',  agency_ph: 'e.g. NY DMV — Spring Valley', where_label: 'Which DMV', where_ph: 'e.g. Spring Valley, NY', story_label: 'What happened at the DMV?', story_ph: 'Was it fast? Slow? Did someone go out of their way? Tell us.', photo_help: 'A receipt, queue ticket, or anything from the visit. JPG / PNG / PDF', show_ticket: false, show_bodycam: false, show_ref: true },
   hospital: { who: 'Hospital staff', ref: 'Visit / Admission ID',            name_ph: 'e.g. Nurse Khan',    id_label: 'Role / Dept',      id_ph: 'e.g. RN, ER, Floor 3', agency_label: 'Hospital',    agency_ph: 'e.g. Nyack Hospital', where_label: 'Which hospital', where_ph: 'e.g. Nyack, NY', story_label: 'What happened?', photo_help: 'Wristband, paperwork, or any photo from the visit. JPG / PNG / PDF', story_ph: 'A nurse who stayed late? A tech who was rough? Tell the story.', show_ticket: false, show_bodycam: false, show_ref: true },
   gov:      { who: 'Gov’t worker', ref: 'Case / File number',               name_ph: 'e.g. their first name',  id_label: 'Title / Role',    id_ph: 'e.g. Caseworker, Inspector', agency_label: 'Agency',   agency_ph: 'e.g. NYS Unemployment Office', where_label: 'Where', where_ph: 'e.g. Spring Valley, NY', story_label: 'What happened?', photo_help: 'Letter, case ID, anything from the interaction. JPG / PNG / PDF', story_ph: 'A caseworker who fought for you? A clerk who lost your file? Tell us.', show_ticket: false, show_bodycam: false, show_ref: true },
+  school:   { who: 'School board member / Superintendent', ref: 'Meeting / vote reference',  name_ph: 'e.g. Trustee Goldberg',  id_label: 'Role / District',  id_ph: 'e.g. Trustee, East Ramapo CSD',  agency_label: 'District / Board',  agency_ph: 'e.g. East Ramapo Central School District',  where_label: 'Where', where_ph: 'e.g. Board meeting, Spring Valley HS',  story_label: 'What happened?',  story_ph: 'A board vote? A meeting? A response to your email? Tell the story.',  photo_help: 'Meeting minutes, email screenshot, anything from the interaction. JPG / PNG / PDF', show_ticket: false, show_bodycam: false, show_ref: true },
+  elected:  { who: 'Elected official',  ref: 'Meeting / vote reference',  name_ph: 'e.g. Mayor Simon',  id_label: 'Title / Office',  id_ph: 'e.g. Village Mayor, County Legislator',  agency_label: 'Office / Body',  agency_ph: 'e.g. Village of Spring Valley',  where_label: 'Where',  where_ph: 'e.g. Village Hall, town hall meeting',  story_label: 'What happened?',  story_ph: 'A vote? A constituent meeting? Showed up — or didn\'t? Tell the story.',  photo_help: 'Meeting photo, email screenshot, anything from the interaction. JPG / PNG / PDF', show_ticket: false, show_bodycam: false, show_ref: true },
 };
 
 function setRole(el, role) {
@@ -1127,11 +1136,11 @@ function _renderOnePulseCard(it) {
   const story = (r.story || '').trim() || '(No description.)';
   const tags = r.tags || [];
   return `
-    <article class="pulse-card" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}">
+    <article class="pulse-card role-${it.role}" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}">
       <div class="pulse-card-head">
         <div class="pulse-card-role">
           <span class="pulse-role-icon">${ROLE_ICON[it.role] || '👤'}</span>
-          <span class="pulse-role-name">${ROLE_NAME[it.role] || ''}</span>
+          <span class="pulse-role-name role-tinted-${it.role}">${ROLE_NAME[it.role] || ''}</span>
         </div>
         <div class="pulse-sent ${isPos ? 'pos' : 'neg'}">
           <span class="pulse-stars">${starsStr(r.stars || 3)}</span>
@@ -3005,7 +3014,7 @@ function openAdminReview(pendingId) {
   body.innerHTML = `
     <div class="sd-eyebrow" style="color:var(--red);">🛡️ ADMIN REVIEW</div>
     <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin-bottom:6px;">Pending submission</h3>
-    <div style="color:var(--gray);font-size:0.86rem;margin-bottom:18px;">Submitted ${formatDate(item.submitted_at)} · ID <code style="font-family:Mono,monospace;font-size:0.78rem;background:var(--bg2);padding:2px 6px;border-radius:4px;">${item.pending_id}</code></div>
+    <div style="color:var(--gray);font-size:0.86rem;margin-bottom:18px;">Submitted ${formatDate(item.submitted_at)} · ID <code style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:0.78rem;background:var(--bg2);padding:2px 6px;border-radius:4px;">${item.pending_id}</code></div>
 
     <!-- Abuse / quality signals -->
     <div class="adm-signals">
@@ -3082,7 +3091,7 @@ function openAdminReview(pendingId) {
         <div class="adm-photo-frame">
           <div style="font-size:2.6rem;margin-bottom:8px;">📷</div>
           <div style="font-weight:700;color:var(--ink);">${escapeHtml(p.evidence_type || 'Photo')} attached</div>
-          <div style="font-size:0.78rem;color:var(--gray);margin-top:4px;">File: <code style="font-family:Mono,monospace;background:var(--bg2);padding:2px 6px;border-radius:4px;">${escapeHtml(p.upload_url)}</code></div>
+          <div style="font-size:0.78rem;color:var(--gray);margin-top:4px;">File: <code style="font-family:'JetBrains Mono',ui-monospace,monospace;background:var(--bg2);padding:2px 6px;border-radius:4px;">${escapeHtml(p.upload_url)}</code></div>
           <div style="font-size:0.78rem;color:var(--gray);margin-top:6px;line-height:1.5;">Admin view: in production this would render the <strong>un-redacted original</strong> for moderation review. The user only sees the redacted version they applied before upload.</div>
         </div>
       ` : '<div class="adm-block-sub">No photo / evidence attached.</div>'}
@@ -3375,8 +3384,28 @@ if (window.api && window.api.isStatic && window.api.isStatic()) {
 }
 
 // Register service worker (for PWA / offline / installability)
+// Auto-reload when a new SW version takes over — fixes the "I have to reload twice
+// after every deploy" PWA gotcha.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => {
+        // When the SW finds an update, install it; when the new SW becomes active,
+        // reload the page once so the user sees the new version immediately.
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          if (!newSW) return;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'activated' && navigator.serviceWorker.controller) {
+              // Guard against an infinite reload loop
+              if (!window.__cv_reloaded) {
+                window.__cv_reloaded = true;
+                window.location.reload();
+              }
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW registration failed:', err));
   });
 }
