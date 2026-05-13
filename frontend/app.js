@@ -1000,30 +1000,27 @@ async function openOfficer(id) {
               ${isAuthor && status !== 'resolved' ? `<button class="rb-btn" onclick="markStoryResolved(${o.id}, ${r.id}); document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openOfficer(${o.id}), 80);">✓ Mark resolved</button>` : ''}
             </div>
             <div class="mr-actions">
-              <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
-              <button class="sp-action" onclick="document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openStoryDetail(${o.id}, ${r.id}), 80);">💬 ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'} & thread</button>
+              <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">👍 Yes, same</button>
+              <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
+              <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
+              <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
+              <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious — want to know more">🤔</button>
+              <button class="sp-action" onclick="document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openStoryDetail(${o.id}, ${r.id}), 80);">💬 ${replyCount}</button>
               <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
             </div>
           </div>
         `;
       }).join('')}
       ${(() => {
-        // Only the original author of a story on this profile can route a message to the agency.
-        // Anyone else can share, browse, or post their own story. (Future option: open this after 30+
-        // days unresolved so the community can amplify — disabled for now per founder request.)
+        // Only the original author of a story on this profile sees the "Send to agency" button.
+        // Non-authors see NOTHING about messaging — they can share, react, or post their own story.
         const u = getCurrentUser();
         const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
         const myReviews = (o.reviews || []).filter(r => (r.author_display || _legacyAuthor(o.id, r.id)) === myHandle);
         if (myHandle && myReviews.length) {
           return `<button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">&#9993;&#65039; Send a message to ${escapeHtml(o.department || 'this agency')} about your story &rarr;</button>`;
         }
-        return `<div style="margin-top:18px;padding:16px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;gap:12px;align-items:flex-start;">
-          <span style="font-size:1.2rem;flex-shrink:0;">&#128737;&#65039;</span>
-          <div style="font-size:0.86rem;line-height:1.55;color:var(--light);">
-            <strong style="color:var(--ink);">Only the original story author can route a message to the agency.</strong>
-            <div style="margin-top:6px;">You can share this profile, react with &quot;Same here&quot; on a story that resonates, or <button onclick="document.getElementById('officerModal').classList.remove('show'); nav('share');" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-family:inherit;font-size:inherit;font-weight:600;">share your own story</button>.</div>
-          </div>
-        </div>`;
+        return '';  // silent — non-authors get the React/Share/Post-your-own paths via the action row
       })()}
     `;
   } catch (err) {
@@ -1144,9 +1141,10 @@ function _renderOnePulseCard(it) {
   const trust = computeTrustScore(author);
   const story = (r.story || '').trim() || '(No description.)';
   const tags = r.tags || [];
-  // "Hot right now" badge — high recency + high stars
-  const ageMins = (Date.now() - new Date(r.created_at || 0).getTime()) / 60000;
-  const isHot = ageMins < 60 * 24 * 3 && (r.stars >= 5 || r.verdict === 'unfair');
+  // "Hot right now" badge — strict: must be VERY recent (last 24h) AND have real engagement.
+  // Without that, every seed story would look "Hot" because they're 5-star by default.
+  const ageHours = (Date.now() - new Date(r.created_at || 0).getTime()) / 3600000;
+  const isHot = ageHours < 24 && (replyCount >= 1 || (r._reactions && r._reactions > 0));
   return `
     <article class="pulse-card role-${it.role}" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}" onclick="openStoryDetail(${o.id}, ${r.id})">
       <div class="pulse-card-head">
@@ -1176,12 +1174,15 @@ function _renderOnePulseCard(it) {
         <span class="rb-text"><strong>${meta.label}</strong></span>
       </div>
 
+      <div class="reaction-legend" onclick="event.stopPropagation();">
+        How does this story land with you? <span class="rl-key">👍 Same · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span>
+      </div>
       <div class="pulse-actions">
-        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 I had this too</button>
+        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">👍 Yes, same</button>
         <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏 Thank you</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪 Strong</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="I want to know more">🤔 Curious</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you to the person in this story">🙏 Thanks</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="This story is powerful / strong">💪 Strong</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="I want to know more about this">🤔 Curious</button>
         <button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount}</button>
         <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
       </div>
@@ -1581,7 +1582,7 @@ function renderStream(officers, q) {
         </div>
         <div class="sp-foot">
           <div class="sp-actions">
-            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 I had this too</button>
+            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 Yes, same</button>
             <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
             <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
             <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
@@ -2356,7 +2357,7 @@ function reactTo(btn, evt) {
   const n = parseInt(btn.dataset.count || '0', 10) + 1;
   btn.dataset.count = n;
   const styles = {
-    up:      { emoji:'👍', label:'I had this too', color:'var(--green)', bd:'rgba(31,140,95,0.4)', bg:'rgba(31,140,95,0.08)' },
+    up:      { emoji:'👍', label:'Yes, same',      color:'var(--green)', bd:'rgba(31,140,95,0.4)', bg:'rgba(31,140,95,0.08)' },
     down:    { emoji:'👎', label:'Not me',         color:'var(--red)',   bd:'rgba(201,52,52,0.4)', bg:'rgba(201,52,52,0.06)' },
     thanks:  { emoji:'🙏', label:'Thank you',      color:'#7a51c8',      bd:'rgba(122,81,200,0.4)', bg:'rgba(122,81,200,0.08)' },
     strong:  { emoji:'💪', label:'Strong',         color:'#e07a1a',      bd:'rgba(224,122,26,0.4)', bg:'rgba(224,122,26,0.08)' },
@@ -4022,7 +4023,8 @@ function submitPoll() {
   status.innerHTML = '✓ Your poll is in moderation. Once approved, it joins the public list. <button onclick="closeSubmitPoll()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;">Close</button>';
   document.getElementById('spQuestion').value = '';
   document.getElementById('spOptions').value = '';
-  setTimeout(() => { closeSubmitPoll(); }, 4500);
+  // Linger 60s like story submit — gives the submitter time to read confirmation, share, or close
+  setTimeout(() => { closeSubmitPoll(); }, 60000);
 }
 
 function renderPolls() {

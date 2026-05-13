@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v32-admin-polls-pulse';
-const ASSETS_BUMP_NOTE = 'Admin console: Stories/Polls/Users/Engagement/Activity/Notify tabs · Polls in Pulse · 5 reactions · streak milestones · Hot badges · haptics · Federal filter · Coming Soon momentum chips';
+const CACHE = 'civicvoice-v33-clarity-pass';
+const ASSETS_BUMP_NOTE = 'Hot strict (24h+real-engagement), reactions clearer + legend, reactions on officer-modal stories, no-author msg silent, poll submit lingers 60s';
 const ASSETS = [
   './',
   './index.html',

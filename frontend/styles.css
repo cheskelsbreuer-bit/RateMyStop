@@ -1024,6 +1024,14 @@ section.active{display:block;}
 .pulse-poll-card{background:linear-gradient(160deg, var(--card), rgba(184,148,30,0.04));}
 .pulse-poll-card::before{height:160px;background:linear-gradient(180deg, rgba(184,148,30,0.18), transparent);}
 
+/* Reaction legend — one-line "what do these mean" key above the buttons */
+.reaction-legend{font-size:0.72rem;color:var(--gray);margin:14px 0 8px;padding:8px 12px;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;line-height:1.5;}
+.reaction-legend .rl-key{color:var(--light);font-weight:600;}
+@media(max-width:700px){
+  .reaction-legend{font-size:0.68rem;padding:7px 10px;}
+  .reaction-legend .rl-key{display:block;margin-top:2px;}
+}
+
 /* Streak milestone toast — slides up from bottom on celebration */
 .streak-toast{position:fixed;bottom:30px;left:50%;transform:translate(-50%, 80px);background:linear-gradient(120deg, var(--ink), #2a2a2d);color:#fff;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;padding:14px 24px;border-radius:999px;box-shadow:0 20px 50px rgba(15,15,19,0.4);z-index:9000;opacity:0;transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;font-size:0.92rem;letter-spacing:-0.2px;}
 .streak-toast.show{transform:translate(-50%, 0);opacity:1;}
