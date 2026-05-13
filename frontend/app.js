@@ -120,7 +120,64 @@ function _bumpReactionCount(officerId, reviewId, kind) {
   localStorage.setItem(MY_REACTIONS_KEY, JSON.stringify(mine));
   return all[key];
 }
-// Build a reaction button with proper "already reacted" visual state if this user has tapped it before
+// Custom emoji reactions — user picks from a small palette beyond the 5 default reactions.
+// Stored in civicvoice_custom_reactions_v1 = { storyKey: { emoji: count } }
+const CUSTOM_REACTIONS_KEY = 'civicvoice_custom_reactions_v1';
+const CUSTOM_MY_REACTIONS_KEY = 'civicvoice_my_custom_reactions_v1';
+function _readCustomReactions()   { try { return JSON.parse(localStorage.getItem(CUSTOM_REACTIONS_KEY) || '{}'); } catch { return {}; } }
+function _readMyCustomReactions() { try { return JSON.parse(localStorage.getItem(CUSTOM_MY_REACTIONS_KEY) || '{}'); } catch { return {}; } }
+const EXTRA_EMOJI_PALETTE = ['❤️','😢','😡','😂','🤯','👏','🫶','🙄','🔥','💯','😱','🤝'];
+function openEmojiPicker(officerId, reviewId, anchorBtn, evt) {
+  if (evt) evt.stopPropagation();
+  // Remove any existing picker
+  document.querySelectorAll('.emoji-picker').forEach(p => p.remove());
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker';
+  picker.innerHTML = EXTRA_EMOJI_PALETTE.map(e =>
+    `<button class="ep-btn" onclick="event.stopPropagation(); pickCustomReaction(${officerId}, ${reviewId}, '${e}', this)">${e}</button>`
+  ).join('');
+  document.body.appendChild(picker);
+  const rect = anchorBtn.getBoundingClientRect();
+  picker.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  picker.style.left = Math.max(8, rect.left + window.scrollX) + 'px';
+  // Close on outside click
+  setTimeout(() => {
+    const closeIt = (e) => {
+      if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('click', closeIt); }
+    };
+    document.addEventListener('click', closeIt);
+  }, 50);
+}
+function pickCustomReaction(officerId, reviewId, emoji, btn) {
+  if (!requireAuth(() => pickCustomReaction(officerId, reviewId, emoji, btn), 'Sign in to react')) return;
+  const key = `${officerId}:${reviewId}`;
+  const mine = _readMyCustomReactions();
+  if (mine[key] && mine[key][emoji]) {
+    // Already used this emoji on this story
+    document.querySelectorAll('.emoji-picker').forEach(p => p.remove());
+    _showStreakToast(`You already reacted with ${emoji} on this story.`);
+    return;
+  }
+  const all = _readCustomReactions();
+  all[key] = all[key] || {};
+  all[key][emoji] = (all[key][emoji] || 0) + 1;
+  localStorage.setItem(CUSTOM_REACTIONS_KEY, JSON.stringify(all));
+  mine[key] = mine[key] || {};
+  mine[key][emoji] = true;
+  localStorage.setItem(CUSTOM_MY_REACTIONS_KEY, JSON.stringify(mine));
+  recordEngagement('react');
+  if (navigator.vibrate) try { navigator.vibrate(12); } catch {}
+  playReactionSound();
+  _emojiBurst(btn, emoji);
+  document.querySelectorAll('.emoji-picker').forEach(p => p.remove());
+  // Update visible card summary
+  const anchor = document.querySelector(`[data-officer-id="${officerId}"][data-review-id="${reviewId}"]`);
+  if (anchor) _refreshReactionSummary(anchor);
+}
+
+// Build a reaction button with "already reacted" visual state if this user has tapped it before.
+// Buttons NEVER show a count — counts are shown in the reaction-summary row above.
+// Just color + ✓ badge when this user has reacted.
 function reactionButtonHtml(officerId, reviewId, kind, labelHtml, titleAttr) {
   const mine = _readMyReactions();
   const key = `${officerId}:${reviewId}`;
@@ -134,20 +191,15 @@ function reactionButtonHtml(officerId, reviewId, kind, labelHtml, titleAttr) {
   };
   const klass = `sp-action${kind === 'up' ? ' up' : ''}${kind === 'down' ? ' down' : ''}${alreadyReacted ? ' reacted' : ''}`;
   const style = alreadyReacted ? styles[kind] || '' : '';
-  // If already reacted, show emoji + count instead of label
-  let inner = labelHtml;
-  if (alreadyReacted) {
-    const counts = getReactionCounts(officerId, reviewId);
-    const n = counts[kind];
-    const emoji = labelHtml.split(' ')[0];
-    inner = (kind === 'up' || kind === 'down') ? `${labelHtml} · ${n}` : `${emoji} ${n}`;
-  }
-  return `<button class="${klass}" style="${style}" data-officer-id="${officerId}" data-review-id="${reviewId}" data-kind="${kind}" data-count="${alreadyReacted ? getReactionCounts(officerId, reviewId)[kind] : 0}" onclick="reactTo(this, event)" title="${titleAttr}">${inner}</button>`;
+  // Always show just the label — never a count. Color + ✓ are the only "you reacted" indicators.
+  return `<button class="${klass}" style="${style}" data-officer-id="${officerId}" data-review-id="${reviewId}" data-kind="${kind}" onclick="reactTo(this, event)" title="${titleAttr}">${labelHtml}</button>`;
 }
 
 function reactionTotalsHtml(officerId, reviewId) {
   const c = getReactionCounts(officerId, reviewId);
-  const total = c.up + c.down + c.thanks + c.strong + c.curious;
+  const custom = _readCustomReactions()[`${officerId}:${reviewId}`] || {};
+  const customTotal = Object.values(custom).reduce((s, n) => s + n, 0);
+  const total = c.up + c.down + c.thanks + c.strong + c.curious + customTotal;
   if (!total) return '';
   const parts = [];
   if (c.up)      parts.push(`<span title="People who had the same experience">🙋 ${c.up}</span>`);
@@ -155,6 +207,10 @@ function reactionTotalsHtml(officerId, reviewId) {
   if (c.thanks)  parts.push(`<span title="Thank-yous">🙏 ${c.thanks}</span>`);
   if (c.strong)  parts.push(`<span title="Strong / powerful">💪 ${c.strong}</span>`);
   if (c.curious) parts.push(`<span title="Curious">🤔 ${c.curious}</span>`);
+  // Custom emoji reactions (sorted by count desc, top 4 shown)
+  Object.entries(custom).sort((a, b) => b[1] - a[1]).slice(0, 4).forEach(([emoji, n]) => {
+    if (n > 0) parts.push(`<span title="Custom reaction">${emoji} ${n}</span>`);
+  });
   return `<div class="reaction-summary">${parts.join('<span class="rs-sep">·</span>')}</div>`;
 }
 // Seed baseline reactions on existing stories so the app doesn't look dead on first open.
@@ -1175,6 +1231,7 @@ async function openOfficer(id) {
               ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏',         'Thank you')}
               ${reactionButtonHtml(o.id, r.id, 'strong',  '💪',         'Strong / powerful')}
               ${reactionButtonHtml(o.id, r.id, 'curious', '🤔',         'Curious — want to know more')}
+              <button class="sp-action emoji-plus" title="Add a different emoji" onclick="event.stopPropagation(); openEmojiPicker(${o.id}, ${r.id}, this, event)">+</button>
               <button class="sp-action" onclick="document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openStoryDetail(${o.id}, ${r.id}), 80);">💬 ${replyCount}</button>
               <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
             </div>
@@ -1355,6 +1412,7 @@ function _renderOnePulseCard(it) {
         ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏 Thanks',   'Thank you to the person in this story')}
         ${reactionButtonHtml(o.id, r.id, 'strong',  '💪 Strong',   'This story is powerful')}
         ${reactionButtonHtml(o.id, r.id, 'curious', '🤔 Curious',  'I want to know more about this')}
+        <button class="sp-action emoji-plus" title="Add a different emoji" onclick="event.stopPropagation(); openEmojiPicker(${o.id}, ${r.id}, this, event)">+</button>
         <button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount}</button>
         <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
       </div>
@@ -1874,6 +1932,7 @@ function renderStream(officers, q) {
             ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏',         'Thank you')}
             ${reactionButtonHtml(o.id, r.id, 'strong',  '💪',         'Strong / powerful')}
             ${reactionButtonHtml(o.id, r.id, 'curious', '🤔',         'Curious — want to know more')}
+              <button class="sp-action emoji-plus" title="Add a different emoji" onclick="event.stopPropagation(); openEmojiPicker(${o.id}, ${r.id}, this, event)">+</button>
             ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)}</button>` : ''}
             <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
           </div>
@@ -1946,6 +2005,7 @@ function openStoryDetail(officerId, reviewId) {
       ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏',         'Thank you')}
       ${reactionButtonHtml(o.id, r.id, 'strong',  '💪',         'Strong / powerful')}
       ${reactionButtonHtml(o.id, r.id, 'curious', '🤔',         'Curious')}
+      <button class="sp-action emoji-plus" title="Add a different emoji" onclick="event.stopPropagation(); openEmojiPicker(${o.id}, ${r.id}, this, event)">+</button>
       <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
       ${(() => {
         const u = getCurrentUser();
@@ -2682,10 +2742,7 @@ function reactTo(btn, evt) {
   playReactionSound();
   if (oid && rid) _bumpReactionCount(oid, rid, kind);
   const s = REACTION_STYLES[kind] || REACTION_STYLES.up;
-  const counts = getReactionCounts(oid, rid);
-  const n = counts[kind];
-  // Render: full label for up/down (they're the headline reactions); compact for the rest
-  btn.innerHTML = (kind === 'up' || kind === 'down') ? `${s.emoji} ${s.label} · ${n}` : `${s.emoji} ${n}`;
+  // Just color + ✓ badge. No count on the button — the summary row above shows totals.
   btn.style.color = s.color;
   btn.style.borderColor = s.bd;
   btn.style.background = s.bg;
@@ -2999,6 +3056,7 @@ try { updateStreakChip(); }             catch (e) { console.warn('updateStreakCh
 try { _attachPulseSwipe(); }            catch (e) { console.warn('_attachPulseSwipe init:', e); }
 try { _seedReactionsIfNeeded(); }       catch (e) { console.warn('_seedReactionsIfNeeded init:', e); }
 try { _initSoundToggle(); }             catch (e) { console.warn('_initSoundToggle init:', e); }
+try { _startFakeUserSim(); }            catch (e) { console.warn('_startFakeUserSim init:', e); }
 // _maybeFireDailyNotif depends on STATIC_DATA — defer to ensure data has loaded
 setTimeout(() => { try { _maybeFireDailyNotif(); } catch (e) { console.warn('_maybeFireDailyNotif init:', e); } }, 100);
 
@@ -3623,6 +3681,7 @@ function renderAdmUsers() {
 function renderAdmEngagement() {
   const wrap = document.getElementById('admEngagementBody');
   if (!wrap) return;
+  const fakeOn = isFakeUsersOn();
   const handles = _collectAllHandles();
   const pollVotes = _readPollsVotes();
   const totalVotes = Object.values(pollVotes).reduce((s, m) => s + Object.values(m).reduce((a, b) => a + b, 0), 0);
@@ -3652,6 +3711,13 @@ function renderAdmEngagement() {
       ${_admStatCard('Pending polls', pendingPolls, '⏳', pendingPolls ? 'var(--accent)' : null)}
       ${_admStatCard('Notify-me signups', notifyList.length, '📩')}
       ${_admStatCard('Your engagement', streak.total || 0, '🔥')}
+    </div>
+    <div style="background:${fakeOn ? 'rgba(31,140,95,0.08)' : 'var(--bg2)'};border:1.5px solid ${fakeOn ? 'rgba(31,140,95,0.35)' : 'var(--border)'};border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:var(--ink);font-size:0.95rem;">${fakeOn ? '🟢 Demo users active' : '⏸️ Demo users paused'}</div>
+        <div style="font-size:0.8rem;color:var(--gray);margin-top:2px;">10 fake personas auto-reacting + voting + commenting every 18-45 seconds. Real users won't see any difference — but the site looks alive.</div>
+      </div>
+      <button class="ac-btn" onclick="toggleFakeUsers(); setTimeout(()=>renderAdmEngagement(),200);">${fakeOn ? 'Pause' : 'Resume'}</button>
     </div>
     <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin-bottom:12px;">Hot stories</h3>
     ${hot.map(({ o, r }) => `
@@ -4173,6 +4239,158 @@ function openDepartmentDetail(deptName) {
 if (window.api && window.api.isStatic && window.api.isStatic()) {
   const badge = document.getElementById('demoBadge');
   if (badge) badge.classList.add('show');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FAKE USERS — organic-feeling activity so the site doesn't look dead on launch.
+// 10 personas each with their own behavior pattern (reaction lean, comment style,
+// active hours). They fire actions at random intervals while the page is open.
+// Toggle off via localStorage: civicvoice_fake_users_v1 = 'off'
+// ─────────────────────────────────────────────────────────────────────────────
+const FAKE_USERS_KEY = 'civicvoice_fake_users_v1';     // 'on' (default) | 'off'
+const FAKE_USERS_STATE_KEY = 'civicvoice_fake_users_state_v1';  // per-user last-action timestamps
+
+const FAKE_PERSONAS = [
+  // Each: handle, affil, reactionLean (which reactions they favor), commentVoice, activeHoursLocal (24h range), avgMinutesBetween
+  { handle:'Anonymous-2841', affil:'democrat',     lean:['thanks','strong','up'],    voice:'Caring, brief.', hours:[7,23], avgMins:42 },
+  { handle:'Anonymous-9173', affil:'republican',   lean:['down','curious','strong'], voice:'Direct, skeptical.', hours:[6,22], avgMins:55 },
+  { handle:'Anonymous-3306', affil:'independent',  lean:['curious','up','down'],     voice:'Even-keeled, asks questions.', hours:[9,24], avgMins:70 },
+  { handle:'Anonymous-5520', affil:'progressive',  lean:['strong','thanks','up'],    voice:'Calls out injustice, supports good work.', hours:[8,23], avgMins:50 },
+  { handle:'Anonymous-1184', affil:'conservative', lean:['curious','down','up'],     voice:'Practical, asks for specifics.', hours:[7,21], avgMins:65 },
+  { handle:'Anonymous-7720', affil:'libertarian',  lean:['curious','down','up'],     voice:'Pro-individual, anti-bureaucracy.', hours:[10,24], avgMins:90 },
+  { handle:'Anonymous-4471', affil:'democrat',     lean:['thanks','strong'],         voice:'Grateful, names good public servants.', hours:[6,22], avgMins:60 },
+  { handle:'Anonymous-8812', affil:'independent',  lean:['curious','strong'],        voice:'Long-time local, civic-minded.', hours:[7,23], avgMins:75 },
+  { handle:'Anonymous-6633', affil:'progressive',  lean:['strong','up','thanks'],    voice:'Parent of school-age kids, sharp.', hours:[8,22], avgMins:55 },
+  { handle:'Anonymous-2901', affil:'republican',   lean:['up','strong','curious'],   voice:'Veteran, respects service.', hours:[5,21], avgMins:80 },
+];
+
+const FAKE_COMMENT_BANK = {
+  poll_yes:    ["This is overdue.", "Long time coming.", "Right call.", "Yes, no question.", "Should've happened years ago."],
+  poll_no:     ["Strong disagree.", "Not the right move.", "This would hurt more than it helps.", "Too soon to know.", "No, the current setup works."],
+  poll_mixed:  ["Depends on the details.", "Need more info.", "Both sides have a point.", "I'd want to read the fine print first.", "Mixed feelings, honestly."],
+  poll_curious:["Anyone have a link to the actual proposal?", "Where can I read more?", "Who's funding this?", "What's the implementation timeline?"],
+};
+
+function isFakeUsersOn() { return localStorage.getItem(FAKE_USERS_KEY) !== 'off'; }
+function toggleFakeUsers() {
+  const next = isFakeUsersOn() ? 'off' : 'on';
+  localStorage.setItem(FAKE_USERS_KEY, next);
+  if (next === 'on') _startFakeUserSim();
+  else _stopFakeUserSim();
+  _showStreakToast(next === 'on' ? '✓ Demo users active — they\'ll react + comment in the background.' : 'Demo users paused.');
+  return next === 'on';
+}
+
+function _readFakeState() { try { return JSON.parse(localStorage.getItem(FAKE_USERS_STATE_KEY) || '{}'); } catch { return {}; } }
+function _writeFakeState(s) { localStorage.setItem(FAKE_USERS_STATE_KEY, JSON.stringify(s)); }
+
+// Pick a random story to act on
+function _pickRandomStory() {
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const all = [...officers, ...getApprovedAsOfficers()];
+  const candidates = [];
+  for (const o of all) for (const r of (o.reviews || [])) candidates.push({ o, r });
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+// One fake-user action: react on a story, or vote/comment on a poll
+function _fakeUserAction(persona) {
+  const choice = Math.random();
+  if (choice < 0.7) {
+    // React on a random story
+    const pick = _pickRandomStory();
+    if (!pick) return;
+    const kind = persona.lean[Math.floor(Math.random() * persona.lean.length)];
+    const key = `${pick.o.id}:${pick.r.id}`;
+    // Has this fake user already done this kind on this story?
+    const state = _readFakeState();
+    state[persona.handle] = state[persona.handle] || { reactions: {} };
+    state[persona.handle].reactions[key] = state[persona.handle].reactions[key] || {};
+    if (state[persona.handle].reactions[key][kind]) return;  // skip
+    state[persona.handle].reactions[key][kind] = true;
+    _writeFakeState(state);
+    // Bump global count (no auth check since we're simulating)
+    const all = _readReactions();
+    all[key] = all[key] || { up:0, down:0, thanks:0, strong:0, curious:0 };
+    all[key][kind] = (all[key][kind] || 0) + 1;
+    localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
+    return { type:'react', who:persona.handle, story:pick, kind };
+  } else if (choice < 0.9) {
+    // Vote on a random poll (if not yet voted by this persona)
+    const polls = [...POLLS_SEED, ..._readApprovedPolls()];
+    if (!polls.length) return;
+    const p = polls[Math.floor(Math.random() * polls.length)];
+    const state = _readFakeState();
+    state[persona.handle] = state[persona.handle] || { reactions:{}, polls:{} };
+    state[persona.handle].polls = state[persona.handle].polls || {};
+    if (state[persona.handle].polls[p.id]) return;
+    // Lean: progressive/democrat favor first option ("Yes" / "Yes, reverse"), conservative/republican favor last option ("No" / counter)
+    const leftLean = ['progressive','democrat','independent'].includes(persona.affil);
+    const optIdx = leftLean ? (Math.random() < 0.7 ? 0 : Math.floor(Math.random() * p.options.length))
+                            : (Math.random() < 0.7 ? p.options.length - 1 : Math.floor(Math.random() * p.options.length));
+    const opt = p.options[optIdx];
+    state[persona.handle].polls[p.id] = opt.id;
+    _writeFakeState(state);
+    // Update vote counts + breakdown
+    const votes = _readPollsVotes();
+    votes[p.id] = votes[p.id] || _seedPollCounts(p.id);
+    votes[p.id][opt.id] = (votes[p.id][opt.id] || 0) + 1;
+    localStorage.setItem(POLLS_VOTES_KEY, JSON.stringify(votes));
+    const bd = _readPollsBreakdown();
+    bd[p.id] = bd[p.id] || {};
+    bd[p.id][persona.affil] = bd[p.id][persona.affil] || {};
+    bd[p.id][persona.affil][opt.id] = (bd[p.id][persona.affil][opt.id] || 0) + 1;
+    localStorage.setItem(POLLS_BREAKDOWN_KEY, JSON.stringify(bd));
+    return { type:'vote', who:persona.handle, poll:p, opt };
+  } else {
+    // Add a comment to a random poll (if voted)
+    const state = _readFakeState();
+    const myVotes = (state[persona.handle] && state[persona.handle].polls) || {};
+    const votedPollIds = Object.keys(myVotes);
+    if (!votedPollIds.length) return;
+    const pollId = votedPollIds[Math.floor(Math.random() * votedPollIds.length)];
+    const p = [...POLLS_SEED, ..._readApprovedPolls()].find(x => x.id === pollId);
+    if (!p) return;
+    const optId = myVotes[pollId];
+    // Pick a comment bucket based on which option they chose
+    const optIdx = p.options.findIndex(o => o.id === optId);
+    const bucket = optIdx === 0 ? FAKE_COMMENT_BANK.poll_yes
+                 : optIdx === p.options.length - 1 ? FAKE_COMMENT_BANK.poll_no
+                 : Math.random() < 0.5 ? FAKE_COMMENT_BANK.poll_mixed : FAKE_COMMENT_BANK.poll_curious;
+    const text = bucket[Math.floor(Math.random() * bucket.length)];
+    // Skip if this persona already commented on this poll
+    state[persona.handle].comments = state[persona.handle].comments || {};
+    if (state[persona.handle].comments[pollId]) return;
+    state[persona.handle].comments[pollId] = true;
+    _writeFakeState(state);
+    const comments = JSON.parse(localStorage.getItem(POLLS_COMMENTS_KEY) || '{}');
+    comments[pollId] = comments[pollId] || [];
+    comments[pollId].push({ handle: persona.handle, optionId: optId, text, ts: new Date().toISOString(), affil: persona.affil });
+    localStorage.setItem(POLLS_COMMENTS_KEY, JSON.stringify(comments));
+    return { type:'comment', who:persona.handle, poll:p, text };
+  }
+}
+
+let _fakeUserTimer = null;
+function _startFakeUserSim() {
+  if (_fakeUserTimer) clearTimeout(_fakeUserTimer);
+  if (!isFakeUsersOn()) return;
+  // Pick a random persona to act every 18-45 seconds (visible "alive" feel without spamming)
+  const tick = () => {
+    if (!isFakeUsersOn()) return;
+    const persona = FAKE_PERSONAS[Math.floor(Math.random() * FAKE_PERSONAS.length)];
+    try { _fakeUserAction(persona); } catch (e) { console.warn('fake-user action:', e); }
+    // Soft-rerender current section if user is looking at Pulse or Polls
+    const id = document.querySelector('section.active')?.id;
+    if (id === 'pulse')  setTimeout(() => { try { renderPulse(); } catch {} }, 200);
+    if (id === 'polls')  setTimeout(() => { try { renderPolls(); } catch {} }, 200);
+    _fakeUserTimer = setTimeout(tick, 18000 + Math.random() * 27000);  // 18-45s
+  };
+  _fakeUserTimer = setTimeout(tick, 4000 + Math.random() * 6000);
+}
+function _stopFakeUserSim() {
+  if (_fakeUserTimer) { clearTimeout(_fakeUserTimer); _fakeUserTimer = null; }
 }
 
 // ── ENGAGEMENT STREAK ──

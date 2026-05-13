@@ -430,10 +430,12 @@ section.active{display:block;}
 .resolution-banner .rb-btn:hover{background:rgba(31,140,95,0.28);}
 
 /* ─── Bell + notification dropdown ─── */
-.streak-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(224,122,26,0.10);border:1px solid rgba(224,122,26,0.35);color:#e07a1a;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.85rem;padding:5px 12px 5px 8px;border-radius:999px;cursor:pointer;transition:all 0.18s;}
-.streak-chip:hover{background:rgba(224,122,26,0.18);border-color:rgba(224,122,26,0.55);transform:translateY(-1px);}
-.streak-flame{font-size:0.95rem;filter:drop-shadow(0 0 4px rgba(224,122,26,0.4));}
-.streak-num{font-variant-numeric:tabular-nums;}
+.streak-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(224,122,26,0.10);border:1px solid rgba(224,122,26,0.35);color:#e07a1a;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.78rem;padding:3px 9px 3px 6px;border-radius:999px;cursor:pointer;transition:all 0.18s;line-height:1;flex-shrink:0;}
+/* Pulse-escape Home pill is phone-only AND only on Pulse — hidden everywhere else */
+.pulse-escape{display:none;}
+.streak-chip:hover{background:rgba(224,122,26,0.18);border-color:rgba(224,122,26,0.55);}
+.streak-flame{font-size:0.8rem;filter:drop-shadow(0 0 3px rgba(224,122,26,0.4));}
+.streak-num{font-variant-numeric:tabular-nums;letter-spacing:-0.3px;}
 .bell-btn{position:relative;background:transparent;border:1px solid var(--border);color:var(--ink);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1.05rem;display:inline-flex;align-items:center;justify-content:center;transition:all 0.18s;}
 .bell-btn:hover{background:var(--accent-soft);border-color:rgba(184,148,30,0.4);}
 .bell-badge{position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.66rem;min-width:18px;height:18px;border-radius:9px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--card);}
@@ -863,7 +865,7 @@ section.active{display:block;}
   .pulse-role-icon{font-size:1.3rem;}
   .pulse-stars{font-size:0.95rem;letter-spacing:1.5px;}
   /* Persistent "back to home" pill that floats above Pulse on phone — bottom-LEFT so it doesn't fight with the Preview badge on the right */
-  .pulse-escape{position:fixed;bottom:18px;left:14px;z-index:550;background:var(--ink);color:#fff;border:none;border-radius:999px;padding:11px 18px;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.82rem;box-shadow:0 10px 28px rgba(15,15,19,0.32);cursor:pointer;display:none;align-items:center;gap:6px;}
+  .pulse-escape{position:fixed;bottom:18px;left:14px;z-index:550;background:var(--ink);color:#fff;border:none;border-radius:999px;padding:11px 18px;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.82rem;box-shadow:0 10px 28px rgba(15,15,19,0.32);cursor:pointer;align-items:center;gap:6px;}
   .pulse-escape:hover{background:var(--accent);}
   body.on-pulse .pulse-escape{display:inline-flex;}
 
@@ -1082,6 +1084,13 @@ section.active{display:block;}
   .reaction-legend{font-size:0.68rem;padding:7px 10px;}
   .reaction-legend .rl-key{display:block;margin-top:2px;}
 }
+
+/* ─── Custom emoji picker ─── */
+.emoji-picker{position:absolute;z-index:9999;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:8px;box-shadow:0 16px 44px rgba(15,15,19,0.18);display:grid;grid-template-columns:repeat(6,1fr);gap:4px;animation:fadeUp 0.2s ease;}
+.emoji-picker .ep-btn{background:transparent;border:none;font-size:1.4rem;width:38px;height:38px;border-radius:8px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;line-height:1;}
+.emoji-picker .ep-btn:hover{background:var(--accent-soft);transform:scale(1.15);}
+.sp-action.emoji-plus{font-weight:800;font-size:1rem;padding:6px 11px;color:var(--gray);}
+.sp-action.emoji-plus:hover{color:var(--accent);border-color:rgba(184,148,30,0.4);background:var(--accent-soft);}
 
 /* ─── Poll breakdown by affiliation ─── */
 .poll-breakdown{margin:14px 0;padding:14px;background:linear-gradient(160deg, rgba(184,148,30,0.05), var(--bg2));border:1px solid var(--border);border-radius:12px;}
