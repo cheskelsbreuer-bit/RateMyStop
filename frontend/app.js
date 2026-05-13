@@ -1244,6 +1244,30 @@ function renderPulse() {
 }
 
 let _pulseObserver = null;
+// Swipe gestures on Pulse — left = next, right = previous. Vertical scroll still works.
+function _attachPulseSwipe() {
+  const stage = document.getElementById('pulseStage');
+  if (!stage) return;
+  let startX = 0, startY = 0, startT = 0;
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startT = Date.now();
+  }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (!startT) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const dt = Date.now() - startT;
+    startT = 0;
+    // Only horizontal swipes >60px, faster than 500ms, with vertical movement <40px
+    if (Math.abs(dx) < 60 || dt > 500 || Math.abs(dy) > 40) return;
+    if (dx < 0) pulseNext(); else pulsePrev();
+  }, { passive: true });
+}
+
 function _attachPulseScrollObserver() {
   if (_pulseObserver) _pulseObserver.disconnect();
   const stage = document.getElementById('pulseStage');
@@ -1508,6 +1532,7 @@ function renderStream(officers, q) {
 function openStoryDetail(officerId, reviewId) {
   const it = _streamIndex[`${officerId}:${reviewId}`];
   if (!it) return;
+  recordEngagement('story-view');
   const o = it.officer;
   const r = it.review;
   const isPositive = r.verdict === 'fair';
@@ -2257,6 +2282,7 @@ document.addEventListener('keydown', (e) => {
 function reactTo(btn, evt) {
   if (evt) evt.stopPropagation();
   if (!requireAuth(() => reactTo(btn), 'Sign in to react')) return;
+  recordEngagement('react');
   const kind = btn.dataset.kind || 'up';
   const n = parseInt(btn.dataset.count || '0', 10) + 1;
   btn.dataset.count = n;
@@ -2527,6 +2553,8 @@ renderAuthState();
 loadStats();
 loadOfficers();
 refreshLiveRating();   // initial state: 4/5 charitable default
+updateStreakChip();    // show streak in topbar if user has any engagement
+_attachPulseSwipe();   // left/right swipe between cards on phone
 
 // Admin URL gate — open admin queue when ?admin=1
 if (location.search.includes('admin=1')) {
@@ -3457,6 +3485,83 @@ if (window.api && window.api.isStatic && window.api.isStatic()) {
   if (badge) badge.classList.add('show');
 }
 
+// ── ENGAGEMENT STREAK ──
+// Counts unique stories/polls you engaged with today, this week, all-time.
+// Shown as a small flame chip in the topbar. Tap → modal with breakdown.
+// Civic encouragement, not dopamine — we're tracking "voices heard", not "swipes."
+const STREAK_KEY = 'civicvoice_streak_v1';
+function _readStreak() {
+  try { return JSON.parse(localStorage.getItem(STREAK_KEY) || '{"days":{}, "total":0}'); }
+  catch { return { days:{}, total:0 }; }
+}
+function _todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function recordEngagement(kind) {
+  // kind: 'story-view' | 'poll-vote' | 'react' | 'share'
+  const s = _readStreak();
+  const day = _todayKey();
+  s.days[day] = s.days[day] || { story:0, poll:0, react:0, share:0 };
+  if (kind === 'story-view') s.days[day].story++;
+  if (kind === 'poll-vote')  s.days[day].poll++;
+  if (kind === 'react')      s.days[day].react++;
+  if (kind === 'share')      s.days[day].share++;
+  s.total = (s.total || 0) + 1;
+  // Prune older than 30 days to keep localStorage small
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  Object.keys(s.days).forEach(k => { if (new Date(k) < cutoff) delete s.days[k]; });
+  localStorage.setItem(STREAK_KEY, JSON.stringify(s));
+  updateStreakChip();
+}
+function _streakCounts() {
+  const s = _readStreak();
+  const today = s.days[_todayKey()] || {};
+  const todayTotal = (today.story || 0) + (today.poll || 0) + (today.react || 0) + (today.share || 0);
+  const weekCutoff = new Date(); weekCutoff.setDate(weekCutoff.getDate() - 7);
+  let weekTotal = 0;
+  Object.entries(s.days).forEach(([k, v]) => {
+    if (new Date(k) >= weekCutoff) {
+      weekTotal += (v.story || 0) + (v.poll || 0) + (v.react || 0) + (v.share || 0);
+    }
+  });
+  return { today: todayTotal, week: weekTotal, all: s.total || 0 };
+}
+function updateStreakChip() {
+  const c = _streakCounts();
+  const chip = document.getElementById('streakChip');
+  const num = document.getElementById('streakNum');
+  if (!chip || !num) return;
+  if (c.today > 0) {
+    chip.style.display = 'inline-flex';
+    num.textContent = c.today;
+  } else if (c.all > 0) {
+    chip.style.display = 'inline-flex';
+    num.textContent = c.all;
+    chip.style.opacity = '0.65';
+  } else {
+    chip.style.display = 'none';
+  }
+}
+function openStreakModal() {
+  const c = _streakCounts();
+  document.getElementById('streakToday').textContent = c.today;
+  document.getElementById('streakWeek').textContent = c.week;
+  document.getElementById('streakAll').textContent = c.all;
+  const msg = c.today === 0
+    ? "You haven't engaged today yet. Read a story, vote on a poll, or share something that matters."
+    : c.today < 3
+    ? "Good start. Every voice you hear is part of the public record."
+    : c.today < 10
+    ? "You're paying attention. That's how communities actually change."
+    : "You're deep in it. The kind of civic attention most people skip.";
+  document.getElementById('streakMessage').textContent = msg;
+  document.getElementById('streakOverlay').classList.add('show');
+}
+function closeStreakModal() {
+  document.getElementById('streakOverlay').classList.remove('show');
+}
+
 // ── POLLS & TAKES ──
 // Local civic questions. Users self-ID, vote, see live breakdowns by affiliation.
 // Gallup × Polymarket without money — civic, free, anonymous.
@@ -3514,6 +3619,7 @@ function votePoll(pollId, optionId) {
   if (!requireAuth(() => votePoll(pollId, optionId), 'Sign in to vote')) return;
   const my = _readPollsMy();
   if (my[pollId]) return;
+  recordEngagement('poll-vote');
   const votes = _readPollsVotes();
   votes[pollId] = votes[pollId] || _seedPollCounts(pollId);
   votes[pollId][optionId] = (votes[pollId][optionId] || 0) + 1;
@@ -3529,13 +3635,59 @@ function votePoll(pollId, optionId) {
   renderPolls();
 }
 
+// User-submitted polls (pending moderation)
+const POLLS_PENDING_KEY  = 'civicvoice_polls_pending_v1';
+const POLLS_APPROVED_KEY = 'civicvoice_polls_approved_v1';
+function _readPendingPolls()  { try { return JSON.parse(localStorage.getItem(POLLS_PENDING_KEY) || '[]'); } catch { return []; } }
+function _readApprovedPolls() { try { return JSON.parse(localStorage.getItem(POLLS_APPROVED_KEY) || '[]'); } catch { return []; } }
+
+function openSubmitPoll() {
+  if (!requireAuth(() => openSubmitPoll(), 'Sign in to submit a poll')) return;
+  document.getElementById('submitPollOverlay').classList.add('show');
+  document.getElementById('spStatus').textContent = '';
+}
+function closeSubmitPoll() {
+  document.getElementById('submitPollOverlay').classList.remove('show');
+}
+function submitPoll() {
+  const cat = document.getElementById('spCategory').value;
+  const q = (document.getElementById('spQuestion').value || '').trim();
+  const optsRaw = (document.getElementById('spOptions').value || '').trim();
+  const opts = optsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  const status = document.getElementById('spStatus');
+  if (q.length < 12) { status.style.color = 'var(--red)'; status.textContent = 'Question is too short. Make it specific.'; return; }
+  if (opts.length < 2 || opts.length > 4) { status.style.color = 'var(--red)'; status.textContent = 'Need 2–4 options. One per line.'; return; }
+  const u = getCurrentUser();
+  const author = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : 'Anonymous';
+  const id = 'u' + Date.now();
+  const poll = {
+    id, cat, q,
+    options: opts.map((label, i) => ({ id: 'o' + (i + 1), label })),
+    closes: 'Open',
+    submitted_by: author,
+    submitted_at: new Date().toISOString(),
+    status: 'pending',
+  };
+  const pending = _readPendingPolls();
+  pending.push(poll);
+  localStorage.setItem(POLLS_PENDING_KEY, JSON.stringify(pending));
+  status.style.color = 'var(--green)';
+  status.innerHTML = '✓ Your poll is in moderation. Once approved, it joins the public list. <button onclick="closeSubmitPoll()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;">Close</button>';
+  document.getElementById('spQuestion').value = '';
+  document.getElementById('spOptions').value = '';
+  setTimeout(() => { closeSubmitPoll(); }, 4500);
+}
+
 function renderPolls() {
   const affil = getAffiliation();
   document.querySelectorAll('#affilChips span').forEach(s => s.classList.toggle('selected', s.dataset.affil === affil));
   const list = document.getElementById('pollsList');
   if (!list) return;
   const my = _readPollsMy();
-  list.innerHTML = POLLS_SEED.map(p => {
+  // Combine seeded + approved user-submitted polls (newest first)
+  const approved = _readApprovedPolls();
+  const allPolls = [...approved, ...POLLS_SEED];
+  list.innerHTML = allPolls.map(p => {
     const counts = _readPollsVotes()[p.id] || _seedPollCounts(p.id);
     const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;
     const myVote = my[p.id];

@@ -346,10 +346,67 @@ def page_built():
     c.showPage()
 
 
+def page_vision():
+    fill_bg()
+    chrome("04 / 04", "where this is going")
+
+    c.setFillColor(INK)
+    c.setFont("Display", 56)
+    c.drawString(M - 4, PAGE_H - M - 100, "Where this is going.")
+
+    c.setFillColor(GRAY)
+    c.setFont("Body", 13)
+    c.drawString(M - 4, PAGE_H - M - 130, "The next year, in plain English. Soon / Next / Big.")
+
+    # Three horizontal bands — same plain-English voice as the rest of the deck
+    bands = [
+        ("SOON · 3–6 MONTHS",
+         "Agency review-request links.",
+         "After a 911 call, an ER visit, a DMV appointment — the agency sends a one-tap anonymous review link to the people who were there. Like a restaurant asking for a Google review, except it's your fire department. This is the single biggest growth lever: agencies become the distribution.",
+         GOLD),
+        ("NEXT · 6–18 MONTHS",
+         "Profiles up the pyramid.",
+         "School board, council, mayor are live today. Next: governor, state senate, congress, the president. Higher-level officials get \"claim this profile\" placeholders until they (or their office) verify — keeps the record fair and avoids empty-profile trolling.",
+         INK),
+        ("BIG · YEAR TWO",
+         "Polls, takes, and public-affairs ratings.",
+         "Live now in basic form: people self-ID (Republican / Democrat / Independent), then rate questions like \"Should East Ramapo reverse the busing change?\" or \"Will Congress pass a budget without a shutdown?\" Polymarket-style, no money. Built so 50,000 takes happen here instead of in a Gallup phone call.",
+         GREEN if 'GREEN' in dir() else INK),
+    ]
+
+    y = PAGE_H - M - 180
+    for tag, head, body, color in bands:
+        c.setFillColor(GOLD)
+        c.setFont("Mono", 8)
+        c.drawString(M - 4, y, tag)
+        c.setFillColor(INK)
+        c.setFont("Display", 22)
+        c.drawString(M - 4, y - 28, head)
+        c.setFillColor(GRAY)
+        c.setFont("Body", 11)
+        # Wrap body to ~95 chars per line
+        from textwrap import wrap
+        wrapped = wrap(body, width=95)
+        for i, ln in enumerate(wrapped):
+            c.drawString(M - 4, y - 50 - (i * 14), ln)
+        y -= 50 + (len(wrapped) * 14) + 24
+        line(M - 4, y + 8, PAGE_W - M, y + 8, GRAY_DIM, 0.4)
+
+    # Footer bar
+    bar_y = M + 30
+    line(M, bar_y, PAGE_W - M, bar_y, INK, 0.8)
+    c.setFillColor(INK)
+    c.setFont("BodyBold", 10)
+    c.drawString(M, bar_y - 14, "civicvoice")
+    c.setFillColor(GRAY)
+    c.setFont("Body", 10)
+    c.drawString(M + 80, bar_y - 14, "recognize the good · document the rest · on the record")
+
 # ────────── BUILD ──────────
 page_cover()
 page_idea()
 page_built()
+page_vision()
 
 c.save()
-print(f"PDF written: {OUTPUT}  ·  {OUTPUT.stat().st_size / 1024:.1f} KB  ·  3 pages")
+print(f"PDF written: {OUTPUT}  ·  {OUTPUT.stat().st_size / 1024:.1f} KB  ·  4 pages")

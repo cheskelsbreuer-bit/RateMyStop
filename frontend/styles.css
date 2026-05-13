@@ -131,7 +131,7 @@ section.active{display:block;}
 /* HOME — plain single-column layout */
 .hero{max-width:900px;margin:0 auto;padding:80px 40px 50px;text-align:center;position:relative;}
 .hero::before{content:'';position:absolute;width:520px;height:520px;left:50%;top:-100px;transform:translateX(-50%);background:radial-gradient(circle, rgba(184,148,30,0.1), transparent 65%);pointer-events:none;z-index:-1;}
-.hero h1{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:clamp(2.4rem,5vw,3.8rem);font-weight:800;line-height:1.05;letter-spacing:-1.6px;margin-bottom:22px;}
+.hero h1{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:clamp(2.6rem,5.5vw,4.4rem);font-weight:800;line-height:1.02;letter-spacing:-2px;margin-bottom:22px;}
 .hero h1 em{color:var(--accent);font-style:normal;background:linear-gradient(120deg,var(--accent) 0%,var(--accent2) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);background:rgba(184,148,30,0.11);border:1px solid rgba(184,148,30,0.35);border-radius:999px;padding:6px 14px;margin-bottom:24px;}
 .hero-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
@@ -430,6 +430,10 @@ section.active{display:block;}
 .resolution-banner .rb-btn:hover{background:rgba(31,140,95,0.28);}
 
 /* ─── Bell + notification dropdown ─── */
+.streak-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(224,122,26,0.10);border:1px solid rgba(224,122,26,0.35);color:#e07a1a;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.85rem;padding:5px 12px 5px 8px;border-radius:999px;cursor:pointer;transition:all 0.18s;}
+.streak-chip:hover{background:rgba(224,122,26,0.18);border-color:rgba(224,122,26,0.55);transform:translateY(-1px);}
+.streak-flame{font-size:0.95rem;filter:drop-shadow(0 0 4px rgba(224,122,26,0.4));}
+.streak-num{font-variant-numeric:tabular-nums;}
 .bell-btn{position:relative;background:transparent;border:1px solid var(--border);color:var(--ink);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:1.05rem;display:inline-flex;align-items:center;justify-content:center;transition:all 0.18s;}
 .bell-btn:hover{background:var(--accent-soft);border-color:rgba(184,148,30,0.4);}
 .bell-badge{position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.66rem;min-width:18px;height:18px;border-radius:9px;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--card);}
@@ -457,8 +461,23 @@ section.active{display:block;}
 .pulse-stage::-webkit-scrollbar{width:6px;}
 .pulse-stage::-webkit-scrollbar-thumb{background:rgba(184,148,30,0.35);border-radius:3px;}
 .pulse-empty{color:var(--gray);text-align:center;padding:80px 20px;}
-.pulse-card{background:var(--card);border:1px solid rgba(229,227,221,0.6);border-radius:28px;padding:44px 46px;width:100%;max-width:780px;margin:0 auto 18px;box-shadow:0 24px 56px rgba(15,15,19,0.10), 0 2px 8px rgba(15,15,19,0.04);scroll-snap-align:start;scroll-snap-stop:always;min-height:calc(min(78vh, 700px) - 28px);display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.3s ease, box-shadow 0.3s ease;}
+/* ─── TikTok-feel Pulse cards: full-bleed role-color tint, big type, native immersive ─── */
+.pulse-card{background:var(--card);border:1px solid rgba(229,227,221,0.6);border-radius:28px;padding:44px 46px 36px;width:100%;max-width:780px;margin:0 auto 18px;box-shadow:0 24px 56px rgba(15,15,19,0.10), 0 2px 8px rgba(15,15,19,0.04);scroll-snap-align:start;scroll-snap-stop:always;min-height:calc(min(78vh, 700px) - 28px);display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.3s ease, box-shadow 0.3s ease;position:relative;overflow:hidden;}
 .pulse-card:hover{box-shadow:0 32px 72px rgba(15,15,19,0.14), 0 2px 12px rgba(15,15,19,0.06);}
+/* Role-tinted full-bleed gradient at top — gives each card a native-app role identity */
+.pulse-card::before{content:'';position:absolute;left:0;right:0;top:0;height:130px;background:linear-gradient(180deg, var(--role-tint, transparent), transparent);opacity:0.55;pointer-events:none;z-index:0;}
+.pulse-card > *{position:relative;z-index:1;}
+.pulse-card.role-police   {--role-tint:rgba(37,109,217,0.18);}
+.pulse-card.role-emt      {--role-tint:rgba(201,52,52,0.16);}
+.pulse-card.role-fire     {--role-tint:rgba(224,122,26,0.20);}
+.pulse-card.role-dmv      {--role-tint:rgba(122,81,200,0.18);}
+.pulse-card.role-hospital {--role-tint:rgba(31,140,95,0.16);}
+.pulse-card.role-gov      {--role-tint:rgba(138,106,30,0.18);}
+.pulse-card.role-school   {--role-tint:rgba(46,125,50,0.16);}
+.pulse-card.role-elected  {--role-tint:rgba(26,111,184,0.18);}
+.pulse-card.role-federal  {--role-tint:rgba(155,44,44,0.16);}
+/* Subtle "swipe up for next" indicator at bottom — TikTok-style nudge */
+.pulse-card::after{content:'';position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:36px;height:4px;background:rgba(15,15,19,0.10);border-radius:999px;z-index:1;}
 /* Mobile pulse overrides live in the consolidated @media(max-width:700px) block below */
 .pulse-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
 .pulse-card-role{display:flex;align-items:center;gap:10px;}
@@ -479,10 +498,10 @@ section.active{display:block;}
 .pulse-sent-tag{font-size:0.72rem;font-weight:700;letter-spacing:0.5px;padding:3px 10px;border-radius:999px;text-transform:uppercase;}
 .pulse-sent.pos .pulse-sent-tag{color:var(--green);background:rgba(31,140,95,0.1);border:1px solid rgba(31,140,95,0.3);}
 .pulse-sent.neg .pulse-sent-tag{color:var(--red);background:rgba(201,52,52,0.08);border:1px solid rgba(201,52,52,0.25);}
-.pulse-name{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:2.1rem;font-weight:800;letter-spacing:-0.7px;color:var(--ink);margin-bottom:6px;cursor:pointer;line-height:1.08;}
+.pulse-name{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:2.3rem;font-weight:800;letter-spacing:-0.9px;color:var(--ink);margin-bottom:6px;cursor:pointer;line-height:1.04;}
 .pulse-name:hover{color:var(--accent);}
-.pulse-agency{font-size:0.95rem;color:var(--light);margin-bottom:22px;}
-.pulse-body{font-size:1.16rem;line-height:1.72;color:var(--ink);margin-bottom:6px;white-space:pre-wrap;letter-spacing:-0.1px;}
+.pulse-agency{font-size:0.95rem;color:var(--light);margin-bottom:24px;font-weight:500;}
+.pulse-body{font-size:1.22rem;line-height:1.7;color:var(--ink);margin-bottom:6px;white-space:pre-wrap;letter-spacing:-0.15px;font-weight:400;}
 .pulse-byline{margin-top:14px;font-size:0.82rem;color:var(--gray);}
 .pulse-author{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--light);transition:color 0.15s;}
 .pulse-author:hover{color:var(--accent);}
@@ -669,11 +688,14 @@ section.active{display:block;}
 .officer-card.role-federal{--role-color:#9b2c2c;}
 .officer-card.role-contributor{--role-color:var(--accent);}
 .officer-card:hover{border-color:rgba(15,15,19,0.18);transform:translateY(-4px);box-shadow:0 18px 40px rgba(15,15,19,0.12);}
+/* Subtle role-tinted glow on the card itself — pulls the role color into the body, not just the stripe */
+.officer-card::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 90% 60% at 50% -20%, var(--role-color), transparent 70%);opacity:0.06;pointer-events:none;border-radius:inherit;}
 
-.oc-eyebrow{font-size:0.68rem;font-weight:700;letter-spacing:1.2px;color:var(--role-color, var(--accent));text-transform:uppercase;margin-top:4px;}
-.officer-card .oc-name{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.18rem;font-weight:800;letter-spacing:-0.4px;color:var(--ink);line-height:1.2;display:flex;align-items:center;gap:10px;}
-.officer-card .oc-initial{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.85rem;flex-shrink:0;}
-.officer-card .oc-dept{font-size:0.84rem;color:var(--light);line-height:1.4;}
+.oc-eyebrow{font-size:0.7rem;font-weight:800;letter-spacing:1.4px;color:var(--role-color, var(--accent));text-transform:uppercase;margin-top:6px;display:inline-flex;align-items:center;gap:7px;}
+.oc-eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg, var(--role-color), transparent);opacity:0.35;}
+.officer-card .oc-name{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.32rem;font-weight:800;letter-spacing:-0.6px;color:var(--ink);line-height:1.12;display:flex;align-items:center;gap:10px;}
+.officer-card .oc-initial{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.85rem;flex-shrink:0;background:var(--role-color);color:#fff;}
+.officer-card .oc-dept{font-size:0.86rem;color:var(--light);line-height:1.4;font-weight:500;}
 .oc-stat-row{display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:10px;border-top:1px solid var(--border);}
 .oc-stars{color:var(--accent);font-size:1rem;letter-spacing:2px;line-height:1;}
 .oc-avg{font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--ink);}
