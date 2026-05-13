@@ -193,6 +193,8 @@ function nav(id) {
   if (moreBtn) moreBtn.classList.toggle('active', MORE_SECTIONS.includes(id));
   const section = document.getElementById(id);
   if (section) section.classList.add('active');
+  // Body class lets CSS show the persistent "back to home" escape pill on Pulse
+  document.body.classList.toggle('on-pulse', id === 'pulse');
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();

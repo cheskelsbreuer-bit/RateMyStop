@@ -791,18 +791,22 @@ section.active{display:block;}
   .vt-grid{grid-template-columns:1fr;}
   .modal{padding:24px 18px;}
 
-  /* ── Pulse on phone: page scrolls naturally so the filter chips scroll away ── */
-  .pulse-stage{height:auto;overflow:visible;scroll-snap-type:none;border-radius:0;}
-  .pulse-card{min-height:0;scroll-snap-align:none;padding:22px 20px;border-radius:18px;margin-bottom:14px;}
+  /* ── Pulse on phone: snap one card at a time. Sticky topbar = persistent exit (brand → home, ☰ → menu) ── */
+  .pulse-stage{height:calc(100dvh - 230px);min-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:y mandatory;border-radius:16px;}
+  .pulse-card{min-height:calc(100% - 14px);scroll-snap-align:start;scroll-snap-stop:always;padding:22px 20px;border-radius:18px;margin:0 0 14px;display:flex;flex-direction:column;justify-content:space-between;}
   .pulse-name{font-size:1.45rem;}
   .pulse-body{font-size:0.98rem;line-height:1.6;}
   .pulse-agency{font-size:0.85rem;margin-bottom:14px;}
-  .pulse-filters{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;margin-bottom:14px;}
+  .pulse-filters{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;margin-bottom:12px;}
   .pulse-filters::-webkit-scrollbar{display:none;}
   .pulse-filters .pill{flex-shrink:0;font-size:0.78rem;padding:6px 12px;white-space:nowrap;}
   .pulse-card-head{margin-bottom:14px;gap:10px;}
   .pulse-role-icon{font-size:1.3rem;}
   .pulse-stars{font-size:0.95rem;letter-spacing:1.5px;}
+  /* Persistent "back to home" pill that floats above Pulse on phone — always visible no matter how deep you scroll */
+  .pulse-escape{position:fixed;bottom:18px;right:14px;z-index:150;background:var(--ink);color:#fff;border:none;border-radius:999px;padding:11px 18px;font-family:'Epilogue',sans-serif;font-weight:700;font-size:0.82rem;box-shadow:0 10px 28px rgba(15,15,19,0.32);cursor:pointer;display:none;align-items:center;gap:6px;}
+  .pulse-escape:hover{background:var(--accent);}
+  body.on-pulse .pulse-escape{display:inline-flex;}
 
   /* ── Stories / Community cards: compact on phone ── */
   .officer-grid{grid-template-columns:1fr;gap:10px;}
@@ -834,6 +838,28 @@ section.active{display:block;}
   /* Search bar shouldn't push past viewport */
   .search-bar-wrap{flex-direction:column;gap:8px;}
   .search-bar-wrap button{width:100%;}
+
+  /* ── Story Stream card: 3-row layout on phone (sentiment / icon+name / agency) ── */
+  .story-post{padding:16px 18px;border-radius:14px;}
+  .sp-head{display:grid;grid-template-columns:40px 1fr;grid-template-areas:"sent sent" "icon meta";gap:8px 12px;margin-bottom:12px;}
+  .sp-sentiment{grid-area:sent;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;align-self:start;}
+  .sp-icon{grid-area:icon;width:40px;height:40px;font-size:1.2rem;border-radius:10px;}
+  .sp-meta{grid-area:meta;min-width:0;width:100%;}
+  .sp-who{gap:6px;margin-bottom:2px;}
+  .sp-who .sp-name{font-size:1rem;}
+  .sp-who .sp-role{font-size:0.58rem;padding:2px 7px;}
+  .sp-agency{font-size:0.78rem;line-height:1.35;}
+  .sp-sentiment .sp-stars{font-size:0.9rem;letter-spacing:1.5px;}
+  .sp-sentiment .sp-tag{font-size:0.62rem;padding:2px 7px;}
+  .sp-body{font-size:0.95rem;line-height:1.6;}
+  .sp-foot{margin-top:14px;padding-top:12px;}
+  .sp-actions{gap:5px;width:100%;}
+  .sp-action{font-size:0.74rem;padding:6px 10px;}
+  .sp-action.primary{margin-left:0;}
+
+  /* Long button text inside modals must wrap, not overflow horizontally */
+  .submit-main{word-break:break-word;overflow-wrap:anywhere;box-sizing:border-box;max-width:100%;font-size:0.88rem;padding:13px;}
+  .story-detail{padding:22px 18px 18px;}
 }
 @media(max-width:420px){
   .topnav button{padding:5px 7px;font-size:0.72rem;}
