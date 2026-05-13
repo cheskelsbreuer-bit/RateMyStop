@@ -757,7 +757,7 @@ async function submitReview() {
       document.getElementById('ticketType').value = '';
       document.getElementById('uploadPreview').classList.remove('show');
       onTicketChange();
-    }, 4000);
+    }, 60000);
   } catch (err) {
     btn.disabled = false;
     btn.textContent = 'Post this moment →';
