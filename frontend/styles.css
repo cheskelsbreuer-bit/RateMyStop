@@ -1088,6 +1088,32 @@ section.active{display:block;}
   .pcm-send{width:100%;padding:10px;}
 }
 
+/* ─── Consistency banner on home — only after 3+ active days ─── */
+.consistency-banner{max-width:780px;margin:24px auto 0;padding:16px 22px;background:linear-gradient(120deg, rgba(184,148,30,0.10), rgba(184,148,30,0.03));border:1px solid rgba(184,148,30,0.32);border-radius:14px;display:flex;align-items:center;gap:14px;line-height:1.55;}
+.consistency-banner .cb-icon{font-size:1.6rem;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(255,210,80,0.45));}
+.consistency-banner .cb-text{font-size:0.95rem;color:var(--light);}
+.consistency-banner strong{color:var(--ink);font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;letter-spacing:-0.2px;}
+@media(max-width:700px){
+  .consistency-banner{margin:16px;padding:13px 16px;gap:10px;}
+  .consistency-banner .cb-icon{font-size:1.35rem;}
+  .consistency-banner .cb-text{font-size:0.86rem;}
+}
+@media(min-width:1025px){
+  .consistency-banner{margin:30px auto;padding:18px 26px;}
+  .consistency-banner .cb-text{font-size:1rem;}
+}
+
+/* ─── Streak modal grid (cross-device) ─── */
+.streak-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 18px;}
+.streak-stat{text-align:center;padding:14px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;}
+.streak-stat-highlight{background:linear-gradient(160deg, rgba(224,122,26,0.12), var(--bg2));border-color:rgba(224,122,26,0.35);}
+.streak-stat-n{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.7rem;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-0.6px;}
+.streak-stat-l{font-size:0.62rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-top:5px;line-height:1.25;}
+@media(max-width:480px){
+  .streak-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .streak-stat-n{font-size:1.6rem;}
+}
+
 /* ─── Pull-to-refresh indicator ─── */
 .ptr-indicator{position:fixed;top:64px;left:50%;transform:translate(-50%, -100%);background:var(--card);border:1.5px solid var(--accent);border-radius:999px;padding:8px 18px;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:700;font-size:0.84rem;color:var(--accent);box-shadow:0 8px 28px rgba(15,15,19,0.18);z-index:200;display:flex;align-items:center;gap:8px;transition:transform 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;opacity:0;pointer-events:none;}
 .ptr-indicator.pulling{opacity:1;transform:translate(-50%, 12px);}

@@ -137,21 +137,26 @@
     <div class="notify-eyebrow">Your engagement</div>
     <div class="notify-title" id="streakTitle">&#128293; You're on a roll.</div>
     <div id="streakBody">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 18px;">
-        <div style="text-align:center;padding:14px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;">
-          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--accent);" id="streakToday">0</div>
-          <div style="font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-top:4px;">Today</div>
+      <div class="streak-grid">
+        <div class="streak-stat">
+          <div class="streak-stat-n" style="color:var(--accent);" id="streakToday">0</div>
+          <div class="streak-stat-l">Today</div>
         </div>
-        <div style="text-align:center;padding:14px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;">
-          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--ink);" id="streakWeek">0</div>
-          <div style="font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-top:4px;">7 Days</div>
+        <div class="streak-stat">
+          <div class="streak-stat-n" id="streakWeek">0</div>
+          <div class="streak-stat-l">7 Days</div>
         </div>
-        <div style="text-align:center;padding:14px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;">
-          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--ink);" id="streakAll">0</div>
-          <div style="font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-top:4px;">All time</div>
+        <div class="streak-stat">
+          <div class="streak-stat-n" id="streakAll">0</div>
+          <div class="streak-stat-l">All time</div>
+        </div>
+        <div class="streak-stat streak-stat-highlight">
+          <div class="streak-stat-n" style="color:#e07a1a;" id="streakDays">0</div>
+          <div class="streak-stat-l">Days on record</div>
         </div>
       </div>
       <p style="font-size:0.86rem;color:var(--light);line-height:1.55;text-align:center;" id="streakMessage">Hearing voices counts. Every time you read a story or take a stand on a poll, you're part of the record.</p>
+      <p style="font-size:0.78rem;color:var(--gray);line-height:1.5;text-align:center;margin-top:8px;font-style:italic;" id="streakConsistency"></p>
     </div>
   </div>
 </div>
@@ -227,6 +232,12 @@
       <span class="cs-item" onclick="openNotifyMe('Live town hall stream','town-hall')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127908; Town hall live &middot; <em>soon</em></span>
     </div>
   </div>
+  <!-- Consistency banner — only appears after 3+ active days. Civic framing, no panic. -->
+  <div class="consistency-banner" id="consistencyBanner" style="display:none;">
+    <span class="cb-icon">&#10024;</span>
+    <span class="cb-text"><strong>You've shown up <span id="cbDays">5</span> days.</strong> <span id="cbMsg">That's the kind of attention communities run on.</span></span>
+  </div>
+
   <div class="stats-strip" id="statsStrip">
     <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Stories shared</div></div>
     <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">Recognitions</div></div>

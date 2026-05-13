@@ -385,7 +385,7 @@ function nav(id) {
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
-  if (id === 'home')      loadStats();
+  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); }
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')     renderRankings();
   if (id === 'orgs')         renderOrgState();
@@ -4155,6 +4155,14 @@ function recordEngagement(kind) {
   localStorage.setItem(STREAK_KEY, JSON.stringify(s));
   updateStreakChip();
 }
+// Count distinct days with any engagement — never resets, only goes up. Civic consistency.
+function _activeDays() {
+  const s = _readStreak();
+  return Object.keys(s.days || {}).filter(k => {
+    const v = s.days[k] || {};
+    return ((v.story || 0) + (v.poll || 0) + (v.react || 0) + (v.share || 0)) > 0;
+  }).length;
+}
 function _streakCounts() {
   const s = _readStreak();
   const today = s.days[_todayKey()] || {};
@@ -4170,25 +4178,42 @@ function _streakCounts() {
 }
 function updateStreakChip() {
   const c = _streakCounts();
+  const days = _activeDays();
   const chip = document.getElementById('streakChip');
   const num = document.getElementById('streakNum');
+  const flame = chip ? chip.querySelector('.streak-flame') : null;
   if (!chip || !num) return;
   if (c.today > 0) {
+    // Active right now — fire + today's count
     chip.style.display = 'inline-flex';
+    chip.style.opacity = '1';
+    if (flame) flame.textContent = '🔥';
     num.textContent = c.today;
+    chip.title = `${c.today} today · ${days} days on the record`;
+  } else if (days >= 3) {
+    // Quiet day but consistent overall — civic star + total active days (no panic, no streak break)
+    chip.style.display = 'inline-flex';
+    chip.style.opacity = '0.9';
+    if (flame) flame.textContent = '✨';
+    num.textContent = days;
+    chip.title = `${days} days on the record — communities run on this kind of attention`;
   } else if (c.all > 0) {
     chip.style.display = 'inline-flex';
-    num.textContent = c.all;
     chip.style.opacity = '0.65';
+    if (flame) flame.textContent = '🔥';
+    num.textContent = c.all;
   } else {
     chip.style.display = 'none';
   }
+  _refreshConsistencyBanner();
 }
 function openStreakModal() {
   const c = _streakCounts();
+  const days = _activeDays();
   document.getElementById('streakToday').textContent = c.today;
   document.getElementById('streakWeek').textContent = c.week;
   document.getElementById('streakAll').textContent = c.all;
+  document.getElementById('streakDays').textContent = days;
   const msg = c.today === 0
     ? "You haven't engaged today yet. Read a story, vote on a poll, or share something that matters."
     : c.today < 3
@@ -4197,10 +4222,42 @@ function openStreakModal() {
     ? "You're paying attention. That's how communities actually change."
     : "You're deep in it. The kind of civic attention most people skip.";
   document.getElementById('streakMessage').textContent = msg;
+  // Consistency message — civic framing, only appears once they've shown up 3+ days
+  const consistencyEl = document.getElementById('streakConsistency');
+  if (consistencyEl) {
+    if (days < 3) {
+      consistencyEl.textContent = '';
+    } else if (days < 7) {
+      consistencyEl.textContent = `You've shown up ${days} days. Communities run on this kind of quiet attention.`;
+    } else if (days < 30) {
+      consistencyEl.textContent = `${days} days on the record. You're more consistent than 90% of people who'll ever see this site.`;
+    } else {
+      consistencyEl.textContent = `${days} days on the record. Year-shaping consistency. The civic backbone.`;
+    }
+  }
   document.getElementById('streakOverlay').classList.add('show');
 }
 function closeStreakModal() {
   document.getElementById('streakOverlay').classList.remove('show');
+}
+
+// Home page consistency banner — hidden until user hits 3+ active days. No panic, just recognition.
+function _refreshConsistencyBanner() {
+  const banner = document.getElementById('consistencyBanner');
+  if (!banner) return;
+  const days = _activeDays();
+  if (days < 3) { banner.style.display = 'none'; return; }
+  const daysEl = document.getElementById('cbDays');
+  const msgEl  = document.getElementById('cbMsg');
+  if (daysEl) daysEl.textContent = days;
+  if (msgEl) {
+    msgEl.textContent = days < 7
+      ? "That's the kind of attention communities run on."
+      : days < 30
+      ? "You're more consistent than 90% of people who'll ever see this site."
+      : "Year-shaping consistency. The civic backbone.";
+  }
+  banner.style.display = 'flex';
 }
 
 // ── POLLS & TAKES ──
