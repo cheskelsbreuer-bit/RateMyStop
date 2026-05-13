@@ -1133,6 +1133,8 @@ section.active{display:block;}
 .pcm-handle{font-size:0.7rem;color:var(--gray);font-weight:700;}
 .pcm-affil{color:var(--accent);text-transform:capitalize;}
 .pcm-text{font-size:0.88rem;color:var(--ink);line-height:1.5;}
+.pcm-expand{margin-top:6px;background:transparent;border:1px solid var(--border);color:var(--gray);font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;font-size:0.76rem;padding:7px 12px;border-radius:8px;cursor:pointer;width:100%;transition:all 0.15s;letter-spacing:-0.1px;}
+.pcm-expand:hover{color:var(--accent);border-color:rgba(184,148,30,0.4);background:var(--accent-soft);}
 @media(max-width:700px){
   .pcm-add{flex-direction:column;gap:6px;}
   .pcm-add input{padding:10px 12px;font-size:0.92rem;}

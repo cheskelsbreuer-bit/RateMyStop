@@ -4384,6 +4384,63 @@ const FAKE_COMMENT_BANK = {
   poll_curious:["Anyone have a link to the actual proposal?", "Where can I read more?", "Who's funding this?", "What's the implementation timeline?"],
 };
 
+// Build a contextual poll reply — engages with the last 3 comments like a real thread.
+// If prior commenters disagreed with this persona's pick → push back. If agreed → build on. If asked a question → answer.
+function _buildContextualPollReply(poll, persona, optId, priorComments) {
+  // Helper to short-reference another commenter
+  const short = h => '@' + (h || 'Anonymous').replace(/Anonymous-/, '');
+  const myOptIdx = poll.options.findIndex(o => o.id === optId);
+  const myLabel = poll.options[myOptIdx]?.label || '';
+  // No prior context — pick from the original bank
+  if (!priorComments.length) {
+    const bucket = myOptIdx === 0 ? FAKE_COMMENT_BANK.poll_yes
+                 : myOptIdx === poll.options.length - 1 ? FAKE_COMMENT_BANK.poll_no
+                 : Math.random() < 0.5 ? FAKE_COMMENT_BANK.poll_mixed : FAKE_COMMENT_BANK.poll_curious;
+    return bucket[Math.floor(Math.random() * bucket.length)];
+  }
+  // Engage with the most recent comment specifically
+  const last = priorComments[priorComments.length - 1];
+  const lastOptIdx = poll.options.findIndex(o => o.id === last.optionId);
+  const lastAgrees = lastOptIdx === myOptIdx;
+  const lastLabel = poll.options[lastOptIdx]?.label || '';
+  const ref = short(last.handle);
+  // Was the last comment a question? (rough heuristic)
+  const lastIsQuestion = /\?$/.test(last.text || '');
+
+  const agreementTemplates = [
+    `${ref} nailed it.`,
+    `Same. ${ref} put it well.`,
+    `Agree with ${ref} — same reason.`,
+    `What ${ref} said. Plus, this has been a problem for a while.`,
+    `${ref} is right. The other side isn't engaging with the actual facts.`,
+    `Co-sign ${ref}.`,
+  ];
+  const disagreementTemplates = [
+    `${ref} I see it differently — "${myLabel.slice(0, 30)}" is the right call.`,
+    `Respectfully ${ref}, this isn't that simple.`,
+    `${ref} — what about the people affected by your view? Doesn't square for me.`,
+    `${ref} I hear you, but the data leans the other way.`,
+    `Disagree with ${ref}. The reverse outcome would hurt more.`,
+    `${ref} that's the argument I keep hearing — and I don't buy it.`,
+  ];
+  const questionAnswerTemplates = [
+    `${ref} short answer: yes. Long answer: it's complicated, but the direction is clear.`,
+    `${ref} good question — I think the answer is whoever's most directly affected gets the loudest vote.`,
+    `${ref} I'd look at the last 6 months of data before answering that.`,
+    `${ref} depends who you ask. From where I sit, "${myLabel.slice(0, 28)}" is the answer.`,
+  ];
+  const buildingTemplates = [
+    `Building on ${ref} — also, the precedent here is worth a look.`,
+    `${ref} good point. One more thing: cost matters too.`,
+    `Adding to ${ref}'s point: this is bigger than the immediate fix.`,
+    `Yes, and to extend ${ref}: who's accountable when it goes wrong?`,
+  ];
+
+  if (lastIsQuestion) return questionAnswerTemplates[Math.floor(Math.random() * questionAnswerTemplates.length)];
+  if (lastAgrees)     return (Math.random() < 0.6 ? agreementTemplates : buildingTemplates)[Math.floor(Math.random() * 6) % (Math.random() < 0.6 ? agreementTemplates.length : buildingTemplates.length)];
+  return disagreementTemplates[Math.floor(Math.random() * disagreementTemplates.length)];
+}
+
 function isFakeUsersOn() { return localStorage.getItem(FAKE_USERS_KEY) !== 'off'; }
 function toggleFakeUsers() {
   const next = isFakeUsersOn() ? 'off' : 'on';
@@ -4481,7 +4538,8 @@ function _fakeUserAction(persona) {
     localStorage.setItem(POLLS_BREAKDOWN_KEY, JSON.stringify(bd));
     return { type:'vote', who:persona.handle, poll:p, opt };
   } else if (choice < 0.75) {
-    // Add a comment to a random poll (if voted)
+    // Comment on a random poll (must have voted on it). Builds a CONTEXTUAL thread —
+    // looks at the last 3 comments and engages with them like a real conversation.
     const state = _readFakeState();
     const myVotes = (state[persona.handle] && state[persona.handle].polls) || {};
     const votedPollIds = Object.keys(myVotes);
@@ -4490,21 +4548,16 @@ function _fakeUserAction(persona) {
     const p = [...POLLS_SEED, ..._readApprovedPolls()].find(x => x.id === pollId);
     if (!p) return;
     const optId = myVotes[pollId];
-    // Pick a comment bucket based on which option they chose
-    const optIdx = p.options.findIndex(o => o.id === optId);
-    const bucket = optIdx === 0 ? FAKE_COMMENT_BANK.poll_yes
-                 : optIdx === p.options.length - 1 ? FAKE_COMMENT_BANK.poll_no
-                 : Math.random() < 0.5 ? FAKE_COMMENT_BANK.poll_mixed : FAKE_COMMENT_BANK.poll_curious;
-    const text = bucket[Math.floor(Math.random() * bucket.length)];
-    // Skip if this persona already commented on this poll
     state[persona.handle].comments = state[persona.handle].comments || {};
     if (state[persona.handle].comments[pollId]) return;
+    const allComments = JSON.parse(localStorage.getItem(POLLS_COMMENTS_KEY) || '{}');
+    const priorComments = (allComments[pollId] || []).slice(-3);  // last 3
+    const text = _buildContextualPollReply(p, persona, optId, priorComments);
     state[persona.handle].comments[pollId] = true;
     _writeFakeState(state);
-    const comments = JSON.parse(localStorage.getItem(POLLS_COMMENTS_KEY) || '{}');
-    comments[pollId] = comments[pollId] || [];
-    comments[pollId].push({ handle: persona.handle, optionId: optId, text, ts: new Date().toISOString(), affil: persona.affil });
-    localStorage.setItem(POLLS_COMMENTS_KEY, JSON.stringify(comments));
+    allComments[pollId] = allComments[pollId] || [];
+    allComments[pollId].push({ handle: persona.handle, optionId: optId, text, ts: new Date().toISOString(), affil: persona.affil });
+    localStorage.setItem(POLLS_COMMENTS_KEY, JSON.stringify(allComments));
     return { type:'poll-comment', who:persona.handle, poll:p, text };
   } else if (choice < 0.85) {
     // Reply to a story thread — like Reddit comments under each story
@@ -5090,6 +5143,13 @@ const POLLS_PENDING_KEY  = 'civicvoice_polls_pending_v1';
 const POLLS_APPROVED_KEY = 'civicvoice_polls_approved_v1';
 const POLLS_COMMENTS_KEY = 'civicvoice_polls_comments_v1';   // { pollId: [{handle, optionId, text, ts}] }
 function _readPollComments() { try { return JSON.parse(localStorage.getItem(POLLS_COMMENTS_KEY) || '{}'); } catch { return {}; } }
+// In-memory set of poll IDs whose comments are currently expanded (default: collapsed to last 3)
+const _expandedPollComments = new Set();
+function togglePollCommentsExpand(pollId) {
+  if (_expandedPollComments.has(pollId)) _expandedPollComments.delete(pollId);
+  else _expandedPollComments.add(pollId);
+  renderPolls();
+}
 function addPollComment(pollId, optionId, text) {
   if (!text || text.length < 4) return;
   if (text.length > 280) text = text.slice(0, 280);
@@ -5176,8 +5236,11 @@ function renderPolls() {
           ${myVote ? `<span class="po-pct">${pct}%</span>` : ''}
         </div>`;
     }).join('');
-    // Optional comments — appear after voting. Shows top 3, expandable.
+    // Optional comments — appear after voting. Collapsed to last 3, "Show all" to expand.
     const allComments = _readPollComments()[p.id] || [];
+    const isExpanded = _expandedPollComments.has(p.id);
+    const visibleComments = isExpanded ? allComments.slice().reverse() : allComments.slice(-3).reverse();
+    const hiddenCount = allComments.length - visibleComments.length;
     const commentsHtml = myVote ? `
       <div class="poll-comments">
         <div class="pcm-add">
@@ -5186,12 +5249,14 @@ function renderPolls() {
         </div>
         ${allComments.length ? `
           <div class="pcm-list">
-            <div class="pcm-head">${allComments.length} ${allComments.length === 1 ? 'reason' : 'reasons'} shared</div>
-            ${allComments.slice(-3).reverse().map(cmt => `
+            <div class="pcm-head">${allComments.length} ${allComments.length === 1 ? 'comment' : 'comments'}</div>
+            ${visibleComments.map(cmt => `
               <div class="pcm-item">
                 <span class="pcm-handle">${escapeHtml(cmt.handle)}${cmt.affil ? ` · <span class="pcm-affil">${escapeHtml(cmt.affil)}</span>` : ''}</span>
                 <span class="pcm-text">${escapeHtml(cmt.text)}</span>
               </div>`).join('')}
+            ${hiddenCount > 0 ? `<button class="pcm-expand" onclick="event.stopPropagation(); togglePollCommentsExpand('${p.id}')">Show all ${allComments.length} comments &darr;</button>` : ''}
+            ${isExpanded && allComments.length > 3 ? `<button class="pcm-expand" onclick="event.stopPropagation(); togglePollCommentsExpand('${p.id}')">Collapse &uarr;</button>` : ''}
           </div>` : ''}
       </div>` : '';
     const breakdownHtml = myVote ? renderPollBreakdown(p) : '';

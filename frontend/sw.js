@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v46-visible-reactions-poll-redesign';
-const ASSETS_BUMP_NOTE = 'Bot reactions now VISIBLY land on cards (flash + +1 bump). Poll breakdown redesigned per-option (Pew Research style) so you see WHO picked WHAT for each option.';
+const CACHE = 'civicvoice-v47-contextual-bots-collapse';
+const ASSETS_BUMP_NOTE = 'Bots now reply contextually to the last 3 comments (real thread feel) + poll comments collapse to last 3 with Show all expand button.';
 const ASSETS = [
   './',
   './index.html',
