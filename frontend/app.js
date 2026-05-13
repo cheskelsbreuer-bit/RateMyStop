@@ -4677,11 +4677,29 @@ function _startFakeUserSim() {
       if (card) {
         const summary = card.querySelector('.reaction-summary');
         const fresh = reactionTotalsHtml(result.story.o.id, result.story.r.id);
-        if (summary && fresh) summary.outerHTML = fresh;
-        else if (fresh) {
+        if (summary && fresh) {
+          // Replace the summary with fresh counts
+          const tmp = document.createElement('div');
+          tmp.innerHTML = fresh;
+          const newSummary = tmp.firstElementChild;
+          summary.replaceWith(newSummary);
+          // Flash the updated summary so the user sees it
+          newSummary.classList.add('flash-update');
+          setTimeout(() => newSummary.classList.remove('flash-update'), 1200);
+          // Float a "+1 🙋" bump from the new summary so it's unmistakable
+          _floatReactionBump(card, result.kind);
+        } else if (fresh) {
           // Card didn't have a summary yet — inject one before the actions row
           const actions = card.querySelector('.pulse-actions, .sp-foot');
-          if (actions) actions.insertAdjacentHTML('beforebegin', fresh);
+          if (actions) {
+            actions.insertAdjacentHTML('beforebegin', fresh);
+            const justAdded = actions.previousElementSibling;
+            if (justAdded) {
+              justAdded.classList.add('flash-update');
+              setTimeout(() => justAdded.classList.remove('flash-update'), 1200);
+            }
+            _floatReactionBump(card, result.kind);
+          }
         }
       }
     }
@@ -4723,6 +4741,21 @@ function _runFakeBurst(n) {
       }
     }, i * 80);  // stagger 80ms between actions
   }
+}
+
+// Float a "+1 emoji" badge from the card's reaction-summary so user sees the bot reaction land
+function _floatReactionBump(card, kind) {
+  const emojis = { up:'🙋', down:'👎', thanks:'🙏', strong:'💪', curious:'🤔' };
+  const summary = card.querySelector('.reaction-summary');
+  const anchor = summary || card;
+  const rect = anchor.getBoundingClientRect();
+  const bump = document.createElement('span');
+  bump.className = 'reaction-bump';
+  bump.textContent = `+1 ${emojis[kind] || '👍'}`;
+  bump.style.left = (rect.left + 20 + Math.random() * 40) + 'px';
+  bump.style.top  = (rect.top + window.scrollY - 6) + 'px';
+  document.body.appendChild(bump);
+  setTimeout(() => bump.remove(), 1500);
 }
 
 // Small floating ticker that flashes when a fake action fires — visible "site is alive" signal
@@ -4972,37 +5005,61 @@ const AFFIL_COLORS = {
   other: '#7a7a82', unknown: '#a0a0a8',
 };
 
-// Render the breakdown panel for a poll — vote share per affiliation
+// Render the breakdown panel for a poll — per OPTION: total %, then a stacked bar by affiliation
+// Like Pew Research style: for each answer choice, who picked it.
 function renderPollBreakdown(p) {
   const bd = _readPollsBreakdown()[p.id] || {};
-  const affilTotals = {};  // total votes per affiliation
+  // Re-aggregate per OPTION
+  const optTotals = {};       // total per option (all affils)
+  const optByAffil = {};      // option -> { affil: count }
+  p.options.forEach(o => { optTotals[o.id] = 0; optByAffil[o.id] = {}; });
   Object.entries(bd).forEach(([affil, byOpt]) => {
-    affilTotals[affil] = Object.values(byOpt).reduce((s, n) => s + n, 0);
+    Object.entries(byOpt).forEach(([optId, count]) => {
+      if (optTotals[optId] === undefined) return;
+      optTotals[optId] += count;
+      optByAffil[optId][affil] = (optByAffil[optId][affil] || 0) + count;
+    });
   });
-  const totalAll = Object.values(affilTotals).reduce((s, n) => s + n, 0);
-  if (totalAll === 0) return '';
-  // Sort affiliations by who voted most
-  const sortedAffils = Object.keys(affilTotals).sort((a, b) => affilTotals[b] - affilTotals[a]).filter(a => affilTotals[a] > 0);
+  const grandTotal = Object.values(optTotals).reduce((s, n) => s + n, 0);
+  if (grandTotal === 0) return '';
+
+  // Color-coded affiliation legend at top
+  const allAffils = Object.keys(AFFIL_LABELS).filter(a => a !== 'other' && a !== 'unknown');
+  const legendHtml = allAffils.map(a =>
+    `<span class="pbd-legend-chip"><span class="pbd-legend-dot" style="background:${AFFIL_COLORS[a]};"></span>${AFFIL_LABELS[a]}</span>`
+  ).join('');
+
   return `
     <div class="poll-breakdown">
-      <div class="pbd-head">Breakdown by who's voting <span class="pbd-total">${totalAll.toLocaleString()} total</span></div>
-      ${sortedAffils.map(affil => {
-        const byOpt = bd[affil] || {};
-        const subTotal = affilTotals[affil];
-        const winningOpt = Object.keys(byOpt).sort((a, b) => byOpt[b] - byOpt[a])[0];
-        const winningPct = subTotal ? Math.round((byOpt[winningOpt] / subTotal) * 100) : 0;
-        const winningLabel = p.options.find(o => o.id === winningOpt)?.label || '?';
+      <div class="pbd-head">Who picked what <span class="pbd-total">${grandTotal.toLocaleString()} votes</span></div>
+      <div class="pbd-legend">${legendHtml}</div>
+      ${p.options.map(opt => {
+        const optTotal = optTotals[opt.id];
+        const optPct = grandTotal ? Math.round((optTotal / grandTotal) * 100) : 0;
+        const byAffil = optByAffil[opt.id] || {};
+        // Sort affils descending by count for this option
+        const sortedAffils = Object.entries(byAffil).sort((a, b) => b[1] - a[1]).filter(x => x[1] > 0);
+        const top3 = sortedAffils.slice(0, 3);
+        // Stacked bar segments per affiliation share of THIS option
+        const segments = sortedAffils.map(([affil, count]) => {
+          const sharePct = optTotal ? (count / optTotal) * 100 : 0;
+          return `<div class="pbd-seg" title="${AFFIL_LABELS[affil]||affil}: ${count} (${Math.round(sharePct)}% of this option)" style="flex:${sharePct.toFixed(2)};background:${AFFIL_COLORS[affil]||'var(--accent)'};"></div>`;
+        }).join('') || '<div style="flex:1;background:var(--border);"></div>';
+
         return `
-          <div class="pbd-row">
-            <div class="pbd-label" style="color:${AFFIL_COLORS[affil] || 'var(--ink)'};">${AFFIL_LABELS[affil] || affil}</div>
-            <div class="pbd-bars">
-              ${p.options.map(o => {
-                const c = byOpt[o.id] || 0;
-                const pct = subTotal ? Math.round((c / subTotal) * 100) : 0;
-                return `<div class="pbd-bar" title="${escapeHtml(o.label)}: ${pct}%" style="flex:${pct || 0.01};background:${AFFIL_COLORS[affil] || 'var(--accent)'};opacity:${0.35 + (pct / 200)};"></div>`;
-              }).join('')}
+          <div class="pbd-option">
+            <div class="pbd-option-head">
+              <span class="pbd-option-label">${escapeHtml(opt.label)}</span>
+              <span class="pbd-option-stats"><strong>${optPct}%</strong> &middot; ${optTotal.toLocaleString()} votes</span>
             </div>
-            <div class="pbd-meta"><strong>${winningPct}%</strong> · ${escapeHtml(winningLabel.length > 22 ? winningLabel.slice(0, 22) + '…' : winningLabel)} <span class="pbd-n">(${subTotal})</span></div>
+            <div class="pbd-option-totalbar"><div class="pbd-option-totalbar-fill" style="width:${optPct}%;"></div></div>
+            <div class="pbd-option-stack" title="Breakdown by affiliation">${segments}</div>
+            <div class="pbd-leaders">
+              ${top3.length ? top3.map(([affil, count]) => {
+                const sharePct = optTotal ? Math.round((count / optTotal) * 100) : 0;
+                return `<span class="pbd-leader"><span class="pbd-leader-dot" style="background:${AFFIL_COLORS[affil]};"></span><strong>${AFFIL_LABELS[affil] || affil}</strong> ${sharePct}%</span>`;
+              }).join('') : '<span class="pbd-leader" style="color:var(--gray);">No demographic data yet</span>'}
+            </div>
           </div>`;
       }).join('')}
     </div>`;

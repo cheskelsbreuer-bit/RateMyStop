@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v45-tdz-fix-share-reorder';
-const ASSETS_BUMP_NOTE = 'CRITICAL: TDZ on _fakeUserTimer broke the fake users entirely — now deferred via setTimeout. Share tab moved right after Home in both topbar nav and bottom tab bar.';
+const CACHE = 'civicvoice-v46-visible-reactions-poll-redesign';
+const ASSETS_BUMP_NOTE = 'Bot reactions now VISIBLY land on cards (flash + +1 bump). Poll breakdown redesigned per-option (Pew Research style) so you see WHO picked WHAT for each option.';
 const ASSETS = [
   './',
   './index.html',

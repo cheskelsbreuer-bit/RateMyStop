@@ -1092,23 +1092,32 @@ section.active{display:block;}
 .sp-action.emoji-plus{font-weight:800;font-size:1rem;padding:6px 11px;color:var(--gray);}
 .sp-action.emoji-plus:hover{color:var(--accent);border-color:rgba(184,148,30,0.4);background:var(--accent-soft);}
 
-/* ─── Poll breakdown by affiliation ─── */
-.poll-breakdown{margin:14px 0;padding:14px;background:linear-gradient(160deg, rgba(184,148,30,0.05), var(--bg2));border:1px solid var(--border);border-radius:12px;}
-.pbd-head{font-size:0.74rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
-.pbd-total{font-size:0.72rem;color:var(--ink);font-weight:800;letter-spacing:-0.1px;text-transform:none;}
-.pbd-row{display:grid;grid-template-columns:120px 1fr 130px;gap:12px;align-items:center;padding:6px 0;border-top:1px solid rgba(229,227,221,0.5);}
-.pbd-row:first-of-type{border-top:none;}
-.pbd-label{font-size:0.78rem;font-weight:700;letter-spacing:-0.1px;}
-.pbd-bars{display:flex;gap:2px;height:14px;border-radius:4px;overflow:hidden;background:rgba(229,227,221,0.5);}
-.pbd-bar{height:100%;transition:flex 0.4s cubic-bezier(0.4,0,0.2,1);}
-.pbd-meta{font-size:0.74rem;color:var(--light);text-align:right;}
-.pbd-meta strong{color:var(--ink);font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.82rem;}
-.pbd-n{color:var(--gray);font-size:0.68rem;}
+/* ─── Poll breakdown — per-option view (who picked what) ─── */
+.poll-breakdown{margin:14px 0;padding:14px 16px;background:linear-gradient(160deg, rgba(184,148,30,0.05), var(--bg2));border:1px solid var(--border);border-radius:12px;}
+.pbd-head{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:0.86rem;font-weight:800;letter-spacing:-0.2px;color:var(--ink);margin-bottom:10px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.pbd-total{font-size:0.72rem;color:var(--gray);font-weight:600;letter-spacing:0;}
+.pbd-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--border);}
+.pbd-legend-chip{display:inline-flex;align-items:center;gap:5px;font-size:0.7rem;color:var(--light);font-weight:600;letter-spacing:-0.1px;}
+.pbd-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.pbd-option{padding:10px 0;border-top:1px solid rgba(229,227,221,0.5);}
+.pbd-option:first-of-type{border-top:none;padding-top:0;}
+.pbd-option-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
+.pbd-option-label{font-weight:700;color:var(--ink);font-size:0.92rem;line-height:1.25;}
+.pbd-option-stats{font-size:0.72rem;color:var(--gray);font-weight:600;white-space:nowrap;}
+.pbd-option-stats strong{color:var(--ink);font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:0.84rem;font-weight:800;letter-spacing:-0.2px;}
+.pbd-option-totalbar{height:6px;border-radius:3px;background:rgba(229,227,221,0.5);overflow:hidden;margin-bottom:6px;}
+.pbd-option-totalbar-fill{height:100%;background:linear-gradient(90deg, var(--accent), var(--accent2));border-radius:3px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1);}
+.pbd-option-stack{display:flex;gap:2px;height:11px;border-radius:4px;overflow:hidden;background:rgba(229,227,221,0.4);margin-bottom:7px;}
+.pbd-seg{height:100%;transition:flex 0.4s cubic-bezier(0.4,0,0.2,1);}
+.pbd-leaders{display:flex;flex-wrap:wrap;gap:10px;font-size:0.72rem;}
+.pbd-leader{display:inline-flex;align-items:center;gap:5px;color:var(--light);}
+.pbd-leader-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.pbd-leader strong{color:var(--ink);font-weight:700;font-size:0.74rem;}
 @media(max-width:700px){
-  .pbd-row{grid-template-columns:1fr;gap:4px;padding:8px 0;}
-  .pbd-bars{order:3;}
-  .pbd-label{font-size:0.82rem;}
-  .pbd-meta{text-align:left;font-size:0.72rem;}
+  .pbd-option-label{font-size:0.88rem;}
+  .pbd-option-stats{font-size:0.7rem;}
+  .pbd-leaders{gap:8px;}
+  .pbd-leader{font-size:0.68rem;}
 }
 
 /* ─── Poll comments ─── */
@@ -1191,6 +1200,21 @@ section.active{display:block;}
 .ptr-indicator.refreshing{opacity:1;transform:translate(-50%, 12px);}
 .ptr-indicator.refreshing .ptr-icon{animation:ptrSpin 0.8s linear infinite;}
 @keyframes ptrSpin{to{transform:rotate(360deg);}}
+
+/* Reaction-summary flash — runs when bots/users add a reaction so the change is visible */
+.reaction-summary.flash-update{animation:reactionFlash 1.2s cubic-bezier(0.4,0,0.2,1);}
+@keyframes reactionFlash{
+  0%{background:var(--bg2);border-color:var(--border);}
+  20%{background:rgba(184,148,30,0.22);border-color:var(--accent);transform:scale(1.02);box-shadow:0 6px 16px rgba(184,148,30,0.18);}
+  100%{background:var(--bg2);border-color:var(--border);transform:scale(1);}
+}
+/* "+1 🙋" float-up badge fired on each bot reaction so user sees it land */
+.reaction-bump{position:absolute;z-index:9500;background:var(--ink);color:#fff;font-family:'Inter','Epilogue',sans-serif;font-weight:800;font-size:0.82rem;padding:4px 10px;border-radius:999px;pointer-events:none;animation:bumpFloat 1.5s cubic-bezier(0.4,0,0.2,1) forwards;box-shadow:0 8px 20px rgba(15,15,19,0.32);letter-spacing:-0.1px;}
+@keyframes bumpFloat{
+  0%{opacity:0;transform:translateY(0) scale(0.7);}
+  15%{opacity:1;transform:translateY(-14px) scale(1.05);}
+  100%{opacity:0;transform:translateY(-60px) scale(0.85);}
+}
 
 /* Fake-user activity ticker — bottom-left pill flashes when a fake action fires */
 .fake-ticker{position:fixed;bottom:18px;left:18px;background:rgba(15,15,19,0.92);color:#fff;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;font-size:0.78rem;padding:8px 14px;border-radius:999px;z-index:9000;opacity:0;transform:translateY(20px);transition:opacity 0.3s, transform 0.3s;pointer-events:none;box-shadow:0 8px 24px rgba(15,15,19,0.32);max-width:calc(100vw - 36px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-0.1px;}
