@@ -3712,12 +3712,19 @@ function renderAdmEngagement() {
       ${_admStatCard('Notify-me signups', notifyList.length, '📩')}
       ${_admStatCard('Your engagement', streak.total || 0, '🔥')}
     </div>
-    <div style="background:${fakeOn ? 'rgba(31,140,95,0.08)' : 'var(--bg2)'};border:1.5px solid ${fakeOn ? 'rgba(31,140,95,0.35)' : 'var(--border)'};border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-      <div>
-        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:var(--ink);font-size:0.95rem;">${fakeOn ? '🟢 Demo users active' : '⏸️ Demo users paused'}</div>
-        <div style="font-size:0.8rem;color:var(--gray);margin-top:2px;">10 fake personas auto-reacting + voting + commenting every 18-45 seconds. Real users won't see any difference — but the site looks alive.</div>
+    <div style="background:${fakeOn ? 'rgba(31,140,95,0.08)' : 'var(--bg2)'};border:1.5px solid ${fakeOn ? 'rgba(31,140,95,0.35)' : 'var(--border)'};border-radius:12px;padding:14px 18px;margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div>
+          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:var(--ink);font-size:0.95rem;">${fakeOn ? '🟢 25 demo users active' : '⏸️ 25 demo users paused'}</div>
+          <div style="font-size:0.8rem;color:var(--gray);margin-top:2px;">25 personas react, vote, comment, reply to threads, submit stories, every 5-12s. <strong>${_fakeActionCount}</strong> actions fired this session.</div>
+        </div>
+        <button class="ac-btn" onclick="toggleFakeUsers(); setTimeout(()=>renderAdmEngagement(),200);">${fakeOn ? 'Pause' : 'Resume'}</button>
       </div>
-      <button class="ac-btn" onclick="toggleFakeUsers(); setTimeout(()=>renderAdmEngagement(),200);">${fakeOn ? 'Pause' : 'Resume'}</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px;">
+        <button class="btn-ghost" style="padding:8px 14px;font-size:0.82rem;border-radius:8px;" onclick="_runFakeBurst(25); setTimeout(()=>renderAdmEngagement(),3000);">⚡ Run 25 actions NOW</button>
+        <button class="btn-ghost" style="padding:8px 14px;font-size:0.82rem;border-radius:8px;" onclick="_runFakeBurst(100); setTimeout(()=>renderAdmEngagement(),9000);">⚡⚡ Run 100 actions NOW</button>
+        <span style="font-size:0.74rem;color:var(--gray);align-self:center;">Watch the bottom-left ticker for live activity</span>
+      </div>
     </div>
     <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin-bottom:12px;">Hot stories</h3>
     ${hot.map(({ o, r }) => `
@@ -4624,26 +4631,119 @@ function _fakeUserAction(persona) {
 }
 
 let _fakeUserTimer = null;
+let _fakeActionCount = 0;
 function _startFakeUserSim() {
   if (_fakeUserTimer) clearTimeout(_fakeUserTimer);
   if (!isFakeUsersOn()) return;
-  // Pick a random persona to act every 18-45 seconds (visible "alive" feel without spamming)
+  // Fire the first action quickly (1-3s) so the user sees life immediately
   const tick = () => {
     if (!isFakeUsersOn()) return;
     const persona = FAKE_PERSONAS[Math.floor(Math.random() * FAKE_PERSONAS.length)];
-    try { _fakeUserAction(persona); } catch (e) { console.warn('fake-user action:', e); }
-    // Soft-rerender current section if user is looking at Pulse or Polls
+    let result;
+    try { result = _fakeUserAction(persona); } catch (e) { console.warn('fake-user action error:', e); }
+    if (result) {
+      _fakeActionCount++;
+      _flashFakeTicker(result);
+      // Console log for debug visibility
+      console.log(`[fake-${_fakeActionCount}] ${result.who} → ${result.type}`, result);
+    }
+    // Smart rerender — only rebuild the whole feed when a NEW STORY appears.
+    // For reactions/votes/comments/replies, the in-place updates are fine.
     const id = document.querySelector('section.active')?.id;
-    if (id === 'pulse')    setTimeout(() => { try { renderPulse(); } catch {} }, 200);
-    if (id === 'polls')    setTimeout(() => { try { renderPolls(); } catch {} }, 200);
-    if (id === 'officers') setTimeout(() => { try { applyFilters(); } catch {} }, 200);
-    // 12-30s between actions — 25 personas, so ~50-100 actions/hour while a page is open
-    _fakeUserTimer = setTimeout(tick, 12000 + Math.random() * 18000);
+    if (result && result.type === 'new-story') {
+      if (id === 'pulse')    setTimeout(() => { try { renderPulse(); } catch {} }, 250);
+      if (id === 'officers') setTimeout(() => { try { applyFilters(); } catch {} }, 250);
+    }
+    // Polls always rerender lightly because vote bars + breakdown depend on it
+    if (id === 'polls' && (result?.type === 'vote' || result?.type === 'poll-comment')) {
+      setTimeout(() => { try { renderPolls(); } catch {} }, 250);
+    }
+    // For thread replies, only update if user has the story-detail modal open for that story
+    if (result && result.type === 'thread-reply') {
+      const modal = document.getElementById('storyDetailModal');
+      if (modal && modal.classList.contains('show')) {
+        const openId = modal.dataset.officerId;
+        const openRid = modal.dataset.reviewId;
+        if (String(result.story.o.id) === String(openId) && String(result.story.r.id) === String(openRid)) {
+          setTimeout(() => { try { _renderReplies(result.story.o.id, result.story.r.id); } catch {} }, 250);
+        }
+      }
+    }
+    // For reactions visible on currently-rendered Pulse/Stream cards: update summaries in place
+    if (result && result.type === 'react') {
+      const card = document.querySelector(`.pulse-card[data-officer-id="${result.story.o.id}"][data-review-id="${result.story.r.id}"], .story-post[onclick*="openStoryDetail(${result.story.o.id}, ${result.story.r.id})"]`);
+      if (card) {
+        const summary = card.querySelector('.reaction-summary');
+        const fresh = reactionTotalsHtml(result.story.o.id, result.story.r.id);
+        if (summary && fresh) summary.outerHTML = fresh;
+        else if (fresh) {
+          // Card didn't have a summary yet — inject one before the actions row
+          const actions = card.querySelector('.pulse-actions, .sp-foot');
+          if (actions) actions.insertAdjacentHTML('beforebegin', fresh);
+        }
+      }
+    }
+    // 5-12s between actions for a really lifelike feel with 25 personas
+    _fakeUserTimer = setTimeout(tick, 5000 + Math.random() * 7000);
   };
-  _fakeUserTimer = setTimeout(tick, 4000 + Math.random() * 6000);
+  _fakeUserTimer = setTimeout(tick, 1500 + Math.random() * 2000);
+  console.log('[CivicVoice] 🟢 Fake user simulation started — 25 personas, 5-12s cadence');
 }
 function _stopFakeUserSim() {
   if (_fakeUserTimer) { clearTimeout(_fakeUserTimer); _fakeUserTimer = null; }
+  console.log('[CivicVoice] ⏸️ Fake user simulation paused');
+}
+
+// Fire N actions immediately — for admin testing button
+function _runFakeBurst(n) {
+  let fired = 0;
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      const persona = FAKE_PERSONAS[Math.floor(Math.random() * FAKE_PERSONAS.length)];
+      try {
+        const result = _fakeUserAction(persona);
+        if (result) {
+          fired++;
+          _fakeActionCount++;
+          _flashFakeTicker(result);
+          console.log(`[burst-${fired}/${n}] ${result.who} → ${result.type}`);
+        }
+      } catch (e) { console.warn('burst action error:', e); }
+      // After all burst actions, rerender current view to show all changes
+      if (i === n - 1) {
+        setTimeout(() => {
+          const id = document.querySelector('section.active')?.id;
+          if (id === 'pulse')    { try { renderPulse(); } catch {} }
+          if (id === 'polls')    { try { renderPolls(); } catch {} }
+          if (id === 'officers') { try { applyFilters(); } catch {} }
+          _showStreakToast(`🟢 Fired ${fired} fake actions. Check Pulse / Polls / Stories to see them.`);
+        }, 400);
+      }
+    }, i * 80);  // stagger 80ms between actions
+  }
+}
+
+// Small floating ticker that flashes when a fake action fires — visible "site is alive" signal
+function _flashFakeTicker(result) {
+  let el = document.getElementById('fakeTicker');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'fakeTicker';
+    el.className = 'fake-ticker';
+    document.body.appendChild(el);
+  }
+  const verbs = {
+    'react':        'reacted to a story',
+    'vote':         'voted on a poll',
+    'poll-comment': 'commented on a poll',
+    'thread-reply': 'replied in a thread',
+    'new-story':    'shared a new story',
+    'subscribe':    'subscribed to an agency',
+  };
+  el.textContent = `${result.who} ${verbs[result.type] || result.type}`;
+  el.classList.remove('show');
+  void el.offsetWidth;  // force reflow to restart animation
+  el.classList.add('show');
 }
 
 // ── ENGAGEMENT STREAK ──
