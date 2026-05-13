@@ -251,7 +251,7 @@ function nav(id) {
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')     renderRankings();
   if (id === 'orgs')         renderOrgState();
-  if (id === 'admin')        renderModQueue();
+  if (id === 'admin')        { setAdminTab(_adminTab || 'stories'); _refreshAdminBadges(); }
   if (id === 'contributors') renderContributors();
   if (id === 'pulse')        renderPulse();
   if (id === 'polls')        renderPolls();
@@ -1144,12 +1144,16 @@ function _renderOnePulseCard(it) {
   const trust = computeTrustScore(author);
   const story = (r.story || '').trim() || '(No description.)';
   const tags = r.tags || [];
+  // "Hot right now" badge — high recency + high stars
+  const ageMins = (Date.now() - new Date(r.created_at || 0).getTime()) / 60000;
+  const isHot = ageMins < 60 * 24 * 3 && (r.stars >= 5 || r.verdict === 'unfair');
   return `
     <article class="pulse-card role-${it.role}" data-story-context data-officer-id="${o.id}" data-review-id="${r.id}" onclick="openStoryDetail(${o.id}, ${r.id})">
       <div class="pulse-card-head">
         <div class="pulse-card-role">
           <span class="pulse-role-icon">${ROLE_ICON[it.role] || '👤'}</span>
           <span class="pulse-role-name role-tinted-${it.role}">${ROLE_NAME[it.role] || ''}</span>
+          ${isHot ? '<span class="hot-badge">Hot</span>' : ''}
         </div>
         <div class="pulse-sent ${isPos ? 'pos' : 'neg'}">
           <span class="pulse-stars">${starsStr(r.stars || 3)}</span>
@@ -1175,7 +1179,10 @@ function _renderOnePulseCard(it) {
       <div class="pulse-actions">
         <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 I had this too</button>
         <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-        <button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏 Thank you</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪 Strong</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="I want to know more">🤔 Curious</button>
+        <button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount}</button>
         <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
       </div>
     </article>
@@ -1208,6 +1215,23 @@ function renderPulse() {
   // Mix categories so no role dominates — interleave Police / EMT / Fire / DMV / Hospital / Gov't
   items = _mixByCategory(items, 2);
   items = items.slice(0, 100);
+  // Interleave polls into the feed — every 4th slot when filter is 'all', or polls-only when filter='polls'
+  const allPolls = [..._readApprovedPolls(), ...POLLS_SEED].map(p => ({ kind: 'poll', poll: p }));
+  if (_pulseFilter === 'polls') {
+    items = allPolls;
+  } else if (_pulseFilter === 'all' && allPolls.length) {
+    const mixed = [];
+    let polli = 0;
+    items.forEach((it, i) => {
+      mixed.push({ kind: 'story', ...it });
+      if ((i + 1) % 3 === 0 && polli < allPolls.length) {
+        mixed.push(allPolls[polli++]);
+      }
+    });
+    items = mixed;
+  } else {
+    items = items.map(it => ({ kind: 'story', ...it }));
+  }
   _pulseItems = items;
   if (!items.length) {
     // Filter-aware empty state with a clear next action
@@ -1227,14 +1251,15 @@ function renderPulse() {
       concerns:     `<div class="pulse-empty"><div class="pe-icon">⚠️</div><div class="pe-title">No concerns match yet.</div><div class="pe-sub">Try "All" or document one you witnessed.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button><button class="btn-ghost" onclick="nav('share')">Share a story</button></div></div>`,
       open:         `<div class="pulse-empty"><div class="pe-icon">⏳</div><div class="pe-title">No open stories right now.</div><div class="pe-sub">Open = waiting on an agency response. They've all been acknowledged or resolved.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button></div></div>`,
       all:          `<div class="pulse-empty"><div class="pe-icon">📭</div><div class="pe-title">No stories yet.</div><div class="pe-sub">Be the first.</div><div class="pe-actions"><button class="btn-gold" onclick="nav('share')">Share a story</button></div></div>`,
+      polls:        `<div class="pulse-empty"><div class="pe-icon">🗳️</div><div class="pe-title">No polls yet.</div><div class="pe-sub">Open the Polls page or submit your own.</div><div class="pe-actions"><button class="btn-gold" onclick="nav('polls')">Open Polls</button><button class="btn-ghost" onclick="openSubmitPoll()">Submit a poll</button></div></div>`,
     };
     stage.innerHTML = emptyByFilter[_pulseFilter] || emptyByFilter.all;
     document.getElementById('pulsePos').textContent = 0;
     document.getElementById('pulseTotal').textContent = 0;
     return;
   }
-  // Render every card stacked vertically — scroll snaps each into view
-  stage.innerHTML = items.map(_renderOnePulseCard).join('');
+  // Render every card stacked vertically — scroll snaps each into view. Mix of stories + polls.
+  stage.innerHTML = items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('');
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
@@ -1244,6 +1269,45 @@ function renderPulse() {
 }
 
 let _pulseObserver = null;
+// Render a poll inline in the Pulse feed — same height/feel as a story card
+function _renderOnePulsePollCard(p) {
+  const my = _readPollsMy();
+  const myVote = my[p.id];
+  const counts = _readPollsVotes()[p.id] || _seedPollCounts(p.id);
+  const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;
+  const optionsHtml = p.options.map(o => {
+    const c = counts[o.id] || 0;
+    const pct = Math.round((c / total) * 100);
+    const isMine = myVote === o.id;
+    return `
+      <div class="poll-opt ${isMine ? 'voted' : ''}" onclick="event.stopPropagation(); votePoll('${p.id}','${o.id}')">
+        <div class="po-bar" style="width:${myVote ? pct : 0}%;"></div>
+        <span class="po-label">${escapeHtml(o.label)}${isMine ? ' &middot; <strong style="color:var(--accent);">your vote</strong>' : ''}</span>
+        ${myVote ? `<span class="po-pct">${pct}%</span>` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <article class="pulse-card pulse-poll-card" data-poll-id="${p.id}" onclick="event.stopPropagation(); nav('polls');">
+      <div class="pulse-card-head">
+        <div class="pulse-card-role">
+          <span class="pulse-role-icon">🗳️</span>
+          <span class="pulse-role-name role-tinted-gov">POLL · ${escapeHtml(p.cat)}</span>
+        </div>
+        <div class="pulse-sent pos">
+          <span class="pulse-sent-tag">${total.toLocaleString()} takes</span>
+        </div>
+      </div>
+      <h3 class="pulse-name" style="font-size:1.85rem;">${escapeHtml(p.q)}</h3>
+      <div class="pulse-agency">Take your stand. Anonymous. Results live.</div>
+      <div class="poll-options" style="margin:14px 0 18px;">${optionsHtml}</div>
+      <div class="pulse-actions">
+        <button class="sp-action" onclick="event.stopPropagation(); nav('polls');">🗳️ Open in Polls</button>
+        <button class="sp-action" onclick="event.stopPropagation(); openSubmitPoll();">✍️ Submit your own</button>
+      </div>
+    </article>
+  `;
+}
+
 // Swipe gestures on Pulse — left = next, right = previous. Vertical scroll still works.
 function _attachPulseSwipe() {
   const stage = document.getElementById('pulseStage');
@@ -1519,6 +1583,9 @@ function renderStream(officers, q) {
           <div class="sp-actions">
             <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 I had this too</button>
             <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
+            <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
+            <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
+            <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious — want to know more">🤔</button>
             ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)}</button>` : ''}
             <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
           </div>
@@ -2278,32 +2345,71 @@ document.addEventListener('keydown', (e) => {
 // Lightweight engagement signal — increments a "same here" counter on the button.
 // Requires sign-in (you can read without an account, but engaging requires one).
 // Notifies the original author.
-// New reaction handler — handles both 👍 ('up') and 👎 ('down') with a tap burst animation
+// Reaction handler — handles all 5 reactions (👍 👎 🙏 💪 🤔) with tap burst animation + haptics
 function reactTo(btn, evt) {
   if (evt) evt.stopPropagation();
   if (!requireAuth(() => reactTo(btn), 'Sign in to react')) return;
   recordEngagement('react');
+  // Soft haptic on supported devices (mostly Android)
+  if (navigator.vibrate) try { navigator.vibrate(12); } catch {}
   const kind = btn.dataset.kind || 'up';
   const n = parseInt(btn.dataset.count || '0', 10) + 1;
   btn.dataset.count = n;
-  if (kind === 'up') {
-    btn.innerHTML = `👍 I had this too · ${n}`;
-    btn.style.color = 'var(--green)';
-    btn.style.borderColor = 'rgba(31,140,95,0.4)';
-    btn.style.background = 'rgba(31,140,95,0.08)';
+  const styles = {
+    up:      { emoji:'👍', label:'I had this too', color:'var(--green)', bd:'rgba(31,140,95,0.4)', bg:'rgba(31,140,95,0.08)' },
+    down:    { emoji:'👎', label:'Not me',         color:'var(--red)',   bd:'rgba(201,52,52,0.4)', bg:'rgba(201,52,52,0.06)' },
+    thanks:  { emoji:'🙏', label:'Thank you',      color:'#7a51c8',      bd:'rgba(122,81,200,0.4)', bg:'rgba(122,81,200,0.08)' },
+    strong:  { emoji:'💪', label:'Strong',         color:'#e07a1a',      bd:'rgba(224,122,26,0.4)', bg:'rgba(224,122,26,0.08)' },
+    curious: { emoji:'🤔', label:'Curious',        color:'#2563d9',      bd:'rgba(37,109,217,0.4)', bg:'rgba(37,109,217,0.08)' },
+  };
+  const s = styles[kind] || styles.up;
+  // Different render modes: full label only for up/down on Pulse; emoji-only for the others
+  if (kind === 'up' || kind === 'down') {
+    btn.innerHTML = `${s.emoji} ${s.label} · ${n}`;
   } else {
-    btn.innerHTML = `👎 Not me · ${n}`;
-    btn.style.color = 'var(--red)';
-    btn.style.borderColor = 'rgba(201,52,52,0.4)';
-    btn.style.background = 'rgba(201,52,52,0.06)';
+    btn.innerHTML = `${s.emoji} ${n}`;
   }
+  btn.style.color = s.color;
+  btn.style.borderColor = s.bd;
+  btn.style.background = s.bg;
   // TikTok-style burst — emoji float-and-fade
-  _emojiBurst(btn, kind === 'up' ? '👍' : '👎');
+  _emojiBurst(btn, s.emoji);
   // Tap-feedback scale
   btn.classList.add('tap-pulse');
   setTimeout(() => btn.classList.remove('tap-pulse'), 320);
-  // Continue the legacy notification + preference learning flow only on 'up' (positive reaction)
-  if (kind === 'up') _legacyThanksFollowup(btn);
+  // Continue the legacy notification + preference learning flow on positive reactions
+  if (kind === 'up' || kind === 'thanks' || kind === 'strong') _legacyThanksFollowup(btn);
+  // Streak milestone celebration — fire confetti at 3, 10, weekly streak
+  _checkStreakMilestones();
+}
+
+// Celebrate when user hits 3, 10, or 25 engagements today, or 7-day streak
+function _checkStreakMilestones() {
+  const c = _streakCounts();
+  const seenKey = 'civicvoice_seen_milestones_v1';
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch {}
+  const today = _todayKey();
+  const milestones = [
+    { id: `${today}-3`,  trigger: c.today === 3,  msg: "🔥 3 today. You're paying attention." },
+    { id: `${today}-10`, trigger: c.today === 10, msg: "💥 10 today. That's how communities actually change." },
+    { id: `${today}-25`, trigger: c.today === 25, msg: "🚀 25 today. You're the kind of citizen this country needs." },
+  ];
+  for (const m of milestones) {
+    if (m.trigger && !seen.includes(m.id)) {
+      seen.push(m.id);
+      localStorage.setItem(seenKey, JSON.stringify(seen));
+      _showStreakToast(m.msg);
+    }
+  }
+}
+function _showStreakToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'streak-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 30);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3000);
 }
 function _emojiBurst(btn, emoji) {
   const rect = btn.getBoundingClientRect();
@@ -2359,11 +2465,15 @@ function agencyTypeClick(el) {
 }
 
 function inferAgencyType(d) {
+  if (d.role) return d.role;  // explicit override wins
   const name = (d.name || '').toLowerCase();
   if (/\b(ems|ambulance|paramedic)\b/.test(name)) return 'emt';
   if (/\b(fire|fd|hose|engine|truck co)\b/.test(name)) return 'fire';
   if (/\bdmv\b/.test(name)) return 'dmv';
   if (/\b(hospital|medical center|sinai|montefiore|good samaritan|langone)\b/.test(name)) return 'hospital';
+  if (/\b(school district|csd|school board|board of education|superintendent)\b/.test(name)) return 'school';
+  if (/\b(village of|town of|county legislature|mayor|trustee|council)\b/.test(name)) return 'elected';
+  if (/\b(governor|senate|congress|white house|federal)\b/.test(name)) return 'federal';
   if (/\b(tax|hra|housing|unemployment|county clerk|dept of|division of|attorney general)\b/.test(name)) return 'gov';
   return 'police';
 }
@@ -3022,6 +3132,243 @@ function _adminAbuseSignals(payload, authorActivity, officerRate) {
   }
   if (sigs.length === 0) sigs.push({ level: 'good', text: 'No red flags. Submission looks clean.' });
   return sigs;
+}
+
+// ── ADMIN CONSOLE — multi-tab ──
+// Tabs: Stories (mod) · Polls (mod) · Users · Engagement · Activity log · Notify list
+let _adminTab = 'stories';
+function setAdminTab(name) {
+  _adminTab = name;
+  document.querySelectorAll('#adminTabs .adm-tab').forEach(b => b.classList.toggle('on', b.dataset.atab === name));
+  document.querySelectorAll('.adm-pane').forEach(p => p.style.display = 'none');
+  const map = { stories:'admStories', polls:'admPolls', users:'admUsers', engagement:'admEngagement', activity:'admActivity', notify:'admNotify' };
+  const el = document.getElementById(map[name]);
+  if (el) el.style.display = 'block';
+  // Render the active tab
+  if (name === 'stories')    renderModQueue();
+  if (name === 'polls')      renderAdmPolls();
+  if (name === 'users')      renderAdmUsers();
+  if (name === 'engagement') renderAdmEngagement();
+  if (name === 'activity')   renderAdmActivity();
+  if (name === 'notify')     renderAdmNotify();
+  _refreshAdminBadges();
+}
+function _refreshAdminBadges() {
+  const pending = _readPending();
+  const pollsP = _readPendingPolls();
+  const notifyL = JSON.parse(localStorage.getItem(NOTIFY_LIST_KEY) || '[]');
+  const usersCount = _collectAllHandles().length;
+  const $ = id => document.getElementById(id);
+  if ($('admBadgeStories')) $('admBadgeStories').textContent = pending.length;
+  if ($('admBadgePolls'))   $('admBadgePolls').textContent = pollsP.length;
+  if ($('admBadgeUsers'))   $('admBadgeUsers').textContent = usersCount;
+  if ($('admBadgeNotify'))  $('admBadgeNotify').textContent = notifyL.length;
+}
+
+// Collect every unique handle that's appeared in the system
+function _collectAllHandles() {
+  const handles = new Set();
+  const seed = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const approved = getApprovedAsOfficers();
+  [...seed, ...approved, ...officerCache].forEach(o => (o.reviews || []).forEach(r => {
+    const a = r.author_display || _legacyAuthor(o.id, r.id);
+    if (a) handles.add(a);
+  }));
+  // Add anyone who voted on polls
+  const bd = _readPollsBreakdown();
+  Object.values(bd).forEach(byAffil => Object.keys(byAffil).forEach(a => {}));
+  // Current user
+  const u = getCurrentUser();
+  if (u) handles.add(u.anonymous ? u.handle : (u.displayName || u.handle));
+  return Array.from(handles);
+}
+
+// ── ADMIN: POLLS MODERATION ──
+function renderAdmPolls() {
+  const wrap = document.getElementById('admPollsList');
+  if (!wrap) return;
+  const pending = _readPendingPolls();
+  const approved = _readApprovedPolls();
+  if (!pending.length && !approved.length) {
+    wrap.innerHTML = `<div style="text-align:center;color:var(--gray);padding:40px 20px;">No poll submissions yet.</div>`;
+    return;
+  }
+  let html = '';
+  if (pending.length) {
+    html += `<h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin-bottom:12px;">Pending review (${pending.length})</h3>`;
+    html += pending.map(p => `
+      <div style="background:var(--card);border:1.5px solid rgba(184,148,30,0.42);border-radius:14px;padding:18px;margin-bottom:12px;">
+        <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--accent);font-weight:800;margin-bottom:6px;">${escapeHtml(p.cat)}</div>
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.3;">${escapeHtml(p.q)}</div>
+        <ul style="margin:0 0 14px 22px;color:var(--light);font-size:0.9rem;line-height:1.7;">
+          ${p.options.map(o => `<li>${escapeHtml(o.label)}</li>`).join('')}
+        </ul>
+        <div style="font-size:0.78rem;color:var(--gray);margin-bottom:12px;">Submitted by <strong style="color:var(--ink);">${escapeHtml(p.submitted_by)}</strong> &middot; ${formatDate(p.submitted_at)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ac-btn" onclick="admApprovePoll('${escapeHtml(p.id)}')">&#10003; Approve</button>
+          <button class="btn-ghost" style="padding:11px 20px;border-radius:10px;" onclick="admRejectPoll('${escapeHtml(p.id)}')">&#10005; Reject</button>
+        </div>
+      </div>`).join('');
+  }
+  if (approved.length) {
+    html += `<h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin:24px 0 12px;">Approved (${approved.length})</h3>`;
+    html += approved.map(p => `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;">
+        <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--green);font-weight:800;margin-bottom:4px;">${escapeHtml(p.cat)} &middot; LIVE</div>
+        <div style="font-size:0.94rem;font-weight:600;color:var(--ink);">${escapeHtml(p.q)}</div>
+      </div>`).join('');
+  }
+  wrap.innerHTML = html;
+}
+function admApprovePoll(id) {
+  const pending = _readPendingPolls();
+  const idx = pending.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  const poll = pending[idx];
+  poll.status = 'approved';
+  pending.splice(idx, 1);
+  localStorage.setItem(POLLS_PENDING_KEY, JSON.stringify(pending));
+  const approved = _readApprovedPolls();
+  approved.unshift(poll);
+  localStorage.setItem(POLLS_APPROVED_KEY, JSON.stringify(approved));
+  renderAdmPolls();
+  _refreshAdminBadges();
+}
+function admRejectPoll(id) {
+  const pending = _readPendingPolls();
+  const idx = pending.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  pending.splice(idx, 1);
+  localStorage.setItem(POLLS_PENDING_KEY, JSON.stringify(pending));
+  renderAdmPolls();
+  _refreshAdminBadges();
+}
+
+// ── ADMIN: USERS ──
+function renderAdmUsers() {
+  const wrap = document.getElementById('admUsersList');
+  if (!wrap) return;
+  const handles = _collectAllHandles();
+  if (!handles.length) { wrap.innerHTML = `<div style="text-align:center;color:var(--gray);padding:40px 20px;">No users yet.</div>`; return; }
+  const rows = handles.map(h => {
+    const activity = _adminAuthorActivity ? _adminAuthorActivity(h) : { storiesTotal: 0, fair: 0, unfair: 0 };
+    const trust = computeTrustScore(h);
+    return { handle: h, storiesTotal: activity.storiesTotal || 0, fair: activity.fair || 0, unfair: activity.unfair || 0, trust: trust.score, tier: trust.tier.label };
+  }).sort((a, b) => b.storiesTotal - a.storiesTotal);
+  wrap.innerHTML = `
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+      <thead><tr style="border-bottom:2px solid var(--border);">
+        <th style="text-align:left;padding:10px 8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Handle</th>
+        <th style="text-align:right;padding:10px 8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Stories</th>
+        <th style="text-align:right;padding:10px 8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">★</th>
+        <th style="text-align:right;padding:10px 8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">⚠</th>
+        <th style="text-align:right;padding:10px 8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Trust</th>
+        <th style="text-align:left;padding:10px 8px;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Tier</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openAuthorProfile('${escapeHtml(r.handle).replace(/'/g,"\\'")}');">
+            <td style="padding:10px 8px;font-weight:600;">${escapeHtml(r.handle)}</td>
+            <td style="text-align:right;padding:10px 8px;">${r.storiesTotal}</td>
+            <td style="text-align:right;padding:10px 8px;color:var(--green);">${r.fair}</td>
+            <td style="text-align:right;padding:10px 8px;color:var(--red);">${r.unfair}</td>
+            <td style="text-align:right;padding:10px 8px;font-weight:800;">${r.trust}</td>
+            <td style="padding:10px 8px;font-size:0.78rem;color:var(--gray);">${escapeHtml(r.tier)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="font-size:0.78rem;color:var(--gray);margin-top:12px;text-align:right;">${rows.length} users &middot; tap a row to see their full profile</div>
+  `;
+}
+
+// ── ADMIN: ENGAGEMENT DASHBOARD ──
+function renderAdmEngagement() {
+  const wrap = document.getElementById('admEngagementBody');
+  if (!wrap) return;
+  const handles = _collectAllHandles();
+  const pollVotes = _readPollsVotes();
+  const totalVotes = Object.values(pollVotes).reduce((s, m) => s + Object.values(m).reduce((a, b) => a + b, 0), 0);
+  const totalPolls = POLLS_SEED.length + _readApprovedPolls().length;
+  const seed = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const approved = getApprovedAsOfficers();
+  const totalStories = [...seed, ...approved].reduce((s, o) => s + (o.reviews || []).length, 0);
+  const pendingStories = _readPending().length;
+  const pendingPolls = _readPendingPolls().length;
+  const notifyList = JSON.parse(localStorage.getItem(NOTIFY_LIST_KEY) || '[]');
+  const streak = _readStreak();
+  // Hot stories — top 5 by reaction count (currently tracked locally via dataset.count on buttons; rough proxy: review_count for now)
+  const allStories = [];
+  for (const o of [...seed, ...approved]) {
+    for (const r of (o.reviews || [])) allStories.push({ o, r, score: (r.stars || 0) * 10 });
+  }
+  allStories.sort((a, b) => b.score - a.score);
+  const hot = allStories.slice(0, 5);
+
+  wrap.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;">
+      ${_admStatCard('Users', handles.length, '👥')}
+      ${_admStatCard('Stories', totalStories, '📚')}
+      ${_admStatCard('Polls', totalPolls, '🗳️')}
+      ${_admStatCard('Votes cast', totalVotes, '✅')}
+      ${_admStatCard('Pending stories', pendingStories, '⏳', pendingStories ? 'var(--accent)' : null)}
+      ${_admStatCard('Pending polls', pendingPolls, '⏳', pendingPolls ? 'var(--accent)' : null)}
+      ${_admStatCard('Notify-me signups', notifyList.length, '📩')}
+      ${_admStatCard('Your engagement', streak.total || 0, '🔥')}
+    </div>
+    <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin-bottom:12px;">Hot stories</h3>
+    ${hot.map(({ o, r }) => `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;" onclick="openStoryDetail(${o.id}, ${r.id})">
+        <div style="font-weight:700;color:var(--ink);font-size:0.94rem;">${escapeHtml(o.name)} &middot; ${escapeHtml(o.department || '')}</div>
+        <div style="font-size:0.82rem;color:var(--gray);margin-top:3px;">${escapeHtml((r.story || '').slice(0, 110))}${(r.story || '').length > 110 ? '…' : ''}</div>
+      </div>`).join('')}
+  `;
+}
+function _admStatCard(label, value, icon, color) {
+  return `<div style="background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:16px 14px;text-align:center;">
+    <div style="font-size:1.5rem;margin-bottom:4px;">${icon}</div>
+    <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.6rem;font-weight:800;color:${color || 'var(--ink)'};">${value.toLocaleString()}</div>
+    <div style="font-size:0.7rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-top:3px;">${label}</div>
+  </div>`;
+}
+
+// ── ADMIN: ACTIVITY LOG ──
+function renderAdmActivity() {
+  const wrap = document.getElementById('admActivityList');
+  if (!wrap) return;
+  const events = [];
+  // Stories — pending + approved + seed
+  _readPending().forEach(p => events.push({ ts: p.submitted_at || p.created_at, kind: 'story', label: `Story submitted by ${p.reviewer_name || 'Anonymous'} on ${p.dept || 'unknown'}`, color: 'var(--accent)' }));
+  _readApproved().forEach(a => events.push({ ts: a.approved_at || a.created_at || new Date().toISOString(), kind: 'story-approved', label: `Story approved on ${a.dept || a.officer_name || 'unknown'}`, color: 'var(--green)' }));
+  _readPendingPolls().forEach(p => events.push({ ts: p.submitted_at, kind: 'poll', label: `Poll submitted: "${(p.q || '').slice(0, 60)}…"`, color: 'var(--accent)' }));
+  _readApprovedPolls().forEach(p => events.push({ ts: p.submitted_at, kind: 'poll-approved', label: `Poll approved: "${(p.q || '').slice(0, 60)}…"`, color: 'var(--green)' }));
+  const notifyList = JSON.parse(localStorage.getItem(NOTIFY_LIST_KEY) || '[]');
+  notifyList.forEach(n => events.push({ ts: n.ts, kind: 'notify', label: `Notify-me signup: ${n.email} → "${n.topic}"`, color: 'var(--blue)' }));
+  events.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  if (!events.length) { wrap.innerHTML = `<div style="text-align:center;color:var(--gray);padding:40px 20px;">No activity recorded yet.</div>`; return; }
+  wrap.innerHTML = events.slice(0, 200).map(e => `
+    <div style="display:flex;gap:14px;padding:10px 14px;border-left:3px solid ${e.color};background:var(--bg2);border-radius:0 8px 8px 0;margin-bottom:6px;align-items:flex-start;">
+      <span style="font-size:0.74rem;color:var(--gray);min-width:90px;flex-shrink:0;">${formatDate(e.ts)}</span>
+      <span style="font-size:0.88rem;color:var(--ink);line-height:1.4;">${escapeHtml(e.label)}</span>
+    </div>
+  `).join('');
+}
+
+// ── ADMIN: NOTIFY-ME LIST ──
+function renderAdmNotify() {
+  const wrap = document.getElementById('admNotifyList');
+  if (!wrap) return;
+  const list = JSON.parse(localStorage.getItem(NOTIFY_LIST_KEY) || '[]');
+  if (!list.length) { wrap.innerHTML = `<div style="text-align:center;color:var(--gray);padding:40px 20px;">No notify-me signups yet.</div>`; return; }
+  const grouped = {};
+  list.forEach(n => { grouped[n.topic] = grouped[n.topic] || []; grouped[n.topic].push(n); });
+  wrap.innerHTML = Object.entries(grouped).map(([topic, items]) => `
+    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+      <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;color:var(--ink);font-size:0.98rem;margin-bottom:8px;">${escapeHtml(topic)} <span style="color:var(--gray);font-weight:600;font-size:0.85rem;">(${items.length})</span></div>
+      ${items.map(i => `<div style="font-size:0.85rem;color:var(--light);padding:4px 0;border-top:1px solid var(--border);">${escapeHtml(i.email)} <span style="color:var(--gray);font-size:0.75rem;margin-left:8px;">${formatDate(i.ts)}</span></div>`).join('')}
+    </div>
+  `).join('');
 }
 
 function renderModQueue() {

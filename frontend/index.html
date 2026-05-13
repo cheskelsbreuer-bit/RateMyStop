@@ -217,6 +217,13 @@
       <span class="cs-item live"><span class="cs-dot live"></span>&#129411; DMV</span>
       <span class="cs-item live"><span class="cs-dot live"></span>&#127973; Hospitals</span>
       <span class="cs-item live"><span class="cs-dot live"></span>&#128104;&#8205;&#128188; Government</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#127891; School Board</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#127963;&#65039; Local Elected</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128499;&#65039; Polls &amp; Takes</span>
+      <span class="cs-item" onclick="openNotifyMe('Stories near me','near-me')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#128205; Stories near me &middot; <em>soon</em></span>
+      <span class="cs-item" onclick="openNotifyMe('Verified by photo / badge','verified-photo')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#128737;&#65039; Verified by photo &middot; <em>soon</em></span>
+      <span class="cs-item" onclick="openNotifyMe('Translate stories','translate')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127757; Translate stories &middot; <em>soon</em></span>
+      <span class="cs-item" onclick="openNotifyMe('Live town hall stream','town-hall')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127908; Town hall live &middot; <em>soon</em></span>
     </div>
   </div>
   <div class="stats-strip" id="statsStrip">
@@ -527,12 +534,18 @@
       <span class="pill" data-rolefilter="gov" onclick="pillClick(this)">&#128104;&#8205;&#128188; Gov't</span>
       <span class="pill" data-rolefilter="school" onclick="pillClick(this)">&#127891; School</span>
       <span class="pill" data-rolefilter="elected" onclick="pillClick(this)">&#127963;&#65039; Elected</span>
+      <span class="pill" data-rolefilter="federal" onclick="pillClick(this)">&#127482;&#127480; Federal</span>
       <span class="pill" data-rolefilter="top" onclick="pillClick(this)">&#11088; Recognitions only</span>
     </div>
 
-    <div class="view-toggle">
-      <button class="vt-btn on" data-view="grid" onclick="setStoriesView(this, 'grid')">&#128194; By person</button>
-      <button class="vt-btn" data-view="stream" onclick="setStoriesView(this, 'stream')">&#128221; Story stream</button>
+    <div class="view-toggle" title="Switch between profiles and the latest stories">
+      <button class="vt-btn on" data-view="grid" onclick="setStoriesView(this, 'grid')" title="See people grouped by profile">&#128194; By person</button>
+      <button class="vt-btn" data-view="stream" onclick="setStoriesView(this, 'stream')" title="See every story in order, newest first">&#128221; Latest stories</button>
+    </div>
+    <div style="font-size:0.78rem;color:var(--gray);margin:-6px 0 14px;text-align:center;line-height:1.5;">
+      <strong style="color:var(--light);">By person</strong> &mdash; one card per officer / official, ranked by their record.
+      &nbsp;&middot;&nbsp;
+      <strong style="color:var(--light);">Latest stories</strong> &mdash; chronological feed, newest first.
     </div>
 
     <div class="officer-grid" id="officerGrid">
@@ -651,6 +664,9 @@
       <span class="pill" data-typefilter="dmv" onclick="agencyTypeClick(this)">&#129411; DMV</span>
       <span class="pill" data-typefilter="hospital" onclick="agencyTypeClick(this)">&#127973; Hospital</span>
       <span class="pill" data-typefilter="gov" onclick="agencyTypeClick(this)">&#128104;&#8205;&#128188; Gov't</span>
+      <span class="pill" data-typefilter="school" onclick="agencyTypeClick(this)">&#127891; School</span>
+      <span class="pill" data-typefilter="elected" onclick="agencyTypeClick(this)">&#127963;&#65039; Elected</span>
+      <span class="pill" data-typefilter="federal" onclick="agencyTypeClick(this)">&#127482;&#127480; Federal</span>
     </div>
     <div class="contact-grid" id="contactGrid">
       <div style="color:var(--gray);text-align:center;padding:40px 0;grid-column:1/-1;">Loading agencies&hellip;</div>
@@ -710,6 +726,7 @@
       <span class="pill" data-pfilter="recognitions" onclick="setPulseFilter(this, 'recognitions')">&#11088; Recognitions</span>
       <span class="pill" data-pfilter="concerns" onclick="setPulseFilter(this, 'concerns')">&#9888;&#65039; Concerns</span>
       <span class="pill" data-pfilter="open" onclick="setPulseFilter(this, 'open')">&#9203; Open / waiting</span>
+      <span class="pill" data-pfilter="polls" onclick="setPulseFilter(this, 'polls')">&#128499;&#65039; Polls</span>
       <span class="pill" data-pfilter="subscribed" onclick="setPulseFilter(this, 'subscribed')">&#128276; My subscriptions</span>
     </div>
     <div id="pulseStage" class="pulse-stage">
@@ -879,15 +896,31 @@
 <section id="admin">
   <div class="wrap-wide">
     <div class="ph">
-      <h2>Moderation queue</h2>
-      <p>Stories pending review before they go live. Admin only.</p>
+      <h2>Admin Console</h2>
+      <p>Everything happening on the site &mdash; moderation, users, engagement, activity log. Admin only.</p>
     </div>
     <div style="background:rgba(184,148,30,0.06);border:1px solid rgba(184,148,30,0.32);border-radius:12px;padding:16px 20px;margin-bottom:20px;font-size:0.88rem;line-height:1.55;color:var(--ink);">
-      <strong style="color:var(--accent);">&#128274; Admin access.</strong> Reach this page via <code>?admin=1</code>. Stories submitted while moderation is on go here first &mdash; approve to publish, reject with reason.
+      <strong style="color:var(--accent);">&#128274; Admin access.</strong> Reach this page via <code>?admin=1</code>. When the backend is live, this becomes the single pane of glass for the whole platform.
     </div>
-    <div id="modQueueList">
-      <div style="color:var(--gray);text-align:center;padding:40px 0;">Loading queue…</div>
+
+    <!-- Admin tab bar -->
+    <div class="admin-tabs" id="adminTabs">
+      <button class="adm-tab on" data-atab="stories"   onclick="setAdminTab('stories')">&#128221; Stories <span class="adm-badge" id="admBadgeStories">0</span></button>
+      <button class="adm-tab"    data-atab="polls"     onclick="setAdminTab('polls')">&#128499;&#65039; Polls <span class="adm-badge" id="admBadgePolls">0</span></button>
+      <button class="adm-tab"    data-atab="users"     onclick="setAdminTab('users')">&#128101; Users <span class="adm-badge" id="admBadgeUsers">0</span></button>
+      <button class="adm-tab"    data-atab="engagement" onclick="setAdminTab('engagement')">&#128202; Engagement</button>
+      <button class="adm-tab"    data-atab="activity"  onclick="setAdminTab('activity')">&#9202; Activity log</button>
+      <button class="adm-tab"    data-atab="notify"    onclick="setAdminTab('notify')">&#9993;&#65039; Notify list <span class="adm-badge" id="admBadgeNotify">0</span></button>
     </div>
+
+    <div id="admStories" class="adm-pane">
+      <div id="modQueueList"><div style="color:var(--gray);text-align:center;padding:40px 0;">Loading queue&hellip;</div></div>
+    </div>
+    <div id="admPolls" class="adm-pane" style="display:none;"><div id="admPollsList"><div style="color:var(--gray);text-align:center;padding:40px 0;">Loading poll submissions&hellip;</div></div></div>
+    <div id="admUsers" class="adm-pane" style="display:none;"><div id="admUsersList"><div style="color:var(--gray);text-align:center;padding:40px 0;">Building user index&hellip;</div></div></div>
+    <div id="admEngagement" class="adm-pane" style="display:none;"><div id="admEngagementBody"><div style="color:var(--gray);text-align:center;padding:40px 0;">Crunching numbers&hellip;</div></div></div>
+    <div id="admActivity" class="adm-pane" style="display:none;"><div id="admActivityList"><div style="color:var(--gray);text-align:center;padding:40px 0;">Loading activity&hellip;</div></div></div>
+    <div id="admNotify" class="adm-pane" style="display:none;"><div id="admNotifyList"><div style="color:var(--gray);text-align:center;padding:40px 0;">Loading notify-me list&hellip;</div></div></div>
   </div>
 </section>
 
