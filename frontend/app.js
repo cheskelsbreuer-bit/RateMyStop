@@ -1108,10 +1108,11 @@ async function openOfficer(id) {
     modal.innerHTML = `
       <div class="mo-head">
         <div class="mo-av">${(o.name || 'Unknown').split(' ').pop().slice(0, 2).toUpperCase()}</div>
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="mo-name">${escapeHtml(o.name || 'Unknown Officer')}</div>
           <div class="mo-sub">${escapeHtml(o.badge || '—')} · ${escapeHtml(o.department || 'Unknown')}</div>
         </div>
+        <button class="sub-btn ${isSubscribed(o.department) ? 'subscribed' : ''}" title="${isSubscribed(o.department) ? 'Subscribed — get alerts for new stories about this agency' : 'Subscribe to get alerts for new stories about this agency'}" onclick="event.stopPropagation(); toggleSubscribe('${escapeHtml(o.department || '').replace(/'/g, "\\'")}', this)">${isSubscribed(o.department) ? '✓ Subscribed' : '🔔 Subscribe'}</button>
       </div>
       <div class="mo-stats">
         <div class="ms-box"><div class="ms-n">${(o.avg_stars || 0).toFixed(1)}★</div><div class="ms-l">Sentiment</div></div>
@@ -1904,22 +1905,22 @@ function openStoryDetail(officerId, reviewId) {
       ${(r.tags && r.tags.length) ? r.tags.map(t => `<span class="spt" onclick="closeStoryDetail(); filterByTag('${escapeHtml(t).replace(/'/g, "\\'")}');">#${escapeHtml(t)}</span>`).join('') : ''}
     </div>
     <div class="sd-foot">
-      <div class="sd-byline">
+      <div class="sd-byline" style="width:100%;flex:1 1 100%;">
         <span class="sd-author-avatar">${escapeHtml(authorInitial)}</span>
         Posted by <strong style="color:var(--ink);cursor:pointer;text-decoration:underline;text-underline-offset:3px;" onclick="closeStoryDetail(); openAuthorProfile('${escapeHtml(author).replace(/'/g, "\\'")}');">${escapeHtml(author)}</strong>
         · ${formatDate(r.created_at)}
         ${r.upload_url ? ' · <span style="color:var(--blue);">🛡️ Verified</span>' : ''}
       </div>
-      ${reactionTotalsHtml(o.id, r.id)}
-      <div class="reaction-legend">How does this story land with you? <span class="rl-key">🙋 Me too · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span></div>
-      <div class="mr-actions" style="margin-top:8px;">
-        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">🙋 Me too</button>
-        <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious">🤔</button>
-        <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
-      </div>
+    </div>
+    ${reactionTotalsHtml(o.id, r.id)}
+    <div class="reaction-legend">How does this story land with you? <span class="rl-key">🙋 Me too · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span></div>
+    <div class="mr-actions" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">🙋 Me too</button>
+      <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
+      <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
+      <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
+      <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious">🤔</button>
+      <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
       ${(() => {
         const u = getCurrentUser();
         const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;

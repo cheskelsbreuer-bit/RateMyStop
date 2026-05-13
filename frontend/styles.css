@@ -851,7 +851,8 @@ section.active{display:block;}
 
   /* ── Pulse on phone: PAGE-LEVEL snap. Filters scroll away with the page (because they're in normal flow above the cards), and THEN each card snaps one at a time. ── */
   .pulse-stage{height:auto;overflow:visible;scroll-snap-type:none;border-radius:0;padding:0;background:transparent;}
-  .pulse-card{min-height:calc(100dvh - 84px);scroll-snap-align:start;scroll-snap-stop:always;padding:24px 20px;border-radius:18px;margin:0 0 14px;display:flex;flex-direction:column;justify-content:space-between;}
+  /* Card fits between topbar (~64px) and bottom tab bar (~78px). Was 84px which overflowed below the bar. */
+  .pulse-card{min-height:calc(100dvh - 150px);scroll-snap-align:start;scroll-snap-stop:always;padding:24px 20px;border-radius:18px;margin:0 0 14px;display:flex;flex-direction:column;justify-content:space-between;}
   .pulse-name{font-size:1.45rem;}
   .pulse-body{font-size:0.98rem;line-height:1.6;}
   .pulse-agency{font-size:0.85rem;margin-bottom:14px;}

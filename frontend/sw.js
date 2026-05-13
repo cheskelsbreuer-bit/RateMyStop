@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v39-compact-story-poll-breakdown';
-const ASSETS_BUMP_NOTE = 'Compact story-detail buttons on phone (no more stacked vertical buttons) + poll breakdown by affiliation (Republican/Democrat/Independent etc)';
+const CACHE = 'civicvoice-v40-triple-audit';
+const ASSETS_BUMP_NOTE = '3-pass audit: pulse card height fix (bottom tab overflow), story-detail layout out of sd-foot (flex collision), Subscribe button on officer modal (was missing - empty state pointed nowhere)';
 const ASSETS = [
   './',
   './index.html',
