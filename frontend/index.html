@@ -24,7 +24,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&amp;family=Epilogue:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -121,6 +123,23 @@
 <!-- Persistent escape pill (phone only, shown when on Pulse — no matter how deep you've scrolled) -->
 <button class="pulse-escape" onclick="nav('home');" aria-label="Back to home">&larr; Home</button>
 
+<!-- NOTIFY-ME MODAL — used by Where This Is Going rail + agency CTA + claim-this-profile placeholders -->
+<div class="notify-overlay" id="notifyOverlay" onclick="if(event.target===this) closeNotifyMe()">
+  <div class="notify-modal">
+    <button class="auth-close" onclick="closeNotifyMe()" aria-label="Close">&times;</button>
+    <div class="notify-eyebrow" id="notifyEyebrow">Notify me</div>
+    <div class="notify-title" id="notifyTitle">&mdash;</div>
+    <p class="notify-sub" id="notifySub">Drop your email. We'll tell you the moment this goes live &mdash; no spam, no list-selling.</p>
+    <div id="notifyForm">
+      <input type="email" id="notifyEmail" placeholder="your@email.com" autocomplete="email">
+      <button class="notify-btn" onclick="submitNotifyMe()">Keep me posted &rarr;</button>
+    </div>
+    <div class="notify-success" id="notifySuccess" style="display:none;">
+      &#10003; You're on the list. We'll reach out the moment this opens.
+    </div>
+  </div>
+</div>
+
 <!-- Mobile nav drawer — slides in from the right on phones -->
 <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" onclick="closeMobileDrawer()"></div>
 <aside class="mobile-drawer" id="mobileDrawer" role="dialog" aria-label="Navigation">
@@ -173,6 +192,34 @@
     <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Agencies on record</div></div>
     <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">People documented</div></div>
   </div>
+
+  <!-- WHERE THIS IS GOING — visible roadmap so people see the ambition past the local launch -->
+  <div class="vision-rail">
+    <div class="vision-rail-head">
+      <h3>Where this is going</h3>
+      <span class="vr-sub">The roadmap — public, on the record.</span>
+    </div>
+    <div class="vision-rail-grid">
+      <button class="vr-card" onclick="openNotifyMe('Agency review-request links', 'agency-links')">
+        <div class="vr-icon">&#9993;&#65039;</div>
+        <div class="vr-title">Agency review-request links</div>
+        <div class="vr-desc">After a 911 call, ER visit, or DMV appointment, agencies send a one-tap anonymous review link &mdash; like Google Reviews for public service.</div>
+        <span class="vr-pill">Soon &middot; Notify me</span>
+      </button>
+      <button class="vr-card" onclick="openNotifyMe('State + Federal officials', 'state-federal')">
+        <div class="vr-icon">&#127963;&#65039;</div>
+        <div class="vr-title">State + Federal officials</div>
+        <div class="vr-desc">Governor, senators, congress, the president &mdash; profiles open for review once claimed. So every public servant, top to bottom, is on the same record.</div>
+        <span class="vr-pill">Next &middot; Notify me</span>
+      </button>
+      <button class="vr-card" onclick="openNotifyMe('Rate legislation & board votes', 'rate-affairs')">
+        <div class="vr-icon">&#128221;</div>
+        <div class="vr-title">Rate legislation &amp; board votes</div>
+        <div class="vr-desc">Not just people &mdash; the decisions. School board votes, ballot measures, legislation. With sources and dissent built in.</div>
+        <span class="vr-pill">Big &middot; Notify me</span>
+      </button>
+    </div>
+  </div>
 </section>
 
 <!-- SHARE A MOMENT — story-first, role-adaptive civic record -->
@@ -224,6 +271,8 @@
             <span class="role-pill" data-role="dmv"      onclick="setRole(this, 'dmv')">&#129411; DMV Worker</span>
             <span class="role-pill" data-role="hospital" onclick="setRole(this, 'hospital')">&#127973; Hospital Staff</span>
             <span class="role-pill" data-role="gov"      onclick="setRole(this, 'gov')">&#128104;&#8205;&#128188; Gov't Worker</span>
+            <span class="role-pill" data-role="school"   onclick="setRole(this, 'school')">&#127891; School Board</span>
+            <span class="role-pill" data-role="elected"  onclick="setRole(this, 'elected')">&#127963;&#65039; Local Elected</span>
           </div>
           <div style="font-size:0.78rem;color:var(--gray);margin-top:10px;">Every category is on the record. Pick one to continue.</div>
         </div>
@@ -443,6 +492,8 @@
       <span class="pill" data-rolefilter="dmv" onclick="pillClick(this)">&#129411; DMV</span>
       <span class="pill" data-rolefilter="hospital" onclick="pillClick(this)">&#127973; Hospital</span>
       <span class="pill" data-rolefilter="gov" onclick="pillClick(this)">&#128104;&#8205;&#128188; Gov't</span>
+      <span class="pill" data-rolefilter="school" onclick="pillClick(this)">&#127891; School</span>
+      <span class="pill" data-rolefilter="elected" onclick="pillClick(this)">&#127963;&#65039; Elected</span>
       <span class="pill" data-rolefilter="top" onclick="pillClick(this)">&#11088; Recognitions only</span>
     </div>
 
@@ -460,7 +511,7 @@
     </div>
 
     <div style="text-align:center;padding:24px 0;">
-      <p style="color:var(--gray);font-size:0.9rem;">Got a story we should hear? <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:'Epilogue',sans-serif;font-size:0.9rem;text-decoration:underline;font-weight:600;">Share it &rarr;</button></p>
+      <p style="color:var(--gray);font-size:0.9rem;">Got a story we should hear? <button onclick="nav('share')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:0.9rem;text-decoration:underline;font-weight:600;">Share it &rarr;</button></p>
     </div>
   </div>
 </section>
@@ -494,7 +545,7 @@
   <div class="story-detail" style="max-width:520px;">
     <button class="auth-close" onclick="closeNotifPrefs()" aria-label="Close">&times;</button>
     <div class="sd-eyebrow">SETTINGS</div>
-    <h3 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);">Notification preferences</h3>
+    <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);">Notification preferences</h3>
     <p style="color:var(--light);font-size:0.92rem;line-height:1.55;margin-bottom:18px;">Pick where each kind of event reaches you. Bell shows in the topbar, Push wakes your phone, Email arrives on a weekly digest.</p>
     <div id="notifPrefsBody"></div>
   </div>
@@ -505,7 +556,7 @@
   <div class="story-detail" style="max-width:760px;">
     <button class="auth-close" onclick="closeRedact()" aria-label="Close">&times;</button>
     <div class="sd-eyebrow">PRIVACY · PHOTO REDACTION</div>
-    <h3 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);">Hide what shouldn't be seen</h3>
+    <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);">Hide what shouldn't be seen</h3>
     <p style="color:var(--light);font-size:0.92rem;line-height:1.55;margin-bottom:18px;">Draw rectangles over faces, license plates, or anything else that shouldn't be public. The redacted version is what we save — the original never leaves this device.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
       <button class="sp-action ${''}" id="redactModePixel" onclick="setRedactMode('pixel')">🟦 Pixelate</button>
@@ -549,13 +600,13 @@
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
-      <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;">&#128205; New York Agency Directory</h3>
+      <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.1rem;font-weight:800;">&#128205; New York Agency Directory</h3>
       <div style="font-size:0.78rem;color:var(--gray);"><span id="deptCount">&mdash;</span> agencies &middot; <span style="color:var(--green);">&#10003; Verified contacts</span></div>
     </div>
 
     <div class="search-bar-wrap" style="margin-bottom:10px;">
       <input type="text" id="deptSearch" placeholder="Search by agency name, town, or county&hellip;" oninput="renderDepartments()">
-      <select id="deptRegion" onchange="renderDepartments()" style="background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--white);font-family:'Epilogue',sans-serif;font-size:0.93rem;outline:none;cursor:pointer;">
+      <select id="deptRegion" onchange="renderDepartments()" style="background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--white);font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:0.93rem;outline:none;cursor:pointer;">
         <option value="">All regions</option>
       </select>
     </div>
@@ -671,7 +722,7 @@
     <div id="mapShell" style="position:relative;border:1px solid var(--border);border-radius:16px;overflow:hidden;height:560px;background:var(--bg2);">
       <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
         <div style="font-size:3rem;margin-bottom:14px;">&#128205;</div>
-        <h3 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:10px;color:var(--ink);">Map view &mdash; coming online soon</h3>
+        <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:10px;color:var(--ink);">Map view &mdash; coming online soon</h3>
         <p style="max-width:520px;color:var(--gray);line-height:1.6;margin-bottom:18px;">When this turns on, every story you scroll in the feed will also have a pin here. Filter by category, zoom in on a neighborhood, click any pin to read the moment.</p>
         <p style="font-size:0.85rem;color:var(--accent);font-weight:600;">Free to operate &mdash; runs on Leaflet + OpenStreetMap. No API costs.</p>
         <button class="btn-ghost" style="margin-top:20px;" onclick="alert('We need lat/lng on each story. Geolocation auto-fill is live — give it 2-3 weeks of real submissions and the map switches on automatically.');">Why isn't it live yet?</button>
@@ -690,6 +741,17 @@
 
     <div id="orgCurrent" style="display:none;margin-bottom:22px;"></div>
 
+    <!-- Coming Soon: agency review-request links — the growth lever -->
+    <div class="agency-cta">
+      <div class="ac-icon">&#9993;&#65039;</div>
+      <div class="ac-body">
+        <div class="ac-eyebrow">Coming Q3 2026</div>
+        <div class="ac-title">Send anonymous review-request links after every visit</div>
+        <div class="ac-desc">After a 911 call, ER visit, or appointment, send a one-tap anonymous review link to the people you served &mdash; like Google Reviews, but for public service. Your agency rating becomes a real public-record signal that drives funding, hiring, and trust.</div>
+        <button class="ac-btn" onclick="openNotifyMe('Agency review-request links', 'agency-links-orgs')">Notify my agency &rarr;</button>
+      </div>
+    </div>
+
     <div class="rcard">
       <div class="fl">
         <label>Your work email</label>
@@ -705,7 +767,7 @@
     </div>
 
     <div style="margin-top:30px;padding:22px;background:var(--bg2);border-radius:14px;border:1px solid var(--border);">
-      <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;margin-bottom:10px;">What you can do once verified</h3>
+      <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1rem;font-weight:800;margin-bottom:10px;">What you can do once verified</h3>
       <ul style="color:var(--light);font-size:0.9rem;line-height:1.8;padding-left:18px;">
         <li>Reply to any story about your agency with a <strong style="color:var(--green);">&#9989; Verified [Your Agency]</strong> badge</li>
         <li>Subscribe to alerts when new stories mention your agency</li>
@@ -765,7 +827,7 @@
       </div>
     </div>
 
-    <h3 style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:16px;">Who Sponsors CivicVoice</h3>
+    <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:16px;">Who Sponsors CivicVoice</h3>
     <div class="funnel">
       <div class="fs"><div class="fs-ic">&#127891;</div><div class="fs-t">Civic Foundations</div><div class="fs-d">Open-government and accountability orgs underwriting visibility</div></div>
       <div class="fs"><div class="fs-ic">&#127973;</div><div class="fs-t">Health Systems</div><div class="fs-d">Hospitals and EMS networks tracking patient-facing sentiment</div></div>

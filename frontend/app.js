@@ -22,7 +22,47 @@ const RESOLUTIONS_KEY = 'civicvoice_resolutions_v1';   // resolution status over
 const NOTIFS_KEY = 'civicvoice_notifs_v1';             // notifications for current user
 const NOTIF_PREFS_KEY = 'civicvoice_notif_prefs_v1';   // per-event notification preferences
 const PULSE_PREFS_KEY = 'civicvoice_pulse_prefs_v1';   // learned preferences (role/sentiment/agency)
+const NOTIFY_LIST_KEY = 'civicvoice_notify_list_v1';   // email capture for "Coming Soon" features
 let _pendingAuthAction = null;
+
+// ── NOTIFY-ME MODAL ──
+// Used by: "Where this is going" home rail · agency review-request CTA · claim-this-profile placeholders.
+// Real backend wiring later: POST to /api/notify with { topic, email } — for now we localStorage and
+// surface in admin so you can see who's interested in what.
+let _notifyTopic = '';
+function openNotifyMe(title, topic) {
+  _notifyTopic = topic || title;
+  const t = document.getElementById('notifyTitle');
+  const sub = document.getElementById('notifySub');
+  const form = document.getElementById('notifyForm');
+  const ok = document.getElementById('notifySuccess');
+  if (t) t.textContent = title;
+  if (sub) sub.textContent = `Drop your email. We'll tell you the moment "${title}" goes live — no spam, no list-selling.`;
+  if (form) form.style.display = 'block';
+  if (ok) ok.style.display = 'none';
+  const overlay = document.getElementById('notifyOverlay');
+  if (overlay) overlay.classList.add('show');
+  setTimeout(() => { const e = document.getElementById('notifyEmail'); if (e) e.focus(); }, 80);
+}
+function closeNotifyMe() {
+  const overlay = document.getElementById('notifyOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
+function submitNotifyMe() {
+  const emailEl = document.getElementById('notifyEmail');
+  const email = (emailEl && emailEl.value || '').trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (emailEl) { emailEl.style.borderColor = 'var(--red)'; emailEl.focus(); }
+    return;
+  }
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(NOTIFY_LIST_KEY) || '[]'); } catch {}
+  list.push({ email, topic: _notifyTopic, ts: new Date().toISOString() });
+  localStorage.setItem(NOTIFY_LIST_KEY, JSON.stringify(list));
+  document.getElementById('notifyForm').style.display = 'none';
+  document.getElementById('notifySuccess').style.display = 'block';
+  if (emailEl) emailEl.value = '';
+}
 
 function getCurrentUser() {
   try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); }
@@ -822,26 +862,32 @@ function renderOfficers(list) {
     grid.innerHTML = '<div style="color:var(--gray);text-align:center;padding:40px 0;">Nothing matches yet. Be the first — <button onclick="nav(\'share\')" style="background:none;border:none;color:var(--accent);cursor:pointer;text-decoration:underline;font-family:inherit;font-size:inherit;">share a story</button>.</div>';
     return;
   }
-  const ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
-  const ROLE_LABEL = { police:'POLICE', emt:'EMT / EMS', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOVERNMENT' };
+  const ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼', school:'🎓', elected:'🏛️', federal:'🇺🇸' };
+  const ROLE_LABEL = { police:'POLICE', emt:'EMT / EMS', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOVERNMENT', school:'SCHOOL BOARD', elected:'LOCAL ELECTED', federal:'STATE / FEDERAL' };
   grid.innerHTML = list.map(o => {
     const role = inferRole(o);
     const stars = Math.round(o.avg_stars || 0);
+    const isClaim = !!o.claim_only;
     return `
-    <div class="officer-card role-${role}" onclick="openOfficer(${o.id})">
-      <div class="oc-eyebrow">${ICON[role] || '👤'} ${ROLE_LABEL[role] || ''}</div>
+    <div class="officer-card role-${role}${isClaim ? ' claim-only' : ''}" onclick="openOfficer(${o.id})">
+      <div class="oc-eyebrow">${ICON[role] || '👤'} ${ROLE_LABEL[role] || ''}${isClaim ? ' · UNCLAIMED' : ''}</div>
       <div class="oc-name">${escapeHtml(o.name || 'Unknown')}</div>
       <div class="oc-dept">${escapeHtml(o.department || 'Unknown agency')}</div>
-      <div class="oc-stat-row">
-        <span class="oc-stars">${starsStr(stars)}</span>
-        <span class="oc-avg">${(o.avg_stars || 0).toFixed(1)}</span>
-      </div>
-      <div class="oc-meta">
-        ${o.fair_count > 0 ? `<span class="oc-chip fair">★ ${o.fair_count}</span>` : ''}
-        ${o.unfair_count > 0 ? `<span class="oc-chip unfair">⚠ ${o.unfair_count}</span>` : ''}
-        <span class="oc-count">${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'}</span>
-      </div>
-      <button class="oc-view">View profile &rarr;</button>
+      ${isClaim ? `
+        <div class="oc-claim-note">This profile is unclaimed. Reviews open once the official (or their office) claims it. <strong>If this is you — claim it.</strong></div>
+        <button class="oc-view" onclick="event.stopPropagation(); openNotifyMe('Claim this profile: ${escapeHtml(o.name).replace(/'/g, "\\'")}', 'claim-${o.id}');">Claim this profile &rarr;</button>
+      ` : `
+        <div class="oc-stat-row">
+          <span class="oc-stars">${starsStr(stars)}</span>
+          <span class="oc-avg">${(o.avg_stars || 0).toFixed(1)}</span>
+        </div>
+        <div class="oc-meta">
+          ${o.fair_count > 0 ? `<span class="oc-chip fair">★ ${o.fair_count}</span>` : ''}
+          ${o.unfair_count > 0 ? `<span class="oc-chip unfair">⚠ ${o.unfair_count}</span>` : ''}
+          <span class="oc-count">${o.review_count} stor${o.review_count === 1 ? 'y' : 'ies'}</span>
+        </div>
+        <button class="oc-view">View profile &rarr;</button>
+      `}
     </div>
   `;}).join('');
 }
@@ -883,6 +929,28 @@ async function openOfficer(id) {
       for (const r of o.reviews) {
         _streamIndex[`${o.id}:${r.id}`] = { officer: o, review: r, role: inferRole(o) };
       }
+    }
+    // Claim-only profiles (state/federal placeholders): no reviews yet, show claim CTA only
+    if (o.claim_only) {
+      modal.innerHTML = `
+        <div class="mo-head">
+          <div class="mo-av">${(o.name || 'Unknown').split(' ').pop().slice(0, 2).toUpperCase()}</div>
+          <div>
+            <div class="mo-name">${escapeHtml(o.name || 'Unknown')}</div>
+            <div class="mo-sub">${escapeHtml(o.department || 'Unknown')}</div>
+          </div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px;">
+          <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--accent);font-weight:800;margin-bottom:8px;">Unclaimed profile</div>
+          <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;color:var(--ink);margin-bottom:10px;letter-spacing:-0.2px;">No reviews on this profile yet.</div>
+          <div style="font-size:0.9rem;color:var(--light);line-height:1.6;margin-bottom:16px;">
+            This profile exists on the record so the role is visible &mdash; but reviews and ratings open only once <strong>${escapeHtml(o.name || 'this official')}</strong> or their office <strong>claims it</strong>. That keeps the record fair: every state and federal official can answer for themselves.
+          </div>
+          <button class="ac-btn" onclick="openNotifyMe('Claim this profile: ${escapeHtml(o.name).replace(/'/g, "\\'")}', 'claim-${o.id}');">If this is you &mdash; claim this profile &rarr;</button>
+        </div>
+        <button class="btn-ghost" style="width:100%;margin-top:8px;" onclick="document.getElementById('officerModal').classList.remove('show');">Close</button>
+      `;
+      return;
     }
     modal.innerHTML = `
       <div class="mo-head">
@@ -1273,8 +1341,12 @@ function pillClick(el) {
 }
 
 function inferRole(o) {
+  if (o.role) return o.role;  // explicit role wins (used for elected officials, school board, etc.)
   const d = (o.department || '').toLowerCase();
   const n = (o.name || '').toLowerCase();
+  if (/\b(school board|board of ed|district)\b/.test(d) || /\b(trustee|board member|superintendent)\b/.test(n)) return 'school';
+  if (/\b(village|town|city council|county legislat|mayor's office|board of trustees)\b/.test(d) || /\b(mayor|trustee|councilmember|legislator|supervisor)\b/.test(n)) return 'elected';
+  if (/\b(senate|congress|governor's office|white house|u\.s\.|federal)\b/.test(d) || /\b(senator|congress|governor|president|representative)\b/.test(n)) return 'federal';
   if (/\b(ems|ambulance|paramedic)\b/.test(d) || /\b(emt|paramedic|lt\. paramedic)\b/.test(n)) return 'emt';
   if (/\b(fire|fd|engine|hose)\b/.test(d) || /\b(firefighter|capt\.|lt\. firefighter)\b/.test(n)) return 'fire';
   if (/\bdmv\b/.test(d) || /\b(clerk|window)\b/.test(n)) return 'dmv';
@@ -1303,8 +1375,8 @@ function applyFilters() {
   renderStream(list, q);
 }
 
-const ROLE_ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼' };
-const ROLE_NAME = { police:'POLICE', emt:'EMT', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOV\'T' };
+const ROLE_ICON = { police:'🚔', emt:'🚑', fire:'🚒', dmv:'🪪', hospital:'🏥', gov:'👨‍💼', school:'🎓', elected:'🏛️', federal:'🇺🇸' };
+const ROLE_NAME = { police:'POLICE', emt:'EMT', fire:'FIRE', dmv:'DMV', hospital:'HOSPITAL', gov:'GOV\'T', school:'SCHOOL BOARD', elected:'LOCAL ELECTED', federal:'STATE / FEDERAL' };
 const STORY_PREVIEW_CHARS = 280;
 let _streamIndex = {};  // map of `${officerId}:${reviewId}` → {officer, review, role}
 
@@ -1616,7 +1688,7 @@ function openAuthorProfile(handle) {
   body.innerHTML = `
     <div class="sd-eyebrow">Contributor</div>
     <div class="sd-head">
-      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;">${escapeHtml(initial)}</div>
+      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:1.6rem;">${escapeHtml(initial)}</div>
       <div class="sd-who">
         <div class="sd-name" style="cursor:default;">${escapeHtml(handle)}${isCurrentUser ? ' <span style="font-size:0.7rem;color:var(--accent);font-weight:600;background:var(--accent-soft);border:1px solid rgba(184,148,30,0.3);border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle;">You</span>' : ''}</div>
         <div class="sd-agency">${total} stor${total === 1 ? 'y' : 'ies'} on the record · sentiment <strong style="color:${toneColor};">${tone}</strong></div>
@@ -2050,7 +2122,7 @@ function openDMs() {
   body.innerHTML = `
     <div class="sd-eyebrow">YOUR INBOX</div>
     <div class="sd-head" style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px;">
-      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;">${escapeHtml(myHandle.charAt(0).toUpperCase())}</div>
+      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:1.4rem;">${escapeHtml(myHandle.charAt(0).toUpperCase())}</div>
       <div class="sd-who">
         <div class="sd-name" style="cursor:default;">Messages</div>
         <div class="sd-agency">${myThreads.length} thread${myThreads.length === 1 ? '' : 's'}</div>
@@ -2092,7 +2164,7 @@ function openDMThread(otherHandle) {
   body.innerHTML = `
     <div class="sd-eyebrow"><button onclick="openDMs()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-family:inherit;font-size:inherit;letter-spacing:inherit;font-weight:inherit;">&larr; Inbox</button></div>
     <div class="sd-head" style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px;">
-      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;">${escapeHtml(otherHandle.charAt(0).toUpperCase())}</div>
+      <div class="sd-icon" style="background:var(--accent-soft);color:var(--accent);font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:1.4rem;">${escapeHtml(otherHandle.charAt(0).toUpperCase())}</div>
       <div class="sd-who">
         <div class="sd-name" onclick="openAuthorProfile('${escapeHtml(otherHandle).replace(/'/g, "\\'")}');">${escapeHtml(otherHandle)}</div>
         <div class="sd-agency">${msgs.length} message${msgs.length === 1 ? '' : 's'}</div>
@@ -2932,7 +3004,7 @@ function openAdminReview(pendingId) {
   const body = document.getElementById('storyDetailBody');
   body.innerHTML = `
     <div class="sd-eyebrow" style="color:var(--red);">🛡️ ADMIN REVIEW</div>
-    <h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin-bottom:6px;">Pending submission</h3>
+    <h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin-bottom:6px;">Pending submission</h3>
     <div style="color:var(--gray);font-size:0.86rem;margin-bottom:18px;">Submitted ${formatDate(item.submitted_at)} · ID <code style="font-family:Mono,monospace;font-size:0.78rem;background:var(--bg2);padding:2px 6px;border-radius:4px;">${item.pending_id}</code></div>
 
     <!-- Abuse / quality signals -->
@@ -3233,24 +3305,24 @@ function openDepartmentDetail(deptName) {
     <!-- Resolution stats -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px;">
       <div style="background:rgba(31,140,95,0.06);border:1px solid rgba(31,140,95,0.32);border-radius:10px;padding:14px;text-align:center;">
-        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--green);">${resStats.responseRate}%</div>
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--green);">${resStats.responseRate}%</div>
         <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Response rate</div>
       </div>
       <div style="background:rgba(184,148,30,0.06);border:1px solid rgba(184,148,30,0.3);border-radius:10px;padding:14px;text-align:center;">
-        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--accent);">${resStats.open}</div>
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--accent);">${resStats.open}</div>
         <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Open</div>
       </div>
       <div style="background:rgba(37,109,217,0.06);border:1px solid rgba(37,109,217,0.32);border-radius:10px;padding:14px;text-align:center;">
-        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--blue);">${resStats.acknowledged}</div>
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--blue);">${resStats.acknowledged}</div>
         <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Acknowledged</div>
       </div>
       <div style="background:rgba(31,140,95,0.06);border:1px solid rgba(31,140,95,0.32);border-radius:10px;padding:14px;text-align:center;">
-        <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--green);">${resStats.resolved}</div>
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--green);">${resStats.resolved}</div>
         <div style="font-size:0.74rem;color:var(--gray);text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Resolved</div>
       </div>
     </div>
 
-    <h4 style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:12px;">People (${matches.length})</h4>
+    <h4 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:12px;">People (${matches.length})</h4>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
       ${matches.slice(0, 12).map(o => {
         const role = inferRole(o);
@@ -3270,7 +3342,7 @@ function openDepartmentDetail(deptName) {
       ${matches.length > 12 ? `<div style="font-size:0.82rem;color:var(--gray);text-align:center;padding:6px;">+ ${matches.length - 12} more</div>` : ''}
     </div>
 
-    <h4 style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:12px;">Latest stories</h4>
+    <h4 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:12px;">Latest stories</h4>
     <div style="display:flex;flex-direction:column;gap:10px;">
       ${recentStories.map(it => {
         const o = it.officer;

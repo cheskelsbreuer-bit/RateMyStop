@@ -232,6 +232,125 @@
           created_at: '2026-05-08T10:00:00Z' },
       ],
     },
+
+    // ─── SCHOOL BOARD (East Ramapo CSD) ───
+    {
+      id: 500050, name: 'Board Member Y. Weissmandel', role: 'school', department: 'East Ramapo Central School District',
+      avg_stars: 3, review_count: 2, fair_count: 1, unfair_count: 1,
+      reviews: [
+        { id: 600050, verdict: 'fair', stars: 4,
+          story: "Showed up to the November board meeting about busing changes. Heard the parents out. Didn't rush. Said he'd follow up — and he did, within the week. Rare.",
+          location: 'Spring Valley', tags: ['responsive','transparent'],
+          author_display: 'Anonymous-5520',
+          created_at: '2026-05-09T20:14:00Z' },
+        { id: 600051, verdict: 'unfair', stars: 2,
+          story: "Voted yes on the bus contract change without explaining how it affects the special-ed routes. Three parents asked. He said 'we'll review.' That was two months ago.",
+          location: 'Spring Valley', tags: ['no-follow-through'],
+          author_display: 'Anonymous-8812',
+          created_at: '2026-04-22T19:30:00Z' },
+      ],
+    },
+    {
+      id: 500051, name: 'Trustee S. Goldberg', role: 'school', department: 'East Ramapo Central School District',
+      avg_stars: 4, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [
+        { id: 600052, verdict: 'fair', stars: 4,
+          story: "Sat with us after the meeting for 40 minutes. Took notes. Pushed back politely on a few things — but she actually engaged. Felt heard.",
+          location: 'Monsey', tags: ['engaged','listens'],
+          author_display: 'Anonymous-6633',
+          created_at: '2026-05-05T21:00:00Z' },
+      ],
+    },
+    {
+      id: 500052, name: 'Superintendent Dr. M. Rivera', role: 'school', department: 'East Ramapo Central School District',
+      avg_stars: 4, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [
+        { id: 600053, verdict: 'fair', stars: 4,
+          story: "Sent a personal email back within 24 hours when I asked about IEP delays. Didn't deflect. Got me a meeting with the team the next week.",
+          location: 'Spring Valley', tags: ['responsive','accountable'],
+          author_display: 'Anonymous-2204',
+          created_at: '2026-05-07T14:18:00Z' },
+      ],
+    },
+
+    // ─── LOCAL ELECTED (Spring Valley Village + Rockland County) ───
+    {
+      id: 500060, name: 'Mayor Alan Simon', role: 'elected', department: 'Village of Spring Valley',
+      avg_stars: 4, review_count: 2, fair_count: 2, unfair_count: 0,
+      reviews: [
+        { id: 600060, verdict: 'fair', stars: 4,
+          story: "Showed up at the Skylark Drive flooding meeting. Actually walked the block with us. Didn't promise the moon — gave us a 60-day timeline and stuck to it.",
+          location: 'Spring Valley', tags: ['accessible','keeps-promises'],
+          author_display: 'Anonymous-1098',
+          created_at: '2026-05-04T18:00:00Z' },
+        { id: 600061, verdict: 'fair', stars: 5,
+          story: "Came to my dad's funeral. He didn't know my dad — just heard he'd been a long-time resident. That mattered to my mom more than I can explain.",
+          location: 'Spring Valley', tags: ['kind','community-presence'],
+          author_display: 'Anonymous-7714',
+          created_at: '2026-04-29T16:45:00Z' },
+      ],
+    },
+    {
+      id: 500061, name: 'Trustee Asher Grossman', role: 'elected', department: 'Village of Spring Valley',
+      avg_stars: 3, review_count: 1, fair_count: 0, unfair_count: 1,
+      reviews: [
+        { id: 600062, verdict: 'unfair', stars: 2,
+          story: "Asked three times at public comment about the recycling pickup change. He cut me off twice and the third time I just gave up. We need our trustees to listen, not just talk.",
+          location: 'Spring Valley', tags: ['dismissive'],
+          author_display: 'Anonymous-3389',
+          created_at: '2026-05-02T19:55:00Z' },
+      ],
+    },
+    {
+      id: 500062, name: 'Legislator Aron Wieder', role: 'elected', department: 'Rockland County Legislature, District 13',
+      avg_stars: 5, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [
+        { id: 600063, verdict: 'fair', stars: 5,
+          story: "Helped us cut through county red tape on a senior-housing permit. Two phone calls, one email — six months of stalling became a yes. He just does the work.",
+          location: 'New Hempstead', tags: ['effective','gets-things-done'],
+          author_display: 'Anonymous-5511',
+          created_at: '2026-05-06T11:20:00Z' },
+      ],
+    },
+    {
+      id: 500063, name: 'Supervisor Michael Specht', role: 'elected', department: 'Town of Ramapo',
+      avg_stars: 4, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [
+        { id: 600064, verdict: 'fair', stars: 4,
+          story: "Town hall on the proposed development at Route 59. He stayed past 10pm so every resident got a turn at the mic. Disagreed with some of us politely. Showed respect.",
+          location: 'Suffern', tags: ['patient','respectful'],
+          author_display: 'Anonymous-9920',
+          created_at: '2026-05-08T22:15:00Z' },
+      ],
+    },
+
+    // ─── STATE / FEDERAL — CLAIM-ONLY PLACEHOLDERS ───
+    // No stories yet. Profile is unclaimed; reviews open when the official (or their office) claims.
+    {
+      id: 500070, name: 'Gov. Kathy Hochul', role: 'federal', department: "Governor's Office, New York State",
+      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
+      claim_only: true,
+    },
+    {
+      id: 500071, name: 'Sen. Chuck Schumer', role: 'federal', department: 'U.S. Senate, New York',
+      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
+      claim_only: true,
+    },
+    {
+      id: 500072, name: 'Sen. Kirsten Gillibrand', role: 'federal', department: 'U.S. Senate, New York',
+      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
+      claim_only: true,
+    },
+    {
+      id: 500073, name: 'Rep. Mike Lawler', role: 'federal', department: 'U.S. Congress, NY-17',
+      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
+      claim_only: true,
+    },
+    {
+      id: 500074, name: 'The President', role: 'federal', department: 'The White House',
+      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
+      claim_only: true,
+    },
   ];
 
   // Append to STATIC_DATA so existing renderers pick them up

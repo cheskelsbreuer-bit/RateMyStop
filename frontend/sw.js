@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v27-pulse-page-snap';
-const ASSETS_BUMP_NOTE = 'page-level snap so filters actually scroll away';
+const CACHE = 'civicvoice-v28-fonts-roles-roadmap';
+const ASSETS_BUMP_NOTE = 'Inter+Bricolage fonts, school+elected+federal roles, Where-this-is-going rail, Notify-me modal, agency review-request CTA, claim-only profiles, tablet+desktop breakpoints';
 const ASSETS = [
   './',
   './index.html',
