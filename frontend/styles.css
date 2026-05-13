@@ -1024,6 +1024,31 @@ section.active{display:block;}
 .pulse-poll-card{background:linear-gradient(160deg, var(--card), rgba(184,148,30,0.04));}
 .pulse-poll-card::before{height:160px;background:linear-gradient(180deg, rgba(184,148,30,0.18), transparent);}
 
+/* Reaction summary — the visible counts above the legend */
+.reaction-summary{display:flex;flex-wrap:wrap;gap:10px;font-size:0.86rem;color:var(--light);margin:14px 0 0;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;align-items:center;font-weight:600;}
+.reaction-summary .rs-sep{color:var(--border);}
+.reaction-summary span{display:inline-flex;align-items:center;gap:4px;}
+@media(max-width:700px){
+  .reaction-summary{font-size:0.78rem;gap:8px;padding:8px 10px;}
+}
+
+/* "Top reacted right now" rail at the top of Pulse — horizontal scrollable, three cards */
+.top-reacted-rail{padding:18px 4px 22px;margin-bottom:14px;border-bottom:1px solid var(--border);}
+.trr-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;padding:0 6px;flex-wrap:wrap;}
+.trr-title{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;color:var(--ink);letter-spacing:-0.3px;}
+.trr-sub{font-size:0.78rem;color:var(--gray);}
+.trr-list{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 10px;scroll-snap-type:x proximity;}
+.trr-list::-webkit-scrollbar{display:none;}
+.trr-card{flex:0 0 260px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;scroll-snap-align:start;transition:all 0.2s;}
+.trr-card:hover{border-color:rgba(184,148,30,0.5);transform:translateY(-2px);box-shadow:0 14px 36px rgba(15,15,19,0.08);}
+.trr-eyebrow{font-size:0.62rem;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;margin-bottom:6px;}
+.trr-name{font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--ink);margin-bottom:6px;line-height:1.2;letter-spacing:-0.3px;}
+.trr-snippet{font-size:0.84rem;color:var(--light);line-height:1.45;margin-bottom:8px;}
+.trr-total{font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.8px;}
+@media(max-width:700px){
+  .trr-card{flex:0 0 230px;padding:12px 14px;}
+}
+
 /* Reaction legend — one-line "what do these mean" key above the buttons */
 .reaction-legend{font-size:0.72rem;color:var(--gray);margin:14px 0 8px;padding:8px 12px;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;line-height:1.5;}
 .reaction-legend .rl-key{color:var(--light);font-weight:600;}

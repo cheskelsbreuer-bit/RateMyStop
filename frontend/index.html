@@ -92,6 +92,7 @@
       <button class="um-item" onclick="nav('share'); closeUserMenu();">&#9998; Share another story</button>
       <button class="um-item" onclick="openNotifPrefs()">&#9881;&#65039; Notification preferences</button>
       <button class="um-item" onclick="togglePushNotifications()" id="umPush">&#128276; Push notifications: off</button>
+      <button class="um-item" onclick="toggleReactionSound()" id="umSound"><span id="umSoundLabel">&#128264; Reaction sounds: off</span></button>
       <button class="um-item" onclick="toggleEmailDigest()" id="umEmailDigest">&#9993;&#65039; Weekly digest: off</button>
       <button class="um-item" onclick="signOut(); closeUserMenu();">&#128682; Sign out</button>
     </div>
@@ -521,7 +522,7 @@
   <div class="wrap-wide">
     <div class="ph"><h2>Stories</h2><p>Real moments people had with real public servants. Read individual stories &mdash; or tap a name to see their full record.</p></div>
     <div class="search-bar-wrap">
-      <input type="text" id="officerSearch" placeholder="Search by name, agency, or what happened&hellip;" oninput="searchOfficers()">
+      <input type="text" id="officerSearch" placeholder="Search by name, agency, or @Anonymous-XXXX for an author&hellip;" oninput="searchOfficers()">
       <button onclick="searchOfficers()">Search</button>
     </div>
     <div class="pills" id="rolePillFilter">

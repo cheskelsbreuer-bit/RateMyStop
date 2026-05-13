@@ -23,7 +23,145 @@ const NOTIFS_KEY = 'civicvoice_notifs_v1';             // notifications for curr
 const NOTIF_PREFS_KEY = 'civicvoice_notif_prefs_v1';   // per-event notification preferences
 const PULSE_PREFS_KEY = 'civicvoice_pulse_prefs_v1';   // learned preferences (role/sentiment/agency)
 const NOTIFY_LIST_KEY = 'civicvoice_notify_list_v1';   // email capture for "Coming Soon" features
+const REACTIONS_KEY = 'civicvoice_reactions_v1';       // per-story reaction counts visible to all
+const MY_REACTIONS_KEY = 'civicvoice_my_reactions_v1'; // which reactions THIS user has placed (prevents double-count)
+const LAST_NOTIF_KEY = 'civicvoice_last_notif_v1';     // last time we fired a daily notif (ISO)
+const SOUND_ENABLED_KEY = 'civicvoice_sound_v1';       // 'on' | 'off' for reaction sound
 let _pendingAuthAction = null;
+
+// ── DAILY LOCAL NOTIFICATION ──
+// Fires a single browser notification when the user opens the app after >24h, IF they granted push.
+// Local-only stand-in for a real backend push service (FCM/APNs/web-push). Real version coming with backend.
+function _maybeFireDailyNotif() {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    const last = localStorage.getItem(LAST_NOTIF_KEY);
+    if (last) {
+      const diff = (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60);
+      if (diff < 22) return;  // <22h since last — don't spam
+    }
+    // Count new stories in the last day to make the message specific
+    const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+    const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    let recent = 0;
+    officers.forEach(o => (o.reviews || []).forEach(r => {
+      if (new Date(r.created_at || 0).getTime() > dayAgo) recent++;
+    }));
+    const body = recent > 0
+      ? `${recent} new ${recent === 1 ? 'story' : 'stories'} since yesterday. Stay current with what's on the record.`
+      : `Quiet day on the record. Check the Polls — your take counts.`;
+    new Notification('CivicVoice', { body, icon: './manifest-icon-192.png', tag: 'civicvoice-daily' });
+    localStorage.setItem(LAST_NOTIF_KEY, new Date().toISOString());
+  } catch (err) {
+    console.warn('daily notif fail:', err);
+  }
+}
+
+// ── REACTION SOUND ──
+// Soft civic bell on every reaction tap. Off by default, opt-in via user menu.
+let _audioCtx = null;
+function _initSoundToggle() {
+  const lbl = document.getElementById('umSoundLabel');
+  if (lbl) lbl.textContent = _isSoundOn() ? '🔊 Reaction sounds: on' : '🔇 Reaction sounds: off';
+}
+function _isSoundOn() { return localStorage.getItem(SOUND_ENABLED_KEY) === 'on'; }
+function toggleReactionSound() {
+  const next = _isSoundOn() ? 'off' : 'on';
+  localStorage.setItem(SOUND_ENABLED_KEY, next);
+  const lbl = document.getElementById('umSoundLabel');
+  if (lbl) lbl.textContent = next === 'on' ? 'Reaction sounds: on' : 'Reaction sounds: off';
+  // Test-play on enable
+  if (next === 'on') playReactionSound();
+}
+function playReactionSound() {
+  if (!_isSoundOn()) return;
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const now = ctx.currentTime;
+    // Two-note civic bell — clean, brief, non-dopamine
+    const notes = [
+      { freq: 880,  start: 0,    dur: 0.10 },  // A5
+      { freq: 1318, start: 0.06, dur: 0.16 },  // E6
+    ];
+    notes.forEach(n => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(n.freq, now + n.start);
+      gain.gain.setValueAtTime(0, now + n.start);
+      gain.gain.linearRampToValueAtTime(0.08, now + n.start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + n.start + n.dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + n.start);
+      osc.stop(now + n.start + n.dur + 0.02);
+    });
+  } catch {}
+}
+
+// ── REACTIONS STORE ── per-story counts visible to everyone (localStorage stand-in for backend)
+function _readReactions() { try { return JSON.parse(localStorage.getItem(REACTIONS_KEY) || '{}'); } catch { return {}; } }
+function _readMyReactions() { try { return JSON.parse(localStorage.getItem(MY_REACTIONS_KEY) || '{}'); } catch { return {}; } }
+function getReactionCounts(officerId, reviewId) {
+  const all = _readReactions();
+  return all[`${officerId}:${reviewId}`] || { up:0, down:0, thanks:0, strong:0, curious:0 };
+}
+function _bumpReactionCount(officerId, reviewId, kind) {
+  const all = _readReactions();
+  const key = `${officerId}:${reviewId}`;
+  all[key] = all[key] || { up:0, down:0, thanks:0, strong:0, curious:0 };
+  all[key][kind] = (all[key][kind] || 0) + 1;
+  localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
+  // Track that this user reacted this way
+  const mine = _readMyReactions();
+  mine[key] = mine[key] || {};
+  mine[key][kind] = true;
+  localStorage.setItem(MY_REACTIONS_KEY, JSON.stringify(mine));
+  return all[key];
+}
+function reactionTotalsHtml(officerId, reviewId) {
+  const c = getReactionCounts(officerId, reviewId);
+  const total = c.up + c.down + c.thanks + c.strong + c.curious;
+  if (!total) return '';
+  const parts = [];
+  if (c.up)      parts.push(`<span title="People who had the same experience">👍 ${c.up}</span>`);
+  if (c.down)    parts.push(`<span title="People with a different experience">👎 ${c.down}</span>`);
+  if (c.thanks)  parts.push(`<span title="Thank-yous">🙏 ${c.thanks}</span>`);
+  if (c.strong)  parts.push(`<span title="Strong / powerful">💪 ${c.strong}</span>`);
+  if (c.curious) parts.push(`<span title="Curious">🤔 ${c.curious}</span>`);
+  return `<div class="reaction-summary">${parts.join('<span class="rs-sep">·</span>')}</div>`;
+}
+// Seed baseline reactions on existing stories so the app doesn't look dead on first open
+function _seedReactionsIfNeeded() {
+  const all = _readReactions();
+  if (Object.keys(all).length > 0) return;  // already seeded
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  officers.forEach(o => (o.reviews || []).forEach(r => {
+    // Plausible spread: more reactions on 5-star or 1-star stories, fewer on 3-star
+    const stars = r.stars || 3;
+    const heat = stars >= 5 || stars <= 2 ? (3 + Math.floor(Math.random() * 9)) : (1 + Math.floor(Math.random() * 4));
+    const key = `${o.id}:${r.id}`;
+    if (r.verdict === 'fair') {
+      all[key] = {
+        up:      heat + Math.floor(Math.random() * 4),
+        down:    Math.floor(Math.random() * 2),
+        thanks:  Math.floor(heat * 0.6),
+        strong:  Math.floor(heat * 0.5),
+        curious: Math.floor(Math.random() * 3),
+      };
+    } else {
+      all[key] = {
+        up:      heat + Math.floor(Math.random() * 5),
+        down:    Math.floor(Math.random() * 3),
+        thanks:  Math.floor(Math.random() * 2),
+        strong:  Math.floor(heat * 0.4),
+        curious: Math.floor(heat * 0.6),
+      };
+    }
+  }));
+  localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
+}
 
 // ── NOTIFY-ME MODAL ──
 // Used by: "Where this is going" home rail · agency review-request CTA · claim-this-profile placeholders.
@@ -999,6 +1137,7 @@ async function openOfficer(id) {
               <span class="rb-text"><strong>${meta.label}</strong></span>
               ${isAuthor && status !== 'resolved' ? `<button class="rb-btn" onclick="markStoryResolved(${o.id}, ${r.id}); document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openOfficer(${o.id}), 80);">✓ Mark resolved</button>` : ''}
             </div>
+            ${reactionTotalsHtml(o.id, r.id)}
             <div class="mr-actions">
               <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">👍 Yes, same</button>
               <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
@@ -1174,6 +1313,7 @@ function _renderOnePulseCard(it) {
         <span class="rb-text"><strong>${meta.label}</strong></span>
       </div>
 
+      ${reactionTotalsHtml(o.id, r.id)}
       <div class="reaction-legend" onclick="event.stopPropagation();">
         How does this story land with you? <span class="rl-key">👍 Same · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span>
       </div>
@@ -1260,7 +1400,8 @@ function renderPulse() {
     return;
   }
   // Render every card stacked vertically — scroll snaps each into view. Mix of stories + polls.
-  stage.innerHTML = items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('');
+  const topRail = _renderTopReactedRail();
+  stage.innerHTML = (topRail || '') + items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('');
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
@@ -1270,6 +1411,45 @@ function renderPulse() {
 }
 
 let _pulseObserver = null;
+// "Top reacted" rail at the top of Pulse — three most-reacted stories of the last 7 days.
+// Shows social proof and creates "what's everyone talking about" gravity. Hidden if nothing has 3+ reactions.
+function _renderTopReactedRail() {
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const approved = getApprovedAsOfficers();
+  const all = [...approved, ...officers];
+  const items = [];
+  const now = Date.now();
+  for (const o of all) {
+    for (const r of (o.reviews || [])) {
+      const age = (now - new Date(r.created_at || 0).getTime()) / (1000 * 60 * 60 * 24);
+      if (age > 14) continue;  // last 14 days
+      const c = getReactionCounts(o.id, r.id);
+      const total = c.up + c.down + c.thanks + c.strong + c.curious;
+      if (total < 3) continue;
+      items.push({ o, r, total, role: inferRole(o) });
+    }
+  }
+  if (!items.length) return '';
+  items.sort((a, b) => b.total - a.total);
+  const top3 = items.slice(0, 3);
+  return `
+    <div class="top-reacted-rail" onclick="event.stopPropagation();">
+      <div class="trr-head">
+        <span class="trr-title">🔥 Top reacted right now</span>
+        <span class="trr-sub">What people are responding to this week</span>
+      </div>
+      <div class="trr-list">
+        ${top3.map(({ o, r, total, role }) => `
+          <div class="trr-card" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">
+            <div class="trr-eyebrow role-tinted-${role}">${ROLE_ICON[role] || '👤'} ${ROLE_NAME[role] || ''}</div>
+            <div class="trr-name">${escapeHtml(o.name || 'Unknown')}</div>
+            <div class="trr-snippet">${escapeHtml((r.story || '').slice(0, 90))}${(r.story || '').length > 90 ? '…' : ''}</div>
+            <div class="trr-total">${total} reactions</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
 // Render a poll inline in the Pulse feed — same height/feel as a story card
 function _renderOnePulsePollCard(p) {
   const my = _readPollsMy();
@@ -1482,13 +1662,32 @@ function inferRole(o) {
 
 function applyFilters() {
   let list = [...officerCache];
-  const q = document.getElementById('officerSearch').value.toLowerCase().trim();
+  const rawQ = document.getElementById('officerSearch').value.trim();
+  const q = rawQ.toLowerCase();
   if (q) {
-    list = list.filter(o =>
-      (o.name || '').toLowerCase().includes(q) ||
-      (o.badge || '').toLowerCase().includes(q) ||
-      (o.department || '').toLowerCase().includes(q)
-    );
+    // Author search — when query starts with @ (e.g. "@Anonymous-4791"), filter to officers
+    // who have at least one story by that handle. Stream view will further refine to just their stories.
+    if (q.startsWith('@')) {
+      const handleQ = q.slice(1);
+      list = list.filter(o => (o.reviews || []).some(r => {
+        const a = (r.author_display || _legacyAuthor(o.id, r.id)).toLowerCase();
+        return a.includes(handleQ);
+      }));
+      // Force stream view so author's stories are visible chronologically
+      const stream = document.getElementById('storyStream');
+      const grid = document.getElementById('officerGrid');
+      if (stream && grid) {
+        stream.style.display = 'flex';
+        grid.style.display = 'none';
+        document.querySelectorAll('.vt-btn').forEach(b => b.classList.toggle('on', b.dataset.view === 'stream'));
+      }
+    } else {
+      list = list.filter(o =>
+        (o.name || '').toLowerCase().includes(q) ||
+        (o.badge || '').toLowerCase().includes(q) ||
+        (o.department || '').toLowerCase().includes(q)
+      );
+    }
   }
   const f = activePill;
   if (f && f !== 'top') {
@@ -1580,6 +1779,7 @@ function renderStream(officers, q) {
           <span>${date}</span>
           ${r.upload_url ? '<span class="sp-sep">·</span><span style="color:var(--blue);">🛡️ Verified</span>' : ''}
         </div>
+        ${reactionTotalsHtml(o.id, r.id)}
         <div class="sp-foot">
           <div class="sp-actions">
             <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">👍 Yes, same</button>
@@ -2353,7 +2553,13 @@ function reactTo(btn, evt) {
   recordEngagement('react');
   // Soft haptic on supported devices (mostly Android)
   if (navigator.vibrate) try { navigator.vibrate(12); } catch {}
+  // Optional reaction sound — opt-in via user menu
+  playReactionSound();
   const kind = btn.dataset.kind || 'up';
+  // Push to global reaction count
+  const oid = btn.dataset.officerId;
+  const rid = btn.dataset.reviewId;
+  if (oid && rid) _bumpReactionCount(oid, rid, kind);
   const n = parseInt(btn.dataset.count || '0', 10) + 1;
   btn.dataset.count = n;
   const styles = {
@@ -2666,6 +2872,9 @@ loadOfficers();
 refreshLiveRating();   // initial state: 4/5 charitable default
 updateStreakChip();    // show streak in topbar if user has any engagement
 _attachPulseSwipe();   // left/right swipe between cards on phone
+_seedReactionsIfNeeded();  // seed plausible reaction counts on first load
+_maybeFireDailyNotif();    // daily local push notification if >24h since last open
+_initSoundToggle();        // wire reaction-sound toggle
 
 // Admin URL gate — open admin queue when ?admin=1
 if (location.search.includes('admin=1')) {
