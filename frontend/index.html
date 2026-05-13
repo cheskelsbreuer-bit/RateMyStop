@@ -39,10 +39,10 @@
   </div>
   <nav class="topnav">
     <button class="active" data-section="home"      onclick="nav('home')">Home</button>
+    <button                 data-section="share"     onclick="nav('share')">Share</button>
     <button                 data-section="pulse"     onclick="nav('pulse')">Pulse</button>
     <button                 data-section="officers"  onclick="nav('officers')">Stories</button>
     <button                 data-section="polls"     onclick="nav('polls')">Polls</button>
-    <button                 data-section="share"     onclick="nav('share')">Share</button>
     <button                 data-section="complaint" onclick="nav('complaint')">Reach Out</button>
     <div class="nav-more-wrap">
       <button class="nav-more-btn" id="navMoreBtn" onclick="toggleMoreMenu(event)">More <span class="nav-more-caret">&#9662;</span></button>
@@ -133,8 +133,8 @@
 <!-- BOTTOM TAB BAR — phone only. Native-app one-tap nav between primary surfaces. -->
 <nav class="bottom-tabs" id="bottomTabs" aria-label="Primary navigation">
   <button class="bt-tab" data-bt="home"     onclick="nav('home')"     aria-label="Home"><span class="bt-icon">&#127968;</span><span class="bt-label">Home</span></button>
-  <button class="bt-tab" data-bt="pulse"    onclick="nav('pulse')"    aria-label="Pulse"><span class="bt-icon">&#128293;</span><span class="bt-label">Pulse</span></button>
   <button class="bt-tab bt-cta" data-bt="share" onclick="nav('share')" aria-label="Share a story"><span class="bt-cta-circle">&#43;</span><span class="bt-label">Share</span></button>
+  <button class="bt-tab" data-bt="pulse"    onclick="nav('pulse')"    aria-label="Pulse"><span class="bt-icon">&#128293;</span><span class="bt-label">Pulse</span></button>
   <button class="bt-tab" data-bt="polls"    onclick="nav('polls')"    aria-label="Polls"><span class="bt-icon">&#128499;&#65039;</span><span class="bt-label">Polls</span></button>
   <button class="bt-tab" data-bt="officers" onclick="nav('officers')" aria-label="Stories"><span class="bt-icon">&#128218;</span><span class="bt-label">Stories</span></button>
 </nav>

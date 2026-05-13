@@ -3056,7 +3056,9 @@ try { updateStreakChip(); }             catch (e) { console.warn('updateStreakCh
 try { _attachPulseSwipe(); }            catch (e) { console.warn('_attachPulseSwipe init:', e); }
 try { _seedReactionsIfNeeded(); }       catch (e) { console.warn('_seedReactionsIfNeeded init:', e); }
 try { _initSoundToggle(); }             catch (e) { console.warn('_initSoundToggle init:', e); }
-try { _startFakeUserSim(); }            catch (e) { console.warn('_startFakeUserSim init:', e); }
+// Defer fake-user sim start to AFTER all module-level let/const declarations have initialized.
+// Direct call here hits TDZ on `let _fakeUserTimer = null` which is declared further down in the file.
+setTimeout(() => { try { _startFakeUserSim(); } catch (e) { console.warn('_startFakeUserSim deferred:', e); } }, 50);
 // _maybeFireDailyNotif depends on STATIC_DATA — defer to ensure data has loaded
 setTimeout(() => { try { _maybeFireDailyNotif(); } catch (e) { console.warn('_maybeFireDailyNotif init:', e); } }, 100);
 

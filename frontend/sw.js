@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v44-fakes-visible';
-const ASSETS_BUMP_NOTE = 'Fakes now visibly active: 5-12s cadence, bottom-left activity ticker, in-place reaction updates on visible cards, Run 25/100 NOW admin buttons';
+const CACHE = 'civicvoice-v45-tdz-fix-share-reorder';
+const ASSETS_BUMP_NOTE = 'CRITICAL: TDZ on _fakeUserTimer broke the fake users entirely — now deferred via setTimeout. Share tab moved right after Home in both topbar nav and bottom tab bar.';
 const ASSETS = [
   './',
   './index.html',
