@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v26-pulse-snap';
-const ASSETS_BUMP_NOTE = 'restore pulse snap + stream card phone redesign + persistent Home pill';
+const CACHE = 'civicvoice-v27-pulse-page-snap';
+const ASSETS_BUMP_NOTE = 'page-level snap so filters actually scroll away';
 const ASSETS = [
   './',
   './index.html',

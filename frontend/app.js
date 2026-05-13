@@ -195,6 +195,8 @@ function nav(id) {
   if (section) section.classList.add('active');
   // Body class lets CSS show the persistent "back to home" escape pill on Pulse
   document.body.classList.toggle('on-pulse', id === 'pulse');
+  // Document-level scroll-snap turns on only when on Pulse — filters scroll away first, then one card at a time
+  document.documentElement.classList.toggle('snap-pulse', id === 'pulse');
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();

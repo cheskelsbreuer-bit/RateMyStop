@@ -18,6 +18,8 @@ html{scroll-behavior:smooth;}
 body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;background-image:radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184,148,30,0.06), transparent 60%), radial-gradient(ellipse 60% 40% at 90% 30%, rgba(37,109,217,0.04), transparent 50%);background-attachment:fixed;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
 /* Defensive: nothing inside the page may push the viewport sideways on phones */
 html,body{overflow-x:hidden;max-width:100vw;}
+/* When the user is on Pulse on a phone, the document scrolls with snap — filters scroll off, then one card at a time. proximity (not mandatory) so other pages stay normal. */
+html.snap-pulse{scroll-snap-type:y proximity;scroll-padding-top:74px;scroll-behavior:smooth;}
 ::selection{background:var(--accent);color:#ffffff;}
 
 /* Demo-mode badge (only shown in static mode via JS) */
@@ -791,9 +793,9 @@ section.active{display:block;}
   .vt-grid{grid-template-columns:1fr;}
   .modal{padding:24px 18px;}
 
-  /* ── Pulse on phone: snap one card at a time. Sticky topbar = persistent exit (brand → home, ☰ → menu) ── */
-  .pulse-stage{height:calc(100dvh - 230px);min-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:y mandatory;border-radius:16px;}
-  .pulse-card{min-height:calc(100% - 14px);scroll-snap-align:start;scroll-snap-stop:always;padding:22px 20px;border-radius:18px;margin:0 0 14px;display:flex;flex-direction:column;justify-content:space-between;}
+  /* ── Pulse on phone: PAGE-LEVEL snap. Filters scroll away with the page (because they're in normal flow above the cards), and THEN each card snaps one at a time. ── */
+  .pulse-stage{height:auto;overflow:visible;scroll-snap-type:none;border-radius:0;padding:0;background:transparent;}
+  .pulse-card{min-height:calc(100dvh - 84px);scroll-snap-align:start;scroll-snap-stop:always;padding:24px 20px;border-radius:18px;margin:0 0 14px;display:flex;flex-direction:column;justify-content:space-between;}
   .pulse-name{font-size:1.45rem;}
   .pulse-body{font-size:0.98rem;line-height:1.6;}
   .pulse-agency{font-size:0.85rem;margin-bottom:14px;}
