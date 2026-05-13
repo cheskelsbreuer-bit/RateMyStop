@@ -16,6 +16,8 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{font-family:'Epilogue',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;background-image:radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184,148,30,0.06), transparent 60%), radial-gradient(ellipse 60% 40% at 90% 30%, rgba(37,109,217,0.04), transparent 50%);background-attachment:fixed;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+/* Defensive: nothing inside the page may push the viewport sideways on phones */
+html,body{overflow-x:hidden;max-width:100vw;}
 ::selection{background:var(--accent);color:#ffffff;}
 
 /* Demo-mode badge (only shown in static mode via JS) */
@@ -452,11 +454,7 @@ section.active{display:block;}
 .pulse-empty{color:var(--gray);text-align:center;padding:80px 20px;}
 .pulse-card{background:var(--card);border:1px solid rgba(229,227,221,0.6);border-radius:28px;padding:44px 46px;width:100%;max-width:780px;margin:0 auto 18px;box-shadow:0 24px 56px rgba(15,15,19,0.10), 0 2px 8px rgba(15,15,19,0.04);scroll-snap-align:start;scroll-snap-stop:always;min-height:calc(min(78vh, 700px) - 28px);display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.3s ease, box-shadow 0.3s ease;}
 .pulse-card:hover{box-shadow:0 32px 72px rgba(15,15,19,0.14), 0 2px 12px rgba(15,15,19,0.06);}
-@media(max-width:700px){
-  .pulse-card{padding:24px 22px;min-height:calc(min(82vh, 600px) - 24px);border-radius:16px;}
-  .pulse-name{font-size:1.4rem;}
-  .pulse-body{font-size:1rem;}
-}
+/* Mobile pulse overrides live in the consolidated @media(max-width:700px) block below */
 .pulse-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
 .pulse-card-role{display:flex;align-items:center;gap:10px;}
 .pulse-role-icon{font-size:1.6rem;}
@@ -762,9 +760,15 @@ section.active{display:block;}
   .auth-modal{padding:28px 22px 22px;}
   /* Hide the bell on the very small phones — drawer has its own access pattern */
   .bell-dropdown{right:14px;width:calc(100vw - 28px);}
+  /* User pill collapses to just the avatar circle — name+caret would overflow a 390px viewport */
+  .user-pill{padding:2px;gap:0;border-radius:50%;width:38px;height:38px;justify-content:center;border:1px solid var(--border);}
+  .user-pill .up-handle,.user-pill .up-caret{display:none;}
+  .user-pill .up-avatar{width:30px;height:30px;font-size:0.85rem;}
+  .sign-in-btn{padding:7px 12px;font-size:0.78rem;}
+  .topbar{gap:8px;}
 }
 @media(max-width:700px){
-  .topbar{padding:12px 16px;}
+  .topbar{padding:12px 14px;gap:8px;}
   .topnav button{padding:6px 9px;font-size:0.76rem;}
   .hero{grid-template-columns:1fr;padding:40px 20px 30px;gap:28px;}
   .hero h1{font-size:clamp(2rem,7vw,2.6rem);}
@@ -786,6 +790,50 @@ section.active{display:block;}
   .topbar .brand-name{font-size:1rem;}
   .vt-grid{grid-template-columns:1fr;}
   .modal{padding:24px 18px;}
+
+  /* ── Pulse on phone: page scrolls naturally so the filter chips scroll away ── */
+  .pulse-stage{height:auto;overflow:visible;scroll-snap-type:none;border-radius:0;}
+  .pulse-card{min-height:0;scroll-snap-align:none;padding:22px 20px;border-radius:18px;margin-bottom:14px;}
+  .pulse-name{font-size:1.45rem;}
+  .pulse-body{font-size:0.98rem;line-height:1.6;}
+  .pulse-agency{font-size:0.85rem;margin-bottom:14px;}
+  .pulse-filters{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;margin-bottom:14px;}
+  .pulse-filters::-webkit-scrollbar{display:none;}
+  .pulse-filters .pill{flex-shrink:0;font-size:0.78rem;padding:6px 12px;white-space:nowrap;}
+  .pulse-card-head{margin-bottom:14px;gap:10px;}
+  .pulse-role-icon{font-size:1.3rem;}
+  .pulse-stars{font-size:0.95rem;letter-spacing:1.5px;}
+
+  /* ── Stories / Community cards: compact on phone ── */
+  .officer-grid{grid-template-columns:1fr;gap:10px;}
+  .officer-card{padding:14px 16px 14px;gap:6px;border-radius:14px;}
+  .officer-card .oc-name{font-size:1.02rem;gap:8px;line-height:1.18;}
+  .officer-card .oc-initial{width:24px;height:24px;font-size:0.74rem;}
+  .officer-card .oc-dept{font-size:0.8rem;}
+  .oc-eyebrow{font-size:0.62rem;letter-spacing:1px;margin-top:2px;}
+  .oc-stat-row{padding-top:8px;margin-top:4px;gap:6px;}
+  .oc-stars{font-size:0.9rem;letter-spacing:1.5px;}
+  .oc-avg{font-size:0.92rem;}
+  .officer-card .oc-meta{gap:5px;}
+  .officer-card .oc-chip{font-size:0.68rem;padding:2px 7px;}
+  .officer-card .oc-count{font-size:0.72rem;}
+  .oc-view{padding:7px 12px;font-size:0.76rem;margin-top:4px;border-radius:8px;}
+
+  /* ── Story / department modal head: stats row wraps ── */
+  .sd-head{gap:12px;}
+  .sd-icon{font-size:2rem;}
+  .sd-name{font-size:1.15rem;word-break:break-word;}
+  .sd-agency{font-size:0.82rem;}
+  .sd-sent{flex-wrap:wrap;gap:6px;}
+  .sd-stars{font-size:0.95rem;letter-spacing:1.5px;}
+  .sd-tag{font-size:0.66rem;padding:2px 8px;}
+  .sd-foot{flex-direction:column;align-items:stretch;gap:8px;}
+  .sd-foot .sp-action{width:100%;}
+  .sd-byline{width:100%;flex:1 1 100%;}
+
+  /* Search bar shouldn't push past viewport */
+  .search-bar-wrap{flex-direction:column;gap:8px;}
+  .search-bar-wrap button{width:100%;}
 }
 @media(max-width:420px){
   .topnav button{padding:5px 7px;font-size:0.72rem;}

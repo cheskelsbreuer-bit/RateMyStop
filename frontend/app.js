@@ -1655,7 +1655,7 @@ function openAuthorProfile(handle) {
           return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <span style="font-size:0.78rem;color:var(--gray);">Trust score:</span>
             <strong style="color:${t.tier.color};font-size:0.95rem;">${t.score}/100 · ${t.tier.label}</strong>
-            <span style="flex:1;min-width:100px;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;">
+            <span style="flex:1 1 100%;min-width:0;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;">
               <span style="display:block;width:${t.score}%;height:100%;background:${t.tier.color};"></span>
             </span>
           </div>`;
