@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v36-civic-consistency';
-const ASSETS_BUMP_NOTE = 'Civic consistency — Days on record stat, ✨ chip on quiet days, home banner after 3+ days, no streak break panic';
+const CACHE = 'civicvoice-v37-device-ui';
+const ASSETS_BUMP_NOTE = 'Phone bottom-tab bar · Desktop right rail (Top reacted + streak + polls + coming-soon) · Tablet 2-col Pulse · audit fixes (stale Same-here label, @author search in stream, reactions in story-detail)';
 const ASSETS = [
   './',
   './index.html',

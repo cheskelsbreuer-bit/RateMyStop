@@ -1088,6 +1088,56 @@ section.active{display:block;}
   .pcm-send{width:100%;padding:10px;}
 }
 
+/* ─── PHONE-SPECIFIC: bottom tab bar (one-tap nav) ─── */
+.bottom-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,0.96);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding:6px 8px 10px;z-index:180;justify-content:space-around;align-items:flex-end;box-shadow:0 -4px 24px rgba(15,15,19,0.06);}
+.bt-tab{flex:1;background:transparent;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px 4px;cursor:pointer;color:var(--gray);font-family:'Inter','Epilogue',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:0.62rem;font-weight:600;transition:color 0.15s;letter-spacing:0.3px;}
+.bt-tab .bt-icon{font-size:1.35rem;line-height:1;filter:grayscale(0.4);transition:filter 0.15s, transform 0.18s;}
+.bt-tab.active{color:var(--accent);}
+.bt-tab.active .bt-icon{filter:grayscale(0);transform:translateY(-2px);}
+.bt-tab:active .bt-icon{transform:scale(0.92);}
+.bt-tab.bt-cta{margin-top:-12px;}
+.bt-tab.bt-cta .bt-cta-circle{width:48px;height:48px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.55rem;font-weight:300;line-height:1;box-shadow:0 10px 22px rgba(15,15,19,0.32);transition:transform 0.2s;}
+.bt-tab.bt-cta:active .bt-cta-circle{transform:scale(0.92);}
+.bt-tab.bt-cta.active .bt-cta-circle{background:var(--accent);}
+
+/* Only show on phone — and pad the body so content isn't hidden behind it */
+@media(max-width:700px){
+  .bottom-tabs{display:flex;}
+  body{padding-bottom:78px;}
+  .pulse-escape{bottom:90px !important;}  /* lift Home pill above bottom tabs */
+  .demo-badge{bottom:90px !important;}
+}
+
+/* ─── DESKTOP-SPECIFIC: right rail (Top Reacted + Streak + Coming Soon) at >=1100px ─── */
+.desktop-rail{display:none;}
+@media(min-width:1100px){
+  .desktop-rail{display:block;position:fixed;top:84px;right:24px;width:280px;max-height:calc(100vh - 100px);overflow-y:auto;z-index:50;}
+  .desktop-rail::-webkit-scrollbar{width:6px;}
+  .desktop-rail::-webkit-scrollbar-thumb{background:rgba(184,148,30,0.3);border-radius:3px;}
+  /* Pull main content inward so it doesn't crash into the rail */
+  body.with-rail .wrap,body.with-rail .wrap-wide,body.with-rail .polls-wrap{margin-right:320px;}
+}
+.dr-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;font-size:0.86rem;}
+.dr-head{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:0.92rem;font-weight:800;color:var(--ink);margin-bottom:10px;letter-spacing:-0.2px;display:flex;align-items:center;gap:6px;}
+.dr-head .dr-sub{font-size:0.7rem;color:var(--gray);font-weight:500;letter-spacing:0;margin-left:auto;}
+.dr-item{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--border);cursor:pointer;transition:opacity 0.15s;}
+.dr-item:first-of-type{border-top:none;padding-top:0;}
+.dr-item:hover{opacity:0.75;}
+.dr-item .dr-name{font-weight:700;color:var(--ink);font-size:0.86rem;line-height:1.25;}
+.dr-item .dr-meta{font-size:0.72rem;color:var(--gray);}
+.dr-streak{text-align:center;}
+.dr-streak-n{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:2.2rem;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-0.5px;}
+.dr-streak-l{font-size:0.72rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-top:4px;}
+
+/* ─── TABLET POLISH: more breathing room (701-1024px) ─── */
+@media(min-width:701px) and (max-width:1024px){
+  .pulse-card{padding:30px 32px;}
+  .pulse-name{font-size:2rem;}
+  .pulse-body{font-size:1.1rem;}
+  .officer-grid{grid-template-columns:repeat(2, 1fr);gap:14px;}
+  .vision-rail-grid{grid-template-columns:repeat(3, 1fr);}
+}
+
 /* ─── Consistency banner on home — only after 3+ active days ─── */
 .consistency-banner{max-width:780px;margin:24px auto 0;padding:16px 22px;background:linear-gradient(120deg, rgba(184,148,30,0.10), rgba(184,148,30,0.03));border:1px solid rgba(184,148,30,0.32);border-radius:14px;display:flex;align-items:center;gap:14px;line-height:1.55;}
 .consistency-banner .cb-icon{font-size:1.6rem;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(255,210,80,0.45));}

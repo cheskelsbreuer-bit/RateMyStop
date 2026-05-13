@@ -380,12 +380,14 @@ function nav(id) {
   if (section) section.classList.add('active');
   // Body class lets CSS show the persistent "back to home" escape pill on Pulse
   document.body.classList.toggle('on-pulse', id === 'pulse');
+  // Phone bottom-tab active state
+  document.querySelectorAll('.bottom-tabs .bt-tab').forEach(b => b.classList.toggle('active', b.dataset.bt === id));
   // Document-level scroll-snap turns on only when on Pulse — filters scroll away first, then one card at a time
   document.documentElement.classList.toggle('snap-pulse', id === 'pulse');
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
-  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); }
+  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); _refreshDesktopRail(); }
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')     renderRankings();
   if (id === 'orgs')         renderOrgState();
@@ -1776,6 +1778,13 @@ function renderStream(officers, q) {
     if (q.startsWith('#')) {
       const wanted = q.slice(1).trim();
       items = items.filter(it => (it.review.tags || []).some(t => t.toLowerCase().includes(wanted)));
+    } else if (q.startsWith('@')) {
+      // Author search: match by author_display
+      const wanted = q.slice(1).trim();
+      items = items.filter(it => {
+        const a = (it.review.author_display || _legacyAuthor(it.officer.id, it.review.id)).toLowerCase();
+        return a.includes(wanted);
+      });
     } else {
       items = items.filter(it => (it.review.story || '').toLowerCase().includes(q) ||
                                  (it.officer.name || '').toLowerCase().includes(q) ||
@@ -1898,8 +1907,16 @@ function openStoryDetail(officerId, reviewId) {
         · ${formatDate(r.created_at)}
         ${r.upload_url ? ' · <span style="color:var(--blue);">🛡️ Verified</span>' : ''}
       </div>
-      <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" onclick="thanksTo(this, event)">👍 Same here</button>
-      <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
+      ${reactionTotalsHtml(o.id, r.id)}
+      <div class="reaction-legend">How does this story land with you? <span class="rl-key">🙋 Me too · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span></div>
+      <div class="mr-actions" style="margin-top:8px;">
+        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">🙋 Me too</button>
+        <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
+        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious">🤔</button>
+        <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
+      </div>
       ${(() => {
         const u = getCurrentUser();
         const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
@@ -2952,6 +2969,7 @@ _attachPulseSwipe();   // left/right swipe between cards on phone
 _seedReactionsIfNeeded();  // seed plausible reaction counts on first load
 _maybeFireDailyNotif();    // daily local push notification if >24h since last open
 _initSoundToggle();        // wire reaction-sound toggle
+_refreshDesktopRail();     // desktop right rail (only renders at >=1100px)
 
 // Admin URL gate — open admin queue when ?admin=1
 if (location.search.includes('admin=1')) {
@@ -4240,6 +4258,68 @@ function openStreakModal() {
 function closeStreakModal() {
   document.getElementById('streakOverlay').classList.remove('show');
 }
+
+// Desktop right rail — only rendered at >=1100px viewports. Sticky companion to main feed.
+function _refreshDesktopRail() {
+  const rail = document.getElementById('desktopRail');
+  if (!rail) return;
+  const wide = window.matchMedia('(min-width:1100px)').matches;
+  if (!wide) { document.body.classList.remove('with-rail'); return; }
+  document.body.classList.add('with-rail');
+  // Streak card — same gate as the home banner
+  const days = _activeDays();
+  const sCard = document.getElementById('drStreakCard');
+  if (sCard) {
+    if (days >= 3) {
+      sCard.style.display = 'block';
+      document.getElementById('drStreakDays').textContent = days;
+    } else {
+      sCard.style.display = 'none';
+    }
+  }
+  // Top reacted (top 4 by total reactions, last 14 days)
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const approved = getApprovedAsOfficers();
+  const all = [...approved, ...officers];
+  const now = Date.now();
+  const items = [];
+  for (const o of all) {
+    for (const r of (o.reviews || [])) {
+      const age = (now - new Date(r.created_at || 0).getTime()) / (1000 * 60 * 60 * 24);
+      if (age > 14) continue;
+      const c = getReactionCounts(o.id, r.id);
+      const total = c.up + c.down + c.thanks + c.strong + c.curious;
+      if (total < 1) continue;
+      items.push({ o, r, total });
+    }
+  }
+  items.sort((a, b) => b.total - a.total);
+  const top = items.slice(0, 4);
+  const topListEl = document.getElementById('drTopList');
+  if (topListEl) {
+    topListEl.innerHTML = top.length ? top.map(({ o, r, total }) => `
+      <div class="dr-item" onclick="openStoryDetail(${o.id}, ${r.id})">
+        <span class="dr-name">${escapeHtml(o.name || 'Unknown')}</span>
+        <span class="dr-meta">${escapeHtml((o.department || '').slice(0, 28))} · ${total} reactions</span>
+      </div>`).join('') : '<div style="font-size:0.78rem;color:var(--gray);">Quiet right now.</div>';
+  }
+  // Open polls (first 3)
+  const polls = [..._readApprovedPolls(), ...POLLS_SEED].slice(0, 3);
+  const pollListEl = document.getElementById('drPollList');
+  if (pollListEl) {
+    pollListEl.innerHTML = polls.map(p => {
+      const counts = _readPollsVotes()[p.id] || {};
+      const total = Object.values(counts).reduce((s, n) => s + n, 0);
+      return `
+        <div class="dr-item" onclick="nav('polls')">
+          <span class="dr-name">${escapeHtml((p.q || '').slice(0, 56))}${(p.q || '').length > 56 ? '…' : ''}</span>
+          <span class="dr-meta">${total} takes</span>
+        </div>`;
+    }).join('');
+  }
+}
+// Refresh rail on viewport change (e.g. user resizes window)
+window.addEventListener('resize', () => { _refreshDesktopRail(); });
 
 // Home page consistency banner — hidden until user hits 3+ active days. No panic, just recognition.
 function _refreshConsistencyBanner() {
