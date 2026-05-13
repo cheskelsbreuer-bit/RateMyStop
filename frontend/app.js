@@ -120,6 +120,31 @@ function _bumpReactionCount(officerId, reviewId, kind) {
   localStorage.setItem(MY_REACTIONS_KEY, JSON.stringify(mine));
   return all[key];
 }
+// Build a reaction button with proper "already reacted" visual state if this user has tapped it before
+function reactionButtonHtml(officerId, reviewId, kind, labelHtml, titleAttr) {
+  const mine = _readMyReactions();
+  const key = `${officerId}:${reviewId}`;
+  const alreadyReacted = mine[key] && mine[key][kind];
+  const styles = {
+    up:      'color:var(--green);border-color:rgba(31,140,95,0.5);background:rgba(31,140,95,0.12);',
+    down:    'color:var(--red);border-color:rgba(201,52,52,0.5);background:rgba(201,52,52,0.10);',
+    thanks:  'color:#7a51c8;border-color:rgba(122,81,200,0.5);background:rgba(122,81,200,0.12);',
+    strong:  'color:#e07a1a;border-color:rgba(224,122,26,0.5);background:rgba(224,122,26,0.12);',
+    curious: 'color:#2563d9;border-color:rgba(37,109,217,0.5);background:rgba(37,109,217,0.10);',
+  };
+  const klass = `sp-action${kind === 'up' ? ' up' : ''}${kind === 'down' ? ' down' : ''}${alreadyReacted ? ' reacted' : ''}`;
+  const style = alreadyReacted ? styles[kind] || '' : '';
+  // If already reacted, show emoji + count instead of label
+  let inner = labelHtml;
+  if (alreadyReacted) {
+    const counts = getReactionCounts(officerId, reviewId);
+    const n = counts[kind];
+    const emoji = labelHtml.split(' ')[0];
+    inner = (kind === 'up' || kind === 'down') ? `${labelHtml} · ${n}` : `${emoji} ${n}`;
+  }
+  return `<button class="${klass}" style="${style}" data-officer-id="${officerId}" data-review-id="${reviewId}" data-kind="${kind}" data-count="${alreadyReacted ? getReactionCounts(officerId, reviewId)[kind] : 0}" onclick="reactTo(this, event)" title="${titleAttr}">${inner}</button>`;
+}
+
 function reactionTotalsHtml(officerId, reviewId) {
   const c = getReactionCounts(officerId, reviewId);
   const total = c.up + c.down + c.thanks + c.strong + c.curious;
@@ -1145,11 +1170,11 @@ async function openOfficer(id) {
             </div>
             ${reactionTotalsHtml(o.id, r.id)}
             <div class="mr-actions">
-              <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">🙋 Me too</button>
-              <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-              <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
-              <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
-              <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious — want to know more">🤔</button>
+              ${reactionButtonHtml(o.id, r.id, 'up',      '🙋 Me too',  'I had the same experience')}
+              ${reactionButtonHtml(o.id, r.id, 'down',    '👎 Not me',  'My experience was different')}
+              ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏',         'Thank you')}
+              ${reactionButtonHtml(o.id, r.id, 'strong',  '💪',         'Strong / powerful')}
+              ${reactionButtonHtml(o.id, r.id, 'curious', '🤔',         'Curious — want to know more')}
               <button class="sp-action" onclick="document.getElementById('officerModal').classList.remove('show'); setTimeout(()=>openStoryDetail(${o.id}, ${r.id}), 80);">💬 ${replyCount}</button>
               <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
             </div>
@@ -1163,7 +1188,8 @@ async function openOfficer(id) {
         const myHandle = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : null;
         const myReviews = (o.reviews || []).filter(r => (r.author_display || _legacyAuthor(o.id, r.id)) === myHandle);
         if (myHandle && myReviews.length) {
-          return `<button class="submit-main" style="margin-top:18px;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">&#9993;&#65039; Send a message to ${escapeHtml(o.department || 'this agency')} about your story &rarr;</button>`;
+          // Compact button — agency name is already in the modal header above, no need to repeat it
+          return `<button class="submit-main" style="margin-top:18px;font-size:0.9rem;padding:13px 18px;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="document.getElementById('officerModal').classList.remove('show'); nav('complaint');">&#9993;&#65039; Message this agency &rarr;</button>`;
         }
         return '';  // silent — non-authors get the React/Share/Post-your-own paths via the action row
       })()}
@@ -1324,11 +1350,11 @@ function _renderOnePulseCard(it) {
         How does this story land with you? <span class="rl-key">🙋 Me too · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span>
       </div>
       <div class="pulse-actions">
-        <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had the same experience">🙋 Me too</button>
-        <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you to the person in this story">🙏 Thanks</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="This story is powerful / strong">💪 Strong</button>
-        <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="I want to know more about this">🤔 Curious</button>
+        ${reactionButtonHtml(o.id, r.id, 'up',      '🙋 Me too',   'I had the same experience')}
+        ${reactionButtonHtml(o.id, r.id, 'down',    '👎 Not me',   'My experience was different')}
+        ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏 Thanks',   'Thank you to the person in this story')}
+        ${reactionButtonHtml(o.id, r.id, 'strong',  '💪 Strong',   'This story is powerful')}
+        ${reactionButtonHtml(o.id, r.id, 'curious', '🤔 Curious',  'I want to know more about this')}
         <button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${replyCount}</button>
         <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
       </div>
@@ -1843,11 +1869,11 @@ function renderStream(officers, q) {
         ${reactionTotalsHtml(o.id, r.id)}
         <div class="sp-foot">
           <div class="sp-actions">
-            <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">🙋 Me too</button>
-            <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-            <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
-            <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
-            <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious — want to know more">🤔</button>
+            ${reactionButtonHtml(o.id, r.id, 'up',      '🙋 Me too',  'I had the same experience')}
+            ${reactionButtonHtml(o.id, r.id, 'down',    '👎 Not me',  'My experience was different')}
+            ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏',         'Thank you')}
+            ${reactionButtonHtml(o.id, r.id, 'strong',  '💪',         'Strong / powerful')}
+            ${reactionButtonHtml(o.id, r.id, 'curious', '🤔',         'Curious — want to know more')}
             ${getReplyCount(o.id, r.id) > 0 ? `<button class="sp-action" onclick="event.stopPropagation(); openStoryDetail(${o.id}, ${r.id})">💬 ${getReplyCount(o.id, r.id)}</button>` : ''}
             <button class="sp-action" onclick="event.stopPropagation(); shareStoryCard(${o.id}, ${r.id})">🔗 Share</button>
           </div>
@@ -1915,11 +1941,11 @@ function openStoryDetail(officerId, reviewId) {
     ${reactionTotalsHtml(o.id, r.id)}
     <div class="reaction-legend">How does this story land with you? <span class="rl-key">🙋 Me too · 👎 Not me · 🙏 Thanks · 💪 Strong · 🤔 Curious</span></div>
     <div class="mr-actions" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="sp-action up" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="up" onclick="reactTo(this, event)" title="I had this same experience">🙋 Me too</button>
-      <button class="sp-action down" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="down" onclick="reactTo(this, event)" title="My experience was different">👎 Not me</button>
-      <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="thanks" onclick="reactTo(this, event)" title="Thank you">🙏</button>
-      <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="strong" onclick="reactTo(this, event)" title="Strong / powerful">💪</button>
-      <button class="sp-action" data-officer-id="${o.id}" data-review-id="${r.id}" data-kind="curious" onclick="reactTo(this, event)" title="Curious">🤔</button>
+      ${reactionButtonHtml(o.id, r.id, 'up',      '🙋 Me too',  'I had the same experience')}
+      ${reactionButtonHtml(o.id, r.id, 'down',    '👎 Not me',  'My experience was different')}
+      ${reactionButtonHtml(o.id, r.id, 'thanks',  '🙏',         'Thank you')}
+      ${reactionButtonHtml(o.id, r.id, 'strong',  '💪',         'Strong / powerful')}
+      ${reactionButtonHtml(o.id, r.id, 'curious', '🤔',         'Curious')}
       <button class="sp-action" onclick="shareStoryCard(${o.id}, ${r.id})">🔗 Share card</button>
       ${(() => {
         const u = getCurrentUser();
@@ -2963,17 +2989,18 @@ function formatDate(iso) {
 }
 
 // ── INIT ──
-document.getElementById('dateIn').value = new Date().toISOString().split('T')[0];
-renderAuthState();
-loadStats();
-loadOfficers();
-refreshLiveRating();   // initial state: 4/5 charitable default
-updateStreakChip();    // show streak in topbar if user has any engagement
-_attachPulseSwipe();   // left/right swipe between cards on phone
-_seedReactionsIfNeeded();  // seed plausible reaction counts on first load
-_initSoundToggle();        // wire reaction-sound toggle
+// Every line wrapped — one failure must NOT cascade and break the rest.
+try { const di = document.getElementById('dateIn'); if (di) di.value = new Date().toISOString().split('T')[0]; } catch (e) { console.warn('dateIn init:', e); }
+try { renderAuthState(); }              catch (e) { console.warn('renderAuthState init:', e); }
+try { loadStats(); }                    catch (e) { console.warn('loadStats init:', e); }
+try { loadOfficers(); }                 catch (e) { console.warn('loadOfficers init:', e); }
+try { refreshLiveRating(); }            catch (e) { console.warn('refreshLiveRating init:', e); }
+try { updateStreakChip(); }             catch (e) { console.warn('updateStreakChip init:', e); }
+try { _attachPulseSwipe(); }            catch (e) { console.warn('_attachPulseSwipe init:', e); }
+try { _seedReactionsIfNeeded(); }       catch (e) { console.warn('_seedReactionsIfNeeded init:', e); }
+try { _initSoundToggle(); }             catch (e) { console.warn('_initSoundToggle init:', e); }
 // _maybeFireDailyNotif depends on STATIC_DATA — defer to ensure data has loaded
-setTimeout(() => { _maybeFireDailyNotif(); }, 100);
+setTimeout(() => { try { _maybeFireDailyNotif(); } catch (e) { console.warn('_maybeFireDailyNotif init:', e); } }, 100);
 
 // Admin URL gate — open admin queue when ?admin=1
 if (location.search.includes('admin=1')) {
