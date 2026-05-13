@@ -4251,18 +4251,122 @@ const FAKE_USERS_KEY = 'civicvoice_fake_users_v1';     // 'on' (default) | 'off'
 const FAKE_USERS_STATE_KEY = 'civicvoice_fake_users_state_v1';  // per-user last-action timestamps
 
 const FAKE_PERSONAS = [
-  // Each: handle, affil, reactionLean (which reactions they favor), commentVoice, activeHoursLocal (24h range), avgMinutesBetween
-  { handle:'Anonymous-2841', affil:'democrat',     lean:['thanks','strong','up'],    voice:'Caring, brief.', hours:[7,23], avgMins:42 },
-  { handle:'Anonymous-9173', affil:'republican',   lean:['down','curious','strong'], voice:'Direct, skeptical.', hours:[6,22], avgMins:55 },
-  { handle:'Anonymous-3306', affil:'independent',  lean:['curious','up','down'],     voice:'Even-keeled, asks questions.', hours:[9,24], avgMins:70 },
-  { handle:'Anonymous-5520', affil:'progressive',  lean:['strong','thanks','up'],    voice:'Calls out injustice, supports good work.', hours:[8,23], avgMins:50 },
-  { handle:'Anonymous-1184', affil:'conservative', lean:['curious','down','up'],     voice:'Practical, asks for specifics.', hours:[7,21], avgMins:65 },
-  { handle:'Anonymous-7720', affil:'libertarian',  lean:['curious','down','up'],     voice:'Pro-individual, anti-bureaucracy.', hours:[10,24], avgMins:90 },
-  { handle:'Anonymous-4471', affil:'democrat',     lean:['thanks','strong'],         voice:'Grateful, names good public servants.', hours:[6,22], avgMins:60 },
-  { handle:'Anonymous-8812', affil:'independent',  lean:['curious','strong'],        voice:'Long-time local, civic-minded.', hours:[7,23], avgMins:75 },
-  { handle:'Anonymous-6633', affil:'progressive',  lean:['strong','up','thanks'],    voice:'Parent of school-age kids, sharp.', hours:[8,22], avgMins:55 },
-  { handle:'Anonymous-2901', affil:'republican',   lean:['up','strong','curious'],   voice:'Veteran, respects service.', hours:[5,21], avgMins:80 },
+  // Each: handle, affil, reactionLean (which reactions they favor), commentVoice, activeHoursLocal (24h range), avgMinutesBetween, storyLean (positive/negative bias)
+  { handle:'Anonymous-2841', affil:'democrat',     lean:['thanks','strong','up'],    storyLean:'positive', voice:'Caring, brief.' },
+  { handle:'Anonymous-9173', affil:'republican',   lean:['down','curious','strong'], storyLean:'negative', voice:'Direct, skeptical.' },
+  { handle:'Anonymous-3306', affil:'independent',  lean:['curious','up','down'],     storyLean:'neutral',  voice:'Even-keeled, asks questions.' },
+  { handle:'Anonymous-5520', affil:'progressive',  lean:['strong','thanks','up'],    storyLean:'positive', voice:'Calls out injustice, supports good work.' },
+  { handle:'Anonymous-1184', affil:'conservative', lean:['curious','down','up'],     storyLean:'negative', voice:'Practical, asks for specifics.' },
+  { handle:'Anonymous-7720', affil:'libertarian',  lean:['curious','down','up'],     storyLean:'negative', voice:'Pro-individual, anti-bureaucracy.' },
+  { handle:'Anonymous-4471', affil:'democrat',     lean:['thanks','strong'],         storyLean:'positive', voice:'Grateful, names good public servants.' },
+  { handle:'Anonymous-8812', affil:'independent',  lean:['curious','strong'],        storyLean:'neutral',  voice:'Long-time local, civic-minded.' },
+  { handle:'Anonymous-6633', affil:'progressive',  lean:['strong','up','thanks'],    storyLean:'positive', voice:'Parent of school-age kids, sharp.' },
+  { handle:'Anonymous-2901', affil:'republican',   lean:['up','strong','curious'],   storyLean:'positive', voice:'Veteran, respects service.' },
+  // ─── 15 MORE — wider mix of personalities ───
+  { handle:'Anonymous-1456', affil:'democrat',     lean:['up','strong'],             storyLean:'positive', voice:'Senior, careful with words.' },
+  { handle:'Anonymous-3922', affil:'republican',   lean:['down','strong'],           storyLean:'negative', voice:'Small-business owner, blunt.' },
+  { handle:'Anonymous-5781', affil:'independent',  lean:['up','curious','thanks'],   storyLean:'neutral',  voice:'Public-school teacher, balanced.' },
+  { handle:'Anonymous-7234', affil:'progressive',  lean:['strong','down'],           storyLean:'negative', voice:'Organizer, names problems clearly.' },
+  { handle:'Anonymous-8807', affil:'conservative', lean:['up','strong','thanks'],    storyLean:'positive', voice:'Old-school, civic pride.' },
+  { handle:'Anonymous-1029', affil:'libertarian',  lean:['down','curious'],          storyLean:'negative', voice:'Tech worker, anti-overreach.' },
+  { handle:'Anonymous-6645', affil:'democrat',     lean:['thanks','curious','up'],   storyLean:'positive', voice:'Healthcare worker, grateful for colleagues.' },
+  { handle:'Anonymous-2317', affil:'independent',  lean:['strong','curious'],        storyLean:'neutral',  voice:'College student, evidence-driven.' },
+  { handle:'Anonymous-4499', affil:'progressive',  lean:['strong','thanks'],         storyLean:'positive', voice:'Social worker, sees both sides.' },
+  { handle:'Anonymous-9088', affil:'republican',   lean:['up','curious'],            storyLean:'positive', voice:'Retired LEO, respects the work.' },
+  { handle:'Anonymous-5512', affil:'democrat',     lean:['down','strong'],           storyLean:'negative', voice:'Renter, frustrated with housing.' },
+  { handle:'Anonymous-3340', affil:'conservative', lean:['curious','down'],          storyLean:'negative', voice:'Long-time resident, fed up.' },
+  { handle:'Anonymous-7765', affil:'independent',  lean:['thanks','up'],             storyLean:'positive', voice:'New parent, appreciates good service.' },
+  { handle:'Anonymous-6190', affil:'progressive',  lean:['strong','curious'],        storyLean:'negative', voice:'Journalist, asks pointed questions.' },
+  { handle:'Anonymous-4801', affil:'libertarian',  lean:['curious','strong'],        storyLean:'neutral',  voice:'Skeptical of all sides.' },
 ];
+
+// Story templates per role × sentiment. Filled with random names + locations at submit time.
+const FAKE_STORY_BANK = {
+  police: {
+    positive: [
+      "Pulled me over for speeding on Route 59. Was firm but fair, explained the situation, gave me a warning instead of a ticket. Said 'slow down, your family's waiting.' I needed that today.",
+      "Showed up to a domestic call at our building. De-escalated the whole thing in 15 minutes. No arrests, just got everyone separated and safe. That's the job done right.",
+      "Helped my elderly mother find her car in the Walmart lot at night. Walked her back, made sure she was OK to drive. Could've ignored her — didn't.",
+    ],
+    negative: [
+      "Pulled me over for a tail light. Talked down to me the whole stop. Gave me three tickets when one would've done it. Felt punitive.",
+      "Came to a noise complaint and somehow it turned into a search of my apartment. Wouldn't tell me why. Left without finding anything but didn't apologize.",
+      "Stopped me walking home from work at 11pm. Asked where I was going like I didn't belong in my own neighborhood. Took 20 minutes to let me go.",
+    ],
+  },
+  emt: {
+    positive: [
+      "Got to my dad's heart attack in under 6 minutes. Stabilized him in the driveway. Talked to my mom the whole way to Nyack Hospital. Came back the next day to check on us.",
+      "I was having a panic attack and called 911 from the side of the road. They didn't make me feel stupid. Stayed with me until I could drive again.",
+      "Took my elderly neighbor to the hospital after her fall. They were so gentle. She told me later they held her hand the whole ride.",
+    ],
+    negative: [
+      "Took 35 minutes to respond to a fall in our building. When they got here they were rushed and didn't really listen to what my husband was telling them about her meds.",
+      "Made my mother walk to the ambulance from her apartment. She has a broken hip. Why would you do that.",
+    ],
+  },
+  fire: {
+    positive: [
+      "Captain came out for a smoke alarm we couldn't figure out. Replaced the battery, checked all our other detectors, no charge. Stayed to talk to my kids about fire safety.",
+      "House fire on our block. They saved the dog. The whole crew. The dog. I'll never forget that.",
+    ],
+    negative: [
+      "Called for a downed wire near the school. Took 40 minutes and came with three trucks for what could've been one person checking. The bill was insane.",
+    ],
+  },
+  dmv: {
+    positive: [
+      "Renewed my license at the Spring Valley DMV. Window 5 was patient with me when I forgot my proof of address. Told me what to bring back and held my place.",
+      "Clerk found a way to process my plates without the second form I forgot. Saved me a second trip. Didn't have to.",
+    ],
+    negative: [
+      "Three hours in line for a 10-minute appointment. The clerks chatted with each other while we waited. Then they told me I needed a document the website didn't mention.",
+      "Lost my paperwork twice. Made me come back three separate times. No apology.",
+    ],
+  },
+  hospital: {
+    positive: [
+      "ER nurse at Nyack Hospital stayed past her shift to make sure my mom was admitted right. Held her hand. We never got her name.",
+      "Tech who drew my blood saw I was nervous and made small talk the whole time. Such a small thing. Made the whole visit different.",
+    ],
+    negative: [
+      "Sat in the ER for 6 hours with a kid who clearly had a broken arm. Staff was overworked and short with everyone. Not their fault but the system is broken.",
+    ],
+  },
+  gov: {
+    positive: [
+      "Inspector came for our addition permit. Knew the code cold, pointed out two small issues I could fix on the spot. Signed off the same day.",
+      "Caseworker at HRA listened to me. Actually listened. Then she walked me through every form. Two weeks later my benefits came through.",
+    ],
+    negative: [
+      "Called the unemployment office for three weeks. Every time, different person, different answer. They lost my paperwork twice.",
+    ],
+  },
+  school: {
+    positive: [
+      "Board member showed up to our PTA meeting about the new bus routes. Stayed past 10pm so every parent got to speak. Disagreed with some of us but listened.",
+      "Superintendent emailed me back within 24 hours about IEP delays. Got me a meeting with the team the next week.",
+    ],
+    negative: [
+      "Voted yes on the bus contract change without explaining how it affects special-ed routes. Three parents asked. They said 'we'll review.' That was two months ago.",
+    ],
+  },
+  elected: {
+    positive: [
+      "Mayor walked the flooded blocks with us. Gave a 60-day timeline and stuck to it. Rare to see that level of accountability.",
+      "Legislator helped cut through county red tape on a senior-housing permit. Two phone calls, one email — six months of stalling became a yes.",
+    ],
+    negative: [
+      "Asked three times at public comment about the recycling pickup change. Got cut off twice. Third time I just gave up.",
+    ],
+  },
+};
+
+const FAKE_STORY_TAGS = {
+  positive: ['professional','helpful','kind','went-above-and-beyond','calm-under-pressure','listens','accountable','responsive'],
+  negative: ['rushed','dismissive','slow','disrespectful','no-follow-through','rude'],
+  neutral:  ['professional','listens'],
+};
 
 const FAKE_COMMENT_BANK = {
   poll_yes:    ["This is overdue.", "Long time coming.", "Right call.", "Yes, no question.", "Should've happened years ago."],
@@ -4294,10 +4398,34 @@ function _pickRandomStory() {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-// One fake-user action: react on a story, or vote/comment on a poll
+// Fake user — pick a story role + name based on existing seed
+function _fakeRoleName(role) {
+  const firstNames = ['M.','A.','D.','J.','K.','L.','T.','R.','P.','S.','C.','H.','B.','E.'];
+  const lastNames = ['Hernandez','Park','Chen','Thompson','Wright','Murphy','Wilson','Brooks','Kim','Reyes','Anderson','Lopez','Hall','Cooper','Green'];
+  const first = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+  const prefix = role === 'police' ? 'Officer' : role === 'emt' ? 'EMT' : role === 'fire' ? 'Firefighter' : role === 'hospital' ? 'Nurse' : '';
+  return prefix ? `${prefix} ${first} ${last}` : `${first} ${last}`;
+}
+function _fakeAgency(role) {
+  const banks = {
+    police: ['Spring Valley PD','Ramapo Police','Clarkstown PD','Orangetown PD','Stony Point PD'],
+    emt:    ['Rockland Paramedic Services','Empress EMS','Hudson Valley Ambulance','FDNY EMS Operations'],
+    fire:   ['Spring Valley FD','Hillcrest Hose Co. 1','Monsey FD','Suffern FD'],
+    dmv:    ['NY DMV — Spring Valley','NY DMV — Bronx','NY DMV — Yonkers'],
+    hospital: ['Nyack Hospital','Good Samaritan Hospital','Westchester Medical Center'],
+    gov:    ['NYC HRA','NYS Tax Department','NYS DOL','Rockland County Clerk'],
+    school: ['East Ramapo Central School District','Spring Valley HS'],
+    elected:['Village of Spring Valley','Town of Ramapo','Rockland County Legislature'],
+  };
+  const list = banks[role] || ['Local Government'];
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// One fake-user action: react / vote / comment-poll / submit-story / reply-thread / subscribe
 function _fakeUserAction(persona) {
   const choice = Math.random();
-  if (choice < 0.7) {
+  if (choice < 0.45) {
     // React on a random story
     const pick = _pickRandomStory();
     if (!pick) return;
@@ -4316,7 +4444,7 @@ function _fakeUserAction(persona) {
     all[key][kind] = (all[key][kind] || 0) + 1;
     localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
     return { type:'react', who:persona.handle, story:pick, kind };
-  } else if (choice < 0.9) {
+  } else if (choice < 0.65) {
     // Vote on a random poll (if not yet voted by this persona)
     const polls = [...POLLS_SEED, ..._readApprovedPolls()];
     if (!polls.length) return;
@@ -4343,7 +4471,7 @@ function _fakeUserAction(persona) {
     bd[p.id][persona.affil][opt.id] = (bd[p.id][persona.affil][opt.id] || 0) + 1;
     localStorage.setItem(POLLS_BREAKDOWN_KEY, JSON.stringify(bd));
     return { type:'vote', who:persona.handle, poll:p, opt };
-  } else {
+  } else if (choice < 0.75) {
     // Add a comment to a random poll (if voted)
     const state = _readFakeState();
     const myVotes = (state[persona.handle] && state[persona.handle].polls) || {};
@@ -4368,7 +4496,130 @@ function _fakeUserAction(persona) {
     comments[pollId] = comments[pollId] || [];
     comments[pollId].push({ handle: persona.handle, optionId: optId, text, ts: new Date().toISOString(), affil: persona.affil });
     localStorage.setItem(POLLS_COMMENTS_KEY, JSON.stringify(comments));
-    return { type:'comment', who:persona.handle, poll:p, text };
+    return { type:'poll-comment', who:persona.handle, poll:p, text };
+  } else if (choice < 0.85) {
+    // Reply to a story thread — like Reddit comments under each story
+    const pick = _pickRandomStory();
+    if (!pick) return;
+    const state = _readFakeState();
+    state[persona.handle] = state[persona.handle] || {};
+    state[persona.handle].replies = state[persona.handle].replies || {};
+    const key = `${pick.o.id}:${pick.r.id}`;
+    if (state[persona.handle].replies[key]) return;
+    state[persona.handle].replies[key] = true;
+    _writeFakeState(state);
+    // Pick a reply tone based on the story's verdict + persona's lean
+    const isPos = pick.r.verdict === 'fair';
+    const positiveReplies = [
+      "Same here. They were great with my family too.",
+      "Good to see this on the record.",
+      "This matches what I saw at a different stop. Real professional.",
+      "Yes — I had a similar experience. Worth knowing.",
+      "We need more of this. Thank you for posting.",
+    ];
+    const negativeReplies = [
+      "Same thing happened to me last month.",
+      "This is a pattern, not a one-off.",
+      "Reported something similar — no response.",
+      "Not surprised. Seen it before.",
+      "Document it. It matters.",
+    ];
+    const curiousReplies = [
+      "What time of day was this?",
+      "Did they ever follow up?",
+      "What was the agency response, if any?",
+      "Was there a badge / unit number?",
+      "Was this their first time being called out?",
+    ];
+    let bucket = isPos ? positiveReplies : negativeReplies;
+    if (persona.lean.includes('curious') && Math.random() < 0.4) bucket = curiousReplies;
+    const body = bucket[Math.floor(Math.random() * bucket.length)];
+    const map = _readAllReplies();
+    map[key] = map[key] || [];
+    map[key].push({
+      id: 'r' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      author_handle: persona.handle,
+      author_display: persona.handle,
+      is_agency_response: false,
+      agency_name: null,
+      body,
+      created_at: new Date().toISOString(),
+    });
+    _writeAllReplies(map);
+    return { type:'thread-reply', who:persona.handle, story:pick, body };
+  } else if (choice < 0.95) {
+    // Submit a NEW story — auto-approved (fake users skip moderation queue for organic feel)
+    const roles = ['police','emt','fire','dmv','hospital','gov','school','elected'];
+    const role = roles[Math.floor(Math.random() * roles.length)];
+    const sentiment = persona.storyLean === 'neutral' ? (Math.random() < 0.5 ? 'positive' : 'negative') : persona.storyLean;
+    const stories = (FAKE_STORY_BANK[role] && FAKE_STORY_BANK[role][sentiment]) || [];
+    if (!stories.length) return;
+    const storyText = stories[Math.floor(Math.random() * stories.length)];
+    const tags = FAKE_STORY_TAGS[sentiment] || [];
+    const pickedTags = [];
+    for (let i = 0; i < 2 && tags.length; i++) {
+      const t = tags[Math.floor(Math.random() * tags.length)];
+      if (!pickedTags.includes(t)) pickedTags.push(t);
+    }
+    const personName = _fakeRoleName(role);
+    const agency = _fakeAgency(role);
+    const stars = sentiment === 'positive' ? (Math.random() < 0.6 ? 5 : 4) : (Math.random() < 0.5 ? 2 : 1);
+    const verdict = sentiment === 'positive' ? 'fair' : 'unfair';
+    // Build the officer + review like real submission would
+    const officerId = 7000000 + Math.floor(Math.random() * 999999);
+    const reviewId  = 8000000 + Math.floor(Math.random() * 999999);
+    const newOfficer = {
+      id: officerId,
+      name: personName,
+      department: agency,
+      badge: '—',
+      avg_stars: stars,
+      review_count: 1,
+      fair_count: sentiment === 'positive' ? 1 : 0,
+      unfair_count: sentiment === 'positive' ? 0 : 1,
+      role,
+      reviews: [{
+        id: reviewId,
+        verdict, stars,
+        story: storyText,
+        location: agency.replace(/^(NY DMV — |Village of |Town of )/, '') + ', NY',
+        tags: pickedTags,
+        author_display: persona.handle,
+        created_at: new Date().toISOString(),
+      }],
+    };
+    // Persist in the same shape getApprovedAsOfficers() expects so it rehydrates after reload
+    const approved = _readApproved();
+    const now = new Date().toISOString();
+    approved.unshift({
+      payload: {
+        officer_name: personName,
+        department: agency,
+        role,
+        verdict, stars,
+        story: storyText,
+        location: newOfficer.reviews[0].location,
+        tags: pickedTags,
+      },
+      author_handle: persona.handle,
+      author_display: persona.handle,
+      submitted_at: now,
+      approved_at: now,
+    });
+    localStorage.setItem(APPROVED_KEY, JSON.stringify(approved));
+    // Also append to STATIC_DATA.officers directly so it appears in renders immediately this session
+    if (window.STATIC_DATA && window.STATIC_DATA.officers) {
+      window.STATIC_DATA.officers.unshift(newOfficer);
+    }
+    return { type:'new-story', who:persona.handle, story:newOfficer };
+  } else {
+    // Subscribe to an agency (rare action — just adds variety to the data)
+    const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+    if (!officers.length) return;
+    const agency = officers[Math.floor(Math.random() * officers.length)].department;
+    if (!agency) return;
+    // Subscribes here are per-persona, not the current user's subs (don't pollute the real user's subs)
+    return { type:'subscribe', who:persona.handle, agency };
   }
 }
 
@@ -4383,9 +4634,11 @@ function _startFakeUserSim() {
     try { _fakeUserAction(persona); } catch (e) { console.warn('fake-user action:', e); }
     // Soft-rerender current section if user is looking at Pulse or Polls
     const id = document.querySelector('section.active')?.id;
-    if (id === 'pulse')  setTimeout(() => { try { renderPulse(); } catch {} }, 200);
-    if (id === 'polls')  setTimeout(() => { try { renderPolls(); } catch {} }, 200);
-    _fakeUserTimer = setTimeout(tick, 18000 + Math.random() * 27000);  // 18-45s
+    if (id === 'pulse')    setTimeout(() => { try { renderPulse(); } catch {} }, 200);
+    if (id === 'polls')    setTimeout(() => { try { renderPolls(); } catch {} }, 200);
+    if (id === 'officers') setTimeout(() => { try { applyFilters(); } catch {} }, 200);
+    // 12-30s between actions — 25 personas, so ~50-100 actions/hour while a page is open
+    _fakeUserTimer = setTimeout(tick, 12000 + Math.random() * 18000);
   };
   _fakeUserTimer = setTimeout(tick, 4000 + Math.random() * 6000);
 }

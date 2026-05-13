@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v42-fakes-emoji-fixes';
-const ASSETS_BUMP_NOTE = 'Streak chip compact, Home pill phone-only, reactions drop count (just color+check), custom emoji + button, 10 fake users auto-reacting in background';
+const CACHE = 'civicvoice-v43-fakes-full-personas';
+const ASSETS_BUMP_NOTE = '25 fake personas doing everything: react / vote / poll-comment / thread-reply / submit-story / subscribe. 12-30s cadence. Looks like real traffic.';
 const ASSETS = [
   './',
   './index.html',
