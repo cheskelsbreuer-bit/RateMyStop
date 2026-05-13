@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v38-pulse-polls-fix';
-const ASSETS_BUMP_NOTE = 'CRITICAL fix: duplicate const key broke entire app.js parse → Pulse + Polls were never rendering. Plus removed desktop right rail per user. Seed reactions now idempotent.';
+const CACHE = 'civicvoice-v39-compact-story-poll-breakdown';
+const ASSETS_BUMP_NOTE = 'Compact story-detail buttons on phone (no more stacked vertical buttons) + poll breakdown by affiliation (Republican/Democrat/Independent etc)';
 const ASSETS = [
   './',
   './index.html',

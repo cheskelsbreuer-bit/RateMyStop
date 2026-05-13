@@ -4319,7 +4319,7 @@ function setAffiliation(a) {
 
 function _seedPollCounts(pollId) {
   const votes = _readPollsVotes();
-  if (votes[pollId]) return votes[pollId];
+  if (votes[pollId]) { _seedPollBreakdownIfNeeded(pollId, votes[pollId]); return votes[pollId]; }
   const poll = POLLS_SEED.find(p => p.id === pollId);
   if (!poll) return {};
   const totals = {};
@@ -4331,7 +4331,80 @@ function _seedPollCounts(pollId) {
   });
   votes[pollId] = totals;
   localStorage.setItem(POLLS_VOTES_KEY, JSON.stringify(votes));
+  _seedPollBreakdownIfNeeded(pollId, totals);
   return totals;
+}
+
+// Seed plausible affiliation breakdowns so the breakdown view is populated from day 1
+const AFFIL_GROUPS = ['republican','democrat','independent','conservative','progressive','libertarian'];
+function _seedPollBreakdownIfNeeded(pollId, totals) {
+  const bd = _readPollsBreakdown();
+  if (bd[pollId] && Object.keys(bd[pollId]).length > 0) return;
+  bd[pollId] = {};
+  // Realistic-ish split — vary "lean" per option so it doesn't look uniform
+  const optionIds = Object.keys(totals);
+  optionIds.forEach((optId, idx) => {
+    const total = totals[optId] || 0;
+    if (total === 0) return;
+    // Random weights across affiliations — biased so one group leans hard on each option
+    const weights = AFFIL_GROUPS.map(() => 0.3 + Math.random() * 1.4);
+    weights[idx % weights.length] += 2;  // first group leans option 1, second group option 2, etc.
+    const sum = weights.reduce((a, b) => a + b, 0);
+    AFFIL_GROUPS.forEach((affil, i) => {
+      const share = Math.round((weights[i] / sum) * total);
+      bd[pollId][affil] = bd[pollId][affil] || {};
+      bd[pollId][affil][optId] = (bd[pollId][affil][optId] || 0) + share;
+    });
+  });
+  localStorage.setItem(POLLS_BREAKDOWN_KEY, JSON.stringify(bd));
+}
+
+// Pretty-print affiliation key
+const AFFIL_LABELS = {
+  republican: '🐘 Republican', democrat: '🐂 Democrat', independent: '🏛️ Independent',
+  conservative: 'Conservative', progressive: 'Progressive', libertarian: 'Libertarian',
+  other: 'Other / Skip', unknown: 'Not specified',
+};
+const AFFIL_COLORS = {
+  republican: '#c93434', democrat: '#2563d9', independent: '#7a51c8',
+  conservative: '#e07a1a', progressive: '#1f8c5f', libertarian: '#8a6a1e',
+  other: '#7a7a82', unknown: '#a0a0a8',
+};
+
+// Render the breakdown panel for a poll — vote share per affiliation
+function renderPollBreakdown(p) {
+  const bd = _readPollsBreakdown()[p.id] || {};
+  const affilTotals = {};  // total votes per affiliation
+  Object.entries(bd).forEach(([affil, byOpt]) => {
+    affilTotals[affil] = Object.values(byOpt).reduce((s, n) => s + n, 0);
+  });
+  const totalAll = Object.values(affilTotals).reduce((s, n) => s + n, 0);
+  if (totalAll === 0) return '';
+  // Sort affiliations by who voted most
+  const sortedAffils = Object.keys(affilTotals).sort((a, b) => affilTotals[b] - affilTotals[a]).filter(a => affilTotals[a] > 0);
+  return `
+    <div class="poll-breakdown">
+      <div class="pbd-head">Breakdown by who's voting <span class="pbd-total">${totalAll.toLocaleString()} total</span></div>
+      ${sortedAffils.map(affil => {
+        const byOpt = bd[affil] || {};
+        const subTotal = affilTotals[affil];
+        const winningOpt = Object.keys(byOpt).sort((a, b) => byOpt[b] - byOpt[a])[0];
+        const winningPct = subTotal ? Math.round((byOpt[winningOpt] / subTotal) * 100) : 0;
+        const winningLabel = p.options.find(o => o.id === winningOpt)?.label || '?';
+        return `
+          <div class="pbd-row">
+            <div class="pbd-label" style="color:${AFFIL_COLORS[affil] || 'var(--ink)'};">${AFFIL_LABELS[affil] || affil}</div>
+            <div class="pbd-bars">
+              ${p.options.map(o => {
+                const c = byOpt[o.id] || 0;
+                const pct = subTotal ? Math.round((c / subTotal) * 100) : 0;
+                return `<div class="pbd-bar" title="${escapeHtml(o.label)}: ${pct}%" style="flex:${pct || 0.01};background:${AFFIL_COLORS[affil] || 'var(--accent)'};opacity:${0.35 + (pct / 200)};"></div>`;
+              }).join('')}
+            </div>
+            <div class="pbd-meta"><strong>${winningPct}%</strong> · ${escapeHtml(winningLabel.length > 22 ? winningLabel.slice(0, 22) + '…' : winningLabel)} <span class="pbd-n">(${subTotal})</span></div>
+          </div>`;
+      }).join('')}
+    </div>`;
 }
 
 function votePoll(pollId, optionId) {
@@ -4463,12 +4536,14 @@ function renderPolls() {
               </div>`).join('')}
           </div>` : ''}
       </div>` : '';
+    const breakdownHtml = myVote ? renderPollBreakdown(p) : '';
     return `
       <article class="poll-card">
         <div class="pc-cat">${escapeHtml(p.cat)}</div>
         <div class="pc-q">${escapeHtml(p.q)}</div>
         <div class="pc-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${allComments.length} ${allComments.length === 1 ? 'comment' : 'comments'} &middot; ${p.closes}</div>
         <div class="poll-options">${optionsHtml}</div>
+        ${breakdownHtml}
         ${commentsHtml}
         <div class="pc-foot">
           <span>${myVote ? 'You voted.' : 'Tap an option to take your stand.'}</span>

@@ -889,8 +889,21 @@ section.active{display:block;}
   .sd-sent{flex-wrap:wrap;gap:6px;}
   .sd-stars{font-size:0.95rem;letter-spacing:1.5px;}
   .sd-tag{font-size:0.66rem;padding:2px 8px;}
-  .sd-foot{flex-direction:column;align-items:stretch;gap:8px;}
-  .sd-foot .sp-action{width:100%;}
+  /* Story detail modal on phone: keep buttons compact + horizontal, NOT stacked.
+     The stacked layout from earlier made every story card a full screen. */
+  .sd-foot{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap;padding-top:14px;}
+  .sd-foot .sp-action{width:auto;flex:0 0 auto;padding:7px 10px;font-size:0.78rem;}
+  /* Reaction buttons row in story detail: tight, horizontal, emoji-led */
+  .story-detail .mr-actions{flex-wrap:wrap;gap:5px;margin-top:6px;}
+  .story-detail .mr-actions .sp-action{padding:6px 10px;font-size:0.76rem;flex:0 0 auto;}
+  /* Trim reaction summary + legend padding on phone story detail */
+  .story-detail .reaction-summary{padding:7px 10px;font-size:0.78rem;margin:10px 0 0;gap:8px;}
+  .story-detail .reaction-legend{padding:6px 10px;font-size:0.66rem;margin:8px 0 6px;}
+  .story-detail .reaction-legend .rl-key{display:inline;margin-top:0;}
+  /* Tighten the byline so it doesn't wrap 'May 10, 2026' awkwardly */
+  .story-detail .sp-byline{font-size:0.72rem;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  /* Story detail modal padding tighter on phone */
+  .story-detail{padding:20px 16px 18px;}
   .sd-byline{width:100%;flex:1 1 100%;}
 
   /* Search bar shouldn't push past viewport */
@@ -1067,6 +1080,25 @@ section.active{display:block;}
 @media(max-width:700px){
   .reaction-legend{font-size:0.68rem;padding:7px 10px;}
   .reaction-legend .rl-key{display:block;margin-top:2px;}
+}
+
+/* ─── Poll breakdown by affiliation ─── */
+.poll-breakdown{margin:14px 0;padding:14px;background:linear-gradient(160deg, rgba(184,148,30,0.05), var(--bg2));border:1px solid var(--border);border-radius:12px;}
+.pbd-head{font-size:0.74rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.pbd-total{font-size:0.72rem;color:var(--ink);font-weight:800;letter-spacing:-0.1px;text-transform:none;}
+.pbd-row{display:grid;grid-template-columns:120px 1fr 130px;gap:12px;align-items:center;padding:6px 0;border-top:1px solid rgba(229,227,221,0.5);}
+.pbd-row:first-of-type{border-top:none;}
+.pbd-label{font-size:0.78rem;font-weight:700;letter-spacing:-0.1px;}
+.pbd-bars{display:flex;gap:2px;height:14px;border-radius:4px;overflow:hidden;background:rgba(229,227,221,0.5);}
+.pbd-bar{height:100%;transition:flex 0.4s cubic-bezier(0.4,0,0.2,1);}
+.pbd-meta{font-size:0.74rem;color:var(--light);text-align:right;}
+.pbd-meta strong{color:var(--ink);font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.82rem;}
+.pbd-n{color:var(--gray);font-size:0.68rem;}
+@media(max-width:700px){
+  .pbd-row{grid-template-columns:1fr;gap:4px;padding:8px 0;}
+  .pbd-bars{order:3;}
+  .pbd-label{font-size:0.82rem;}
+  .pbd-meta{text-align:left;font-size:0.72rem;}
 }
 
 /* ─── Poll comments ─── */
