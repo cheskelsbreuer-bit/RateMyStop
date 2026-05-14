@@ -1440,7 +1440,7 @@ function setPulseFilter(el, key) {
   document.querySelectorAll('#pulse .pulse-filters .pill').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
   _pulseFilter = key;
-  window._pulsePageLimit = 100;  // reset pagination on filter change
+  window._pulsePageLimit = 30;  // reset pagination on filter change
   renderPulse();
 }
 // Programmatic version for empty-state CTAs
@@ -1587,11 +1587,23 @@ function _renderOnePulseCard(it) {
 
 let _pulseRendering = false;
 function renderPulse() {
-  // Re-entry guard — if a bot tick fires renderPulse while we're mid-render, ignore.
-  // Without this, bot activity + infinite scroll + nav can stack renders and freeze the page.
+  // Re-entry guard so we never stack renders
   if (_pulseRendering) return;
   _pulseRendering = true;
-  try { _renderPulseInternal(); } finally { _pulseRendering = false; }
+  try {
+    _renderPulseInternal();
+  } catch (e) {
+    console.error('[renderPulse] failed:', e);
+    const stage = document.getElementById('pulseStage');
+    if (stage) {
+      stage.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--red);font-size:0.9rem;line-height:1.6;">
+        Pulse hit an error rendering. <button onclick="window._pulsePageLimit=30; renderPulse();" style="background:var(--ink);color:#fff;border:none;border-radius:8px;padding:8px 16px;margin-top:10px;cursor:pointer;font-family:inherit;font-weight:700;">Reset Pulse</button>
+        <div style="font-size:0.74rem;color:var(--gray);margin-top:8px;">${escapeHtml(e.message || String(e))}</div>
+      </div>`;
+    }
+  } finally {
+    _pulseRendering = false;
+  }
 }
 function _renderPulseInternal() {
   const stage = document.getElementById('pulseStage');
@@ -1629,8 +1641,9 @@ function _renderPulseInternal() {
   items.sort((a, b) => _pulseMomentum(b) - _pulseMomentum(a));
   // Mix categories so no role dominates — interleave Police / EMT / Fire / DMV / Hospital / Gov't
   items = _mixByCategory(items, 2);
-  // Pagination — show up to _pulsePageLimit, "Load more" button at the end
-  if (!window._pulsePageLimit) window._pulsePageLimit = 100;
+  // Pagination — smaller initial render (30) so first paint is fast and predictable.
+  // Then "Load 30 more" button extends. (Previously had IntersectionObserver — was thrashing on phones.)
+  if (!window._pulsePageLimit) window._pulsePageLimit = 30;
   const totalAvailable = items.length;
   items = items.slice(0, window._pulsePageLimit);
   window._pulseTotalAvailable = totalAvailable;
@@ -1688,11 +1701,21 @@ function _renderPulseInternal() {
   // Render every card stacked vertically — scroll snaps each into view. Mix of stories + polls.
   const topRail = _renderTopReactedRail();
   const moreAvailable = (window._pulseTotalAvailable || 0) > items.length;
-  // TikTok-style infinite scroll — a sentinel at the bottom triggers auto-load via IntersectionObserver
-  const sentinel = moreAvailable ? `<div id="pulseInfiniteSentinel" style="height:1px;scroll-snap-align:none;"></div>` : '';
-  stage.innerHTML = (topRail || '') + items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('') + sentinel;
-  // Wire the infinite-scroll observer (replaces previous Load More)
-  if (moreAvailable) _attachPulseInfiniteScroll();
+  const loadMore = moreAvailable ? `
+    <div style="text-align:center;padding:24px 16px 60px;scroll-snap-align:none;">
+      <button class="btn-gold" style="padding:12px 28px;font-size:0.92rem;cursor:pointer;" onclick="window._pulsePageLimit=(window._pulsePageLimit||30)+30; renderPulse();">Load 30 more &darr;</button>
+      <div style="font-size:0.74rem;color:var(--gray);margin-top:8px;">${items.length} of ${window._pulseTotalAvailable} shown</div>
+    </div>` : '';
+  // Build the inner HTML with each card wrapped in a per-item try/catch so one bad card doesn't kill the whole feed
+  const cardsHtml = items.map(it => {
+    try {
+      return it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it);
+    } catch (e) {
+      console.warn('[card render] skipped one:', e);
+      return '';
+    }
+  }).join('');
+  stage.innerHTML = (topRail || '') + cardsHtml + loadMore;
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
@@ -1781,26 +1804,9 @@ function _renderOnePulsePollCard(p) {
 }
 
 // TikTok-style infinite scroll for Pulse — sentinel at the end triggers auto-load
-let _pulseInfiniteObs = null;
-let _pulseInfiniteLoading = false;
-function _attachPulseInfiniteScroll() {
-  if (_pulseInfiniteObs) { _pulseInfiniteObs.disconnect(); _pulseInfiniteObs = null; }
-  const sentinel = document.getElementById('pulseInfiniteSentinel');
-  if (!sentinel) return;
-  // Use viewport as root (not stage). On phone the stage has height:auto + no internal scroll,
-  // so root:stage was reporting the sentinel as always-intersecting → infinite render loop = freeze.
-  // root:null (viewport) means it only fires when the sentinel actually scrolls into view.
-  _pulseInfiniteObs = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting && !_pulseInfiniteLoading) {
-        _pulseInfiniteLoading = true;
-        window._pulsePageLimit = (window._pulsePageLimit || 100) + 30;
-        setTimeout(() => { try { renderPulse(); } finally { _pulseInfiniteLoading = false; } }, 200);
-      }
-    }
-  }, { root: null, rootMargin: '600px 0px' });
-  _pulseInfiniteObs.observe(sentinel);
-}
+// (Removed _attachPulseInfiniteScroll — IntersectionObserver was causing freezes on phones.
+//  We now use a simple "Load 30 more" button. Re-add infinite scroll only after the page
+//  has been verified stable across phone/tablet/laptop.)
 
 // Swipe gestures on Pulse — left = next, right = previous. Vertical scroll still works.
 // Also pull-to-refresh — drag down from top of page → release → reload feed.
@@ -2351,9 +2357,24 @@ function _renderReplies(officerId, reviewId) {
   const list = document.getElementById('replyList');
   if (!list) return;
   let replies = getReplies(officerId, reviewId).slice();
-  if (_replySort === 'newest')    replies.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-  if (_replySort === 'oldest')    replies.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
-  if (_replySort === 'reactions') replies.sort((a, b) => (b._reactions || 0) - (a._reactions || 0));
+  // Build a parent → children map for nesting (1 level deep)
+  const childMap = {};
+  const topLevel = [];
+  for (const r of replies) {
+    if (r.parent_id) {
+      childMap[r.parent_id] = childMap[r.parent_id] || [];
+      childMap[r.parent_id].push(r);
+    } else {
+      topLevel.push(r);
+    }
+  }
+  // Sort top-level by the selected mode
+  if (_replySort === 'newest')    topLevel.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  if (_replySort === 'oldest')    topLevel.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+  if (_replySort === 'reactions') topLevel.sort((a, b) => (b._reactions || 0) - (a._reactions || 0));
+  // Children always sorted oldest-first (chronological mini-thread)
+  Object.values(childMap).forEach(arr => arr.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)));
+
   const sortBar = `
     <div class="reply-sort-bar">
       <span class="reply-sort-label">Sort:</span>
@@ -2361,14 +2382,16 @@ function _renderReplies(officerId, reviewId) {
       <button class="reply-sort-pill ${_replySort==='oldest'?'on':''}" data-sort="oldest"    onclick="setReplySort('oldest', ${officerId}, ${reviewId})">Oldest</button>
       <button class="reply-sort-pill ${_replySort==='reactions'?'on':''}" data-sort="reactions" onclick="setReplySort('reactions', ${officerId}, ${reviewId})">Top</button>
     </div>`;
+
   if (!replies.length) {
     list.innerHTML = sortBar + '<div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:14px 0;">No replies yet. Be the first to add to this thread.</div>';
     return;
   }
-  list.innerHTML = sortBar + replies.map(r => {
+
+  const renderReplyItem = (r, isChild) => {
     const initial = (r.author_display || 'A').charAt(0).toUpperCase();
     return `
-      <div class="reply-item${r.is_agency_response ? ' is-agency' : ''}">
+      <div class="reply-item${r.is_agency_response ? ' is-agency' : ''}${isChild ? ' reply-child' : ''}" data-reply-id="${escapeHtml(r.id)}">
         <div class="reply-head">
           <span class="reply-author" onclick="openAuthorProfile('${escapeHtml(r.author_display).replace(/'/g, "\\'")}');">
             <span class="reply-avatar">${escapeHtml(initial)}</span>
@@ -2378,9 +2401,61 @@ function _renderReplies(officerId, reviewId) {
           <span class="reply-date">${formatDate(r.created_at)}</span>
         </div>
         <div class="reply-body">${_linkifyMentions(r.body)}</div>
+        ${!isChild ? `<button class="reply-reply-btn" onclick="event.stopPropagation(); openNestedReplyInput(${officerId}, ${reviewId}, '${escapeHtml(r.id)}', '${escapeHtml(r.author_display).replace(/'/g, "\\'")}')">&#x21B3; Reply</button>` : ''}
+        <div class="reply-children-mount" id="nested-${escapeHtml(r.id)}"></div>
       </div>
     `;
+  };
+
+  list.innerHTML = sortBar + topLevel.map(top => {
+    const children = childMap[top.id] || [];
+    const childHtml = children.map(c => renderReplyItem(c, true)).join('');
+    const parent = renderReplyItem(top, false);
+    // Inject children inside the parent's mount slot via post-process below
+    return parent.replace(`<div class="reply-children-mount" id="nested-${escapeHtml(top.id)}"></div>`,
+      childHtml ? `<div class="reply-children-mount" id="nested-${escapeHtml(top.id)}">${childHtml}</div>` : `<div class="reply-children-mount" id="nested-${escapeHtml(top.id)}"></div>`);
   }).join('');
+}
+
+// Nested reply input — appears inline below the parent reply
+function openNestedReplyInput(officerId, reviewId, parentReplyId, parentAuthor) {
+  // Remove any existing inline input
+  document.querySelectorAll('.nested-reply-input').forEach(el => el.remove());
+  const mount = document.getElementById(`nested-${parentReplyId}`);
+  if (!mount) return;
+  const form = document.createElement('div');
+  form.className = 'nested-reply-input';
+  form.innerHTML = `
+    <textarea id="nestedReplyTa-${parentReplyId}" placeholder="Reply to @${escapeHtml(parentAuthor)}…" rows="2"></textarea>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;">
+      <button class="btn-ghost" style="padding:6px 12px;font-size:0.76rem;border-radius:7px;" onclick="this.closest('.nested-reply-input').remove();">Cancel</button>
+      <button class="ac-btn" style="padding:6px 12px;font-size:0.76rem;border-radius:7px;" onclick="submitNestedReply(${officerId}, ${reviewId}, '${parentReplyId}', '${escapeHtml(parentAuthor).replace(/'/g, "\\'")}', this)">Post reply</button>
+    </div>`;
+  mount.appendChild(form);
+  setTimeout(() => { const ta = document.getElementById(`nestedReplyTa-${parentReplyId}`); if (ta) ta.focus(); }, 50);
+}
+function submitNestedReply(officerId, reviewId, parentReplyId, parentAuthor, btn) {
+  if (!requireAuth(() => submitNestedReply(officerId, reviewId, parentReplyId, parentAuthor, btn), 'Sign in to reply')) return;
+  const ta = document.getElementById(`nestedReplyTa-${parentReplyId}`);
+  const body = (ta?.value || '').trim();
+  if (!body) return;
+  const user = getCurrentUser();
+  const org  = getCurrentOrg();
+  const map = _readAllReplies();
+  const k = _storyKey(officerId, reviewId);
+  map[k] = map[k] || [];
+  map[k].push({
+    id: 'r' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+    parent_id: parentReplyId,
+    author_handle: user.handle,
+    author_display: user.anonymous ? user.handle : (user.displayName || user.handle),
+    is_agency_response: !!(org && org.verified),
+    agency_name: org && org.verified ? org.agency_name : null,
+    body: `@${parentAuthor} ${body}`,
+    created_at: new Date().toISOString(),
+  });
+  _writeAllReplies(map);
+  _renderReplies(officerId, reviewId);
 }
 
 // ── AUTHOR PROFILE — click any handle to see their full history ──

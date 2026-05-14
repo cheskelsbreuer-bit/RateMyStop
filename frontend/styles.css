@@ -1207,6 +1207,18 @@ section.active{display:block;}
 .ptr-indicator.refreshing .ptr-icon{animation:ptrSpin 0.8s linear infinite;}
 @keyframes ptrSpin{to{transform:rotate(360deg);}}
 
+/* Reply-to-reply nesting */
+.reply-reply-btn{background:transparent;border:none;color:var(--gray);font-family:'Inter','Epilogue',sans-serif;font-size:0.74rem;font-weight:600;padding:4px 8px;border-radius:6px;cursor:pointer;margin-top:6px;transition:color 0.15s;}
+.reply-reply-btn:hover{color:var(--accent);background:var(--accent-soft);}
+.reply-children-mount{margin-top:8px;padding-left:14px;border-left:2px solid var(--border);}
+.reply-child{padding:8px 10px;margin-bottom:6px;background:var(--bg2);border-radius:8px;}
+.reply-child .reply-author strong{font-size:0.85rem;}
+.reply-child .reply-body{font-size:0.85rem;line-height:1.5;}
+.reply-child .reply-date{font-size:0.7rem;}
+.nested-reply-input{margin-top:8px;background:var(--card);border:1.5px solid rgba(184,148,30,0.4);border-radius:10px;padding:10px;}
+.nested-reply-input textarea{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:0.86rem;outline:none;resize:vertical;min-height:50px;}
+.nested-reply-input textarea:focus{border-color:rgba(184,148,30,0.5);}
+
 /* @mentions inside replies — clickable chips */
 .mention{display:inline;color:var(--accent);font-weight:700;cursor:pointer;border-radius:4px;padding:0 2px;transition:background 0.12s;}
 .mention:hover{background:var(--accent-soft);}

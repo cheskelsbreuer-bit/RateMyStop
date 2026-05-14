@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v53-poll-admin-controls';
-const ASSETS_BUMP_NOTE = 'Submit-poll has Days input (1-90). Admin can remove/restore + set timeline on any poll (seed or user). Stayed focused — forum/campaigns/photos deferred.';
+const CACHE = 'civicvoice-v54-pulse-hardened-nested-replies';
+const ASSETS_BUMP_NOTE = 'Pulse simplified to fix freeze: removed IntersectionObserver, smaller initial render (30 cards), Load More button, per-card error catch + render-failure UI. Reply-to-reply nesting (1 level deep) on story threads.';
 const ASSETS = [
   './',
   './index.html',
