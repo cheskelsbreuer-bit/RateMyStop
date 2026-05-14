@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v49-bot-pool-affil-lock-ticker-link';
-const ASSETS_BUMP_NOTE = 'Streak chip gone. Ticker clickable. Reload bounce fixed. More polls in Pulse. Voting locks affiliation 7 days. Bot pool up to 100 with admin generator.';
+const CACHE = 'civicvoice-v50-search-trending-permalinks';
+const ASSETS_BUMP_NOTE = '7 in one push: name-default signup, email gate, Cmd+K global search, story permalinks, trending Pulse filter, richer bot comments, Pulse pagination, admin bot list with delete.';
 const ASSETS = [
   './',
   './index.html',

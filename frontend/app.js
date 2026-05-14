@@ -247,6 +247,132 @@ function _seedReactionsIfNeeded() {
   localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
 }
 
+// ── GLOBAL SEARCH ──
+// Single search across stories, polls, authors, agencies. Cmd+K / Ctrl+K to open. Esc to close.
+function openGlobalSearch() {
+  const overlay = document.getElementById('globalSearchOverlay');
+  if (!overlay) return;
+  overlay.classList.add('show');
+  setTimeout(() => {
+    const input = document.getElementById('globalSearchInput');
+    if (input) { input.focus(); input.select(); }
+    renderGlobalSearch();
+  }, 60);
+}
+function closeGlobalSearch() {
+  const overlay = document.getElementById('globalSearchOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
+function renderGlobalSearch() {
+  const wrap = document.getElementById('globalSearchResults');
+  if (!wrap) return;
+  const q = (document.getElementById('globalSearchInput')?.value || '').trim().toLowerCase();
+  if (!q) {
+    wrap.innerHTML = `<div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:30px 0;">Try: <em>"Spring Valley"</em>, <em>"@Anonymous-2841"</em>, <em>"busing"</em>, <em>"hospital"</em>.</div>`;
+    return;
+  }
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const approved = getApprovedAsOfficers();
+  const all = [...approved, ...officers];
+
+  // 1. Match stories (officer + agency + story text + tags)
+  const storyHits = [];
+  const officerHits = new Map();
+  const authorHits = new Map();
+  const isAuthorQuery = q.startsWith('@');
+  const authorQ = isAuthorQuery ? q.slice(1) : null;
+  for (const o of all) {
+    const name = (o.name || '').toLowerCase();
+    const dept = (o.department || '').toLowerCase();
+    if (!isAuthorQuery && (name.includes(q) || dept.includes(q))) {
+      officerHits.set(o.id, o);
+    }
+    for (const r of (o.reviews || [])) {
+      const story = (r.story || '').toLowerCase();
+      const tags  = (r.tags || []).join(' ').toLowerCase();
+      const author = (r.author_display || _legacyAuthor(o.id, r.id)).toLowerCase();
+      if (isAuthorQuery) {
+        if (author.includes(authorQ)) {
+          storyHits.push({ o, r });
+          authorHits.set(author, true);
+        }
+      } else if (story.includes(q) || tags.includes(q) || name.includes(q) || dept.includes(q)) {
+        storyHits.push({ o, r });
+      }
+    }
+  }
+
+  // 2. Match polls (question + options + category)
+  const polls = [...POLLS_SEED, ..._readApprovedPolls()];
+  const pollHits = polls.filter(p => {
+    if (isAuthorQuery) return false;
+    return (p.q || '').toLowerCase().includes(q)
+        || (p.cat || '').toLowerCase().includes(q)
+        || (p.options || []).some(o => (o.label || '').toLowerCase().includes(q));
+  });
+
+  // 3. Match agencies from departments list
+  const agencyHits = [];
+  if (!isAuthorQuery) {
+    const depts = (window.NY_AGENCIES || []);
+    for (const d of depts) {
+      if ((d.name || '').toLowerCase().includes(q) || (d.county || '').toLowerCase().includes(q)) {
+        agencyHits.push(d);
+      }
+    }
+  }
+
+  const totalHits = officerHits.size + storyHits.length + pollHits.length + agencyHits.length;
+  if (!totalHits) {
+    wrap.innerHTML = `<div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:30px 0;">No matches for <strong>${escapeHtml(q)}</strong>.</div>`;
+    return;
+  }
+
+  const section = (title, count, body) => count ? `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--gray);font-weight:800;margin-bottom:6px;">${title} · ${count}</div>
+      ${body}
+    </div>` : '';
+
+  const officerHtml = section('People / Officers', officerHits.size, [...officerHits.values()].slice(0, 6).map(o => `
+    <div class="gs-item" onclick="closeGlobalSearch(); openOfficer(${o.id});">
+      <div class="gs-emoji">${(ROLE_ICON[inferRole(o)] || '👤')}</div>
+      <div class="gs-body"><div class="gs-title">${escapeHtml(o.name || '')}</div><div class="gs-sub">${escapeHtml(o.department || '')}</div></div>
+    </div>`).join(''));
+
+  const storyHtml = section(isAuthorQuery ? 'Stories by this author' : 'Stories', storyHits.length, storyHits.slice(0, 6).map(({ o, r }) => `
+    <div class="gs-item" onclick="closeGlobalSearch(); openStoryDetail(${o.id}, ${r.id});">
+      <div class="gs-emoji">${r.verdict === 'fair' ? '⭐' : '⚠️'}</div>
+      <div class="gs-body"><div class="gs-title">${escapeHtml(o.name || '')} <span style="color:var(--gray);font-weight:500;">· ${escapeHtml(o.department || '')}</span></div><div class="gs-sub">${escapeHtml((r.story || '').slice(0, 100))}${(r.story || '').length > 100 ? '…' : ''}</div></div>
+    </div>`).join(''));
+
+  const pollHtml = section('Polls', pollHits.length, pollHits.slice(0, 5).map(p => `
+    <div class="gs-item" onclick="closeGlobalSearch(); nav('polls');">
+      <div class="gs-emoji">🗳️</div>
+      <div class="gs-body"><div class="gs-title">${escapeHtml(p.q || '')}</div><div class="gs-sub">${escapeHtml(p.cat || '')}</div></div>
+    </div>`).join(''));
+
+  const agencyHtml = section('Agencies', agencyHits.length, agencyHits.slice(0, 5).map(d => `
+    <div class="gs-item" onclick="closeGlobalSearch(); nav('complaint');">
+      <div class="gs-emoji">🏛️</div>
+      <div class="gs-body"><div class="gs-title">${escapeHtml(d.name || '')}</div><div class="gs-sub">${escapeHtml(d.county || '')}</div></div>
+    </div>`).join(''));
+
+  wrap.innerHTML = officerHtml + storyHtml + pollHtml + agencyHtml;
+}
+
+// Global keybinding: Cmd+K / Ctrl+K opens search · Esc closes most modals
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    openGlobalSearch();
+  }
+  if (e.key === 'Escape') {
+    const gs = document.getElementById('globalSearchOverlay');
+    if (gs && gs.classList.contains('show')) closeGlobalSearch();
+  }
+});
+
 // ── NOTIFY-ME MODAL ──
 // Used by: "Where this is going" home rail · agency review-request CTA · claim-this-profile placeholders.
 // Real backend wiring later: POST to /api/notify with { topic, email } — for now we localStorage and
@@ -319,19 +445,30 @@ function signIn(provider) {
   let email = null;
   if (provider === 'email') {
     email = (document.getElementById('authEmailInput')?.value || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      const err = document.getElementById('authError');
+      if (err) { err.textContent = 'Please enter a valid email address.'; err.style.display = 'block'; }
+      return null;
+    }
     displayName = (document.getElementById('authNameInput')?.value || '').trim() || null;
-    if (!email) { alert('Please enter an email.'); return null; }
+    // If no name typed, derive a friendly default from the email local-part (capitalized)
+    if (!displayName) {
+      const local = email.split('@')[0].replace(/[._-]/g, ' ');
+      displayName = local.replace(/\b\w/g, c => c.toUpperCase());
+    }
   } else if (provider === 'google') {
-    // Mock — in production, swap for real Google OAuth
-    displayName = null;  // user keeps the option to be anonymous
+    // Mock — production swaps for real Google OAuth (would return profile.name + profile.email)
+    displayName = 'Google User';
+    email = null;
   } else if (provider === 'github') {
-    displayName = null;
+    displayName = 'GitHub User';
+    email = null;
   }
   const user = {
-    handle: _newAnonymousHandle(),
+    handle: _newAnonymousHandle(),  // private fallback handle, kept in case user toggles to anonymous later
     displayName,
     email: email || null,
-    anonymous: !displayName,  // anonymous by default unless they typed a name
+    anonymous: false,  // DEFAULT: show real name. User can toggle to anonymous via user menu.
     provider,
     signedInAt: new Date().toISOString(),
   };
@@ -1276,6 +1413,7 @@ function setPulseFilter(el, key) {
   document.querySelectorAll('#pulse .pulse-filters .pill').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
   _pulseFilter = key;
+  window._pulsePageLimit = 100;  // reset pagination on filter change
   renderPulse();
 }
 // Programmatic version for empty-state CTAs
@@ -1441,11 +1579,26 @@ function renderPulse() {
   else if (_pulseFilter === 'concerns') items = items.filter(it => it.review.verdict === 'unfair');
   else if (_pulseFilter === 'open')      items = items.filter(it => getResolutionStatus(it.officer.id, it.review.id, it.review) === 'open');
   else if (_pulseFilter === 'subscribed') items = items.filter(it => subs.includes(it.officer.department));
+  else if (_pulseFilter === 'trending')  {
+    // Most-reacted in the last 24h — pure social-proof feed
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    items = items.filter(it => new Date(it.review.created_at || 0).getTime() > dayAgo)
+      .map(it => {
+        const c = getReactionCounts(it.officer.id, it.review.id);
+        return { ...it, _trendScore: c.up + c.down + c.thanks + c.strong + c.curious };
+      })
+      .filter(it => it._trendScore > 0)
+      .sort((a, b) => b._trendScore - a._trendScore);
+  }
   // Sort by momentum (recency + reactions + your prefs + subscriptions)
   items.sort((a, b) => _pulseMomentum(b) - _pulseMomentum(a));
   // Mix categories so no role dominates — interleave Police / EMT / Fire / DMV / Hospital / Gov't
   items = _mixByCategory(items, 2);
-  items = items.slice(0, 100);
+  // Pagination — show up to _pulsePageLimit, "Load more" button at the end
+  if (!window._pulsePageLimit) window._pulsePageLimit = 100;
+  const totalAvailable = items.length;
+  items = items.slice(0, window._pulsePageLimit);
+  window._pulseTotalAvailable = totalAvailable;
   // Interleave polls into the feed — every 4th slot when filter is 'all', or polls-only when filter='polls'
   const allPolls = [..._readApprovedPolls(), ...POLLS_SEED].map(p => ({ kind: 'poll', poll: p }));
   if (_pulseFilter === 'polls') {
@@ -1486,6 +1639,7 @@ function renderPulse() {
       open:         `<div class="pulse-empty"><div class="pe-icon">⏳</div><div class="pe-title">No open stories right now.</div><div class="pe-sub">Open = waiting on an agency response. They've all been acknowledged or resolved.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button></div></div>`,
       all:          `<div class="pulse-empty"><div class="pe-icon">📭</div><div class="pe-title">No stories yet.</div><div class="pe-sub">Be the first.</div><div class="pe-actions"><button class="btn-gold" onclick="nav('share')">Share a story</button></div></div>`,
       polls:        `<div class="pulse-empty"><div class="pe-icon">🗳️</div><div class="pe-title">No polls yet.</div><div class="pe-sub">Open the Polls page or submit your own.</div><div class="pe-actions"><button class="btn-gold" onclick="nav('polls')">Open Polls</button><button class="btn-ghost" onclick="openSubmitPoll()">Submit a poll</button></div></div>`,
+      trending:     `<div class="pulse-empty"><div class="pe-icon">🔥</div><div class="pe-title">Nothing's trending right now.</div><div class="pe-sub">Trending = most-reacted in the last 24 hours. Check back later or start a fresh story.</div><div class="pe-actions"><button class="btn-gold" onclick="_setPulseFilter('all')">Show all</button><button class="btn-ghost" onclick="nav('share')">Share a story</button></div></div>`,
     };
     stage.innerHTML = emptyByFilter[_pulseFilter] || emptyByFilter.all;
     document.getElementById('pulsePos').textContent = 0;
@@ -1494,7 +1648,13 @@ function renderPulse() {
   }
   // Render every card stacked vertically — scroll snaps each into view. Mix of stories + polls.
   const topRail = _renderTopReactedRail();
-  stage.innerHTML = (topRail || '') + items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('');
+  const moreAvailable = (window._pulseTotalAvailable || 0) > items.length;
+  const loadMoreBtn = moreAvailable ? `
+    <div style="text-align:center;padding:30px 16px 50px;scroll-snap-align:none;">
+      <button class="btn-gold" style="padding:12px 28px;font-size:0.92rem;" onclick="window._pulsePageLimit = (window._pulsePageLimit||100) + 50; renderPulse();">Load 50 more &darr;</button>
+      <div style="font-size:0.76rem;color:var(--gray);margin-top:8px;">${items.length} of ${window._pulseTotalAvailable} shown</div>
+    </div>` : '';
+  stage.innerHTML = (topRail || '') + items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('') + loadMoreBtn;
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
@@ -3070,6 +3230,40 @@ if (location.search.includes('admin=1')) {
   setTimeout(() => nav('admin'), 200);
 }
 
+// Story permalink: ?story=officerId-reviewId opens that story's detail modal on load
+// Also supports ?officer=N for opening an officer profile
+try {
+  const params = new URLSearchParams(location.search);
+  const storyParam = params.get('story');
+  const officerParam = params.get('officer');
+  if (storyParam && /^\d+-\d+$/.test(storyParam)) {
+    const [oid, rid] = storyParam.split('-').map(Number);
+    setTimeout(() => { try { openStoryDetail(oid, rid); } catch {} }, 800);
+  } else if (officerParam && /^\d+$/.test(officerParam)) {
+    setTimeout(() => { try { openOfficer(Number(officerParam)); } catch {} }, 800);
+  }
+} catch {}
+
+// Helper: build a permalink URL for a story
+function buildStoryPermalink(officerId, reviewId) {
+  const url = new URL(location.href);
+  url.search = '';
+  url.searchParams.set('story', `${officerId}-${reviewId}`);
+  return url.toString();
+}
+// Copy a permalink to clipboard with a toast confirmation
+function copyStoryPermalink(officerId, reviewId) {
+  const url = buildStoryPermalink(officerId, reviewId);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(
+      () => _showStreakToast('✓ Story link copied to clipboard'),
+      () => _showStreakToast('Couldn\'t copy — your browser blocked it')
+    );
+  } else {
+    _showStreakToast(url);
+  }
+}
+
 // Live update the chip as user types in the notes (debounced ~250ms)
 let _notesTimer = null;
 ['quickStory'].forEach(id => {
@@ -3761,6 +3955,36 @@ function renderAdmEngagement() {
           <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;color:var(--red);" onclick="if(confirm('Clear all custom bots? Seed 25 stay.')){ clearCustomPersonas(); _startFakeUserSim(); renderAdmEngagement(); }">⌫ Clear customs</button>
         </div>
 
+        <details style="font-size:0.82rem;margin-bottom:8px;">
+          <summary style="cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0;">View all ${getAllFakePersonas().length} bots in pool →</summary>
+          <div style="margin-top:10px;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+              <thead style="position:sticky;top:0;background:var(--bg2);">
+                <tr style="border-bottom:1.5px solid var(--border);">
+                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Handle</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Affil</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Lean</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Stories</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${getAllFakePersonas().map((b, i) => {
+                  const isCustom = i >= FAKE_PERSONAS.length;
+                  return `
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:7px 10px;font-weight:600;color:var(--ink);font-family:'JetBrains Mono','Courier New',monospace;font-size:0.78rem;">${escapeHtml(b.handle)}</td>
+                    <td style="padding:7px 10px;color:${AFFIL_COLORS[b.affil] || 'var(--ink)'};font-weight:600;">${escapeHtml(b.affil)}</td>
+                    <td style="padding:7px 10px;color:var(--light);">${(b.lean||[]).map(l => REACTION_STYLES[l]?.emoji || l).join(' ')}</td>
+                    <td style="padding:7px 10px;color:var(--gray);">${escapeHtml(b.storyLean || 'neutral')}</td>
+                    <td style="padding:7px 10px;text-align:right;">${isCustom ? `<button style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:0.74rem;font-weight:700;" onclick="deleteCustomBot(${i - FAKE_PERSONAS.length}); _startFakeUserSim(); renderAdmEngagement();">delete</button>` : `<span style="color:var(--gray);font-size:0.7rem;">seed</span>`}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <details style="font-size:0.82rem;">
           <summary style="cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0;">Add a single custom bot →</summary>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
@@ -4365,6 +4589,14 @@ function clearCustomPersonas() {
   localStorage.removeItem(FAKE_CUSTOM_KEY);
   _showStreakToast('All custom bots removed. 25 seed personas remain.');
 }
+function deleteCustomBot(idx) {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'); } catch {}
+  if (idx < 0 || idx >= custom.length) return;
+  const removed = custom.splice(idx, 1)[0];
+  _saveCustomPersonas(custom);
+  _showStreakToast(`Removed ${removed?.handle || 'bot'}.`);
+}
 // Generate N random bots of a given category (affiliation)
 function generateRandomPersonas(n, affil) {
   let added = 0;
@@ -4534,10 +4766,33 @@ const FAKE_STORY_TAGS = {
 };
 
 const FAKE_COMMENT_BANK = {
-  poll_yes:    ["This is overdue.", "Long time coming.", "Right call.", "Yes, no question.", "Should've happened years ago."],
-  poll_no:     ["Strong disagree.", "Not the right move.", "This would hurt more than it helps.", "Too soon to know.", "No, the current setup works."],
-  poll_mixed:  ["Depends on the details.", "Need more info.", "Both sides have a point.", "I'd want to read the fine print first.", "Mixed feelings, honestly."],
-  poll_curious:["Anyone have a link to the actual proposal?", "Where can I read more?", "Who's funding this?", "What's the implementation timeline?"],
+  poll_yes: [
+    "This is overdue.", "Long time coming.", "Right call.", "Yes, no question.", "Should've happened years ago.",
+    "Common sense, finally.", "The data backs this up.", "100% — I've been saying this for months.",
+    "Cosign. Past time we did this.", "Yep. Glad someone's finally asking.",
+    "Anyone on the fence should look at last year's numbers.", "I voted yes and I'd vote yes again.",
+    "The right side of history on this one.", "Strong yes from me — and from most of the families I know.",
+  ],
+  poll_no: [
+    "Strong disagree.", "Not the right move.", "This would hurt more than it helps.", "Too soon to know.",
+    "No, the current setup works.", "We tried this. It failed.", "This is a solution looking for a problem.",
+    "Hard no. The unintended consequences would be brutal.", "No. Look at what happened in similar towns.",
+    "The people pushing this don't live with the consequences.", "Reads good on paper, terrible in practice.",
+    "I'd want to see actual evidence before I voted yes.", "No. Tax dollars matter.",
+  ],
+  poll_mixed: [
+    "Depends on the details.", "Need more info.", "Both sides have a point.", "I'd want to read the fine print first.",
+    "Mixed feelings, honestly.", "Conditional yes — depends on the implementation.",
+    "I lean one way but I can see the other side.", "Not a clean answer here.",
+    "Yes in principle, no in this specific form.", "Could go either way depending on the trade-offs.",
+  ],
+  poll_curious: [
+    "Anyone have a link to the actual proposal?", "Where can I read more?", "Who's funding this?",
+    "What's the implementation timeline?", "Has any other district tried this?",
+    "What did the cost analysis say?", "Who specifically benefits and who specifically loses?",
+    "Where's the data behind this?", "Is there a public hearing on this?",
+    "What's the rollback plan if it doesn't work?",
+  ],
 };
 
 // Build a contextual poll reply — engages with the last 3 comments like a real thread.

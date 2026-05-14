@@ -60,6 +60,7 @@
       <span class="mmb-line"></span>
       <span class="mmb-line"></span>
     </button>
+    <button class="bell-btn" id="globalSearchBtn" onclick="openGlobalSearch()" aria-label="Search" title="Search everything">&#128269;</button>
     <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown()" aria-label="Notifications" style="display:none;">
       &#128276;
       <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
@@ -114,11 +115,12 @@
     </div>
     <div class="auth-divider"><span>or</span></div>
     <div class="auth-email">
-      <input type="email" id="authEmailInput" placeholder="your@email.com" autocomplete="email">
-      <input type="text" id="authNameInput" placeholder="Display name (optional &mdash; leave blank to stay anonymous)" autocomplete="name">
+      <input type="email" id="authEmailInput" placeholder="your@email.com (required)" autocomplete="email" required>
+      <input type="text" id="authNameInput" placeholder="Display name (optional &mdash; auto-filled from email)" autocomplete="name">
+      <div id="authError" style="display:none;color:var(--red);font-size:0.82rem;font-weight:600;padding:6px 0;"></div>
       <button class="auth-prov auth-email-btn" onclick="signIn('email')">Continue with email</button>
     </div>
-    <div class="auth-footer">By signing in you agree that your stories may appear on the public record. We never share your sign-in info publicly.</div>
+    <div class="auth-footer">By signing in you agree that your stories may appear on the public record. <strong>Your name is shown by default</strong> &mdash; you can switch to anonymous mode anytime via the user menu. We never share your sign-in info publicly.</div>
   </div>
 </div>
 
@@ -133,6 +135,18 @@
   <button class="bt-tab" data-bt="polls"    onclick="nav('polls')"    aria-label="Polls"><span class="bt-icon">&#128499;&#65039;</span><span class="bt-label">Polls</span></button>
   <button class="bt-tab" data-bt="officers" onclick="nav('officers')" aria-label="Stories"><span class="bt-icon">&#128218;</span><span class="bt-label">Stories</span></button>
 </nav>
+
+<!-- GLOBAL SEARCH — Cmd+K style. Searches stories + polls + authors + agencies in one place. -->
+<div class="notify-overlay" id="globalSearchOverlay" onclick="if(event.target===this) closeGlobalSearch()">
+  <div class="notify-modal" style="max-width:680px;padding:20px 22px;">
+    <button class="auth-close" onclick="closeGlobalSearch()" aria-label="Close">&times;</button>
+    <div class="notify-eyebrow">&#128269; Search everything</div>
+    <input type="text" id="globalSearchInput" placeholder="Stories, agencies, polls, @authors&hellip; (Esc to close)" autocomplete="off" style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--ink);font-family:inherit;font-size:1rem;outline:none;margin-bottom:14px;" oninput="renderGlobalSearch()">
+    <div id="globalSearchResults" style="max-height:60vh;overflow-y:auto;">
+      <div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:30px 0;">Start typing to search.</div>
+    </div>
+  </div>
+</div>
 
 <!-- STREAK MODAL — daily/weekly/all-time count + small civic encouragement -->
 <div class="notify-overlay" id="streakOverlay" onclick="if(event.target===this) closeStreakModal()">
@@ -734,6 +748,7 @@
     </div>
     <div class="pulse-filters">
       <span class="pill on" data-pfilter="all" onclick="setPulseFilter(this, 'all')">All</span>
+      <span class="pill" data-pfilter="trending" onclick="setPulseFilter(this, 'trending')">&#128293; Trending</span>
       <span class="pill" data-pfilter="recognitions" onclick="setPulseFilter(this, 'recognitions')">&#11088; Recognitions</span>
       <span class="pill" data-pfilter="concerns" onclick="setPulseFilter(this, 'concerns')">&#9888;&#65039; Concerns</span>
       <span class="pill" data-pfilter="open" onclick="setPulseFilter(this, 'open')">&#9203; Open / waiting</span>
