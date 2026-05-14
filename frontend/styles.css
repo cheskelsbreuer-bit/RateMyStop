@@ -953,6 +953,30 @@ section.active{display:block;}
 .oc-claim-note{font-size:0.8rem;color:var(--light);line-height:1.5;padding:10px 12px;background:var(--bg2);border-radius:10px;margin-top:4px;}
 .oc-claim-note strong{color:var(--accent);}
 
+/* ─── "What you can do here" rail on home — 5 action cards ─── */
+.what-you-can-do{margin:36px auto 0;max-width:1100px;padding:0 20px;}
+.wycd-head{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.wycd-head h3{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--ink);letter-spacing:-0.4px;}
+.wycd-head .wycd-sub{font-size:0.86rem;color:var(--gray);}
+.wycd-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+.wycd-card{background:linear-gradient(160deg, var(--card), rgba(184,148,30,0.03));border:1.5px solid var(--border);border-radius:16px;padding:20px 18px;text-align:left;cursor:pointer;transition:all 0.22s;display:flex;flex-direction:column;gap:8px;font-family:inherit;color:inherit;}
+.wycd-card:hover{border-color:rgba(184,148,30,0.55);transform:translateY(-3px);box-shadow:0 14px 36px rgba(15,15,19,0.08);background:linear-gradient(160deg, var(--card), rgba(184,148,30,0.08));}
+.wycd-card .wycd-icon{font-size:1.7rem;line-height:1;margin-bottom:4px;}
+.wycd-card .wycd-title{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.02rem;font-weight:800;color:var(--ink);line-height:1.2;letter-spacing:-0.3px;}
+.wycd-card .wycd-desc{font-size:0.8rem;color:var(--light);line-height:1.5;}
+@media(max-width:1024px){
+  .wycd-grid{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:700px){
+  .what-you-can-do{margin:24px auto 0;padding:0 14px;}
+  .wycd-head h3{font-size:1.1rem;}
+  .wycd-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .wycd-card{padding:16px 14px;border-radius:13px;}
+  .wycd-card .wycd-icon{font-size:1.4rem;}
+  .wycd-card .wycd-title{font-size:0.92rem;}
+  .wycd-card .wycd-desc{font-size:0.74rem;}
+}
+
 /* ─── "Where this is going" rail on home ─── */
 .vision-rail{margin:30px auto 0;max-width:880px;padding:0 20px;}
 .vision-rail-head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap;}

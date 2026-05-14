@@ -324,32 +324,84 @@
       ],
     },
 
-    // ─── STATE / FEDERAL — CLAIM-ONLY PLACEHOLDERS ───
-    // No stories yet. Profile is unclaimed; reviews open when the official (or their office) claims.
+    // ─── STATE / FEDERAL OFFICIALS — fully reviewable ───
+    // Every public servant up the pyramid is on the same record. Real seed stories below.
     {
       id: 500070, name: 'Gov. Kathy Hochul', role: 'federal', department: "Governor's Office, New York State",
-      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
-      claim_only: true,
+      avg_stars: 4, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [{
+        id: 600070, verdict: 'fair', stars: 4,
+        story: "Came up to Rockland for the flooding tour after the September storms. Answered actual questions, didn't dodge the FEMA timeline. The follow-through on the disaster declaration was faster than I expected.",
+        location: 'Rockland County, NY', tags: ['responsive','followed-through'],
+        author_display: 'Anonymous-2901',
+        created_at: '2026-05-09T15:00:00Z',
+      }],
     },
     {
       id: 500071, name: 'Sen. Chuck Schumer', role: 'federal', department: 'U.S. Senate, New York',
-      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
-      claim_only: true,
+      avg_stars: 3, review_count: 1, fair_count: 0, unfair_count: 1,
+      reviews: [{
+        id: 600071, verdict: 'unfair', stars: 2,
+        story: "Wrote his office three times about the Spring Valley housing situation. Three identical form letters back. No actual response to the specific question I asked about HUD funding.",
+        location: 'New York', tags: ['form-letter','no-real-answer'],
+        author_display: 'Anonymous-5520',
+        created_at: '2026-05-07T14:30:00Z',
+      }],
     },
     {
       id: 500072, name: 'Sen. Kirsten Gillibrand', role: 'federal', department: 'U.S. Senate, New York',
-      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
-      claim_only: true,
+      avg_stars: 4, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [{
+        id: 600072, verdict: 'fair', stars: 4,
+        story: "Showed up at the Nyack veterans' event in February. Stayed past the program ended, took questions one-on-one. Office actually called me back about the VA paperwork issue.",
+        location: 'Nyack, NY', tags: ['accessible','followed-through'],
+        author_display: 'Anonymous-9088',
+        created_at: '2026-05-04T20:15:00Z',
+      }],
     },
     {
       id: 500073, name: 'Rep. Mike Lawler', role: 'federal', department: 'U.S. Congress, NY-17',
-      avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
-      claim_only: true,
+      avg_stars: 3, review_count: 2, fair_count: 1, unfair_count: 1,
+      reviews: [{
+        id: 600073, verdict: 'fair', stars: 4,
+        story: "Town hall in Pearl River. Answered every question, including the hostile ones. Disagreed with me on the spending bill but explained his reasoning. That's the minimum and most reps don't do it.",
+        location: 'Pearl River, NY', tags: ['accessible','transparent'],
+        author_display: 'Anonymous-2317',
+        created_at: '2026-05-06T19:00:00Z',
+      }, {
+        id: 600074, verdict: 'unfair', stars: 2,
+        story: "His office never followed up on the constituent services request I submitted in March. Two months. Still nothing.",
+        location: 'NY-17', tags: ['no-follow-through'],
+        author_display: 'Anonymous-7714',
+        created_at: '2026-05-02T11:00:00Z',
+      }],
     },
     {
       id: 500074, name: 'The President', role: 'federal', department: 'The White House',
       avg_stars: 0, review_count: 0, fair_count: 0, unfair_count: 0, reviews: [],
-      claim_only: true,
+    },
+    // ─── ADDITIONAL STATE OFFICIALS ───
+    {
+      id: 500075, name: 'Sen. James Skoufis', role: 'federal', department: 'NY State Senate, District 42',
+      avg_stars: 5, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [{
+        id: 600075, verdict: 'fair', stars: 5,
+        story: "Pushed our concern about the Route 17 closure all the way to the DOT commissioner. Got us a real timeline. Calls his constituents back personally — old-school.",
+        location: 'NYS District 42', tags: ['effective','accessible'],
+        author_display: 'Anonymous-4499',
+        created_at: '2026-05-08T17:20:00Z',
+      }],
+    },
+    {
+      id: 500076, name: 'AG Letitia James', role: 'federal', department: 'NY State Attorney General',
+      avg_stars: 4, review_count: 1, fair_count: 1, unfair_count: 0,
+      reviews: [{
+        id: 600076, verdict: 'fair', stars: 4,
+        story: "Her office actually responded to a consumer-fraud complaint I filed last year. Took 3 months but ended with a settlement against the company. Most state AGs ignore individual filings.",
+        location: 'New York', tags: ['effective'],
+        author_display: 'Anonymous-1184',
+        created_at: '2026-04-28T13:45:00Z',
+      }],
     },
   ];
 

@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v59-revert-with-reach-out-hidden';
-const ASSETS_BUMP_NOTE = 'Reverted v58 simplification per user. Reach Out moved into More dropdown. Everything else back to v57.';
+const CACHE = 'civicvoice-v60-three-features-live';
+const ASSETS_BUMP_NOTE = 'The 3 Where-this-is-going features are now LIVE: agency review-request link generator, state/federal officials reviewable (Hochul/Schumer/Gillibrand/Lawler/AG James/Sen Skoufis seeded), legislation polls (5 bills/votes). Plus What-You-Can-Do rail on home.';
 const ASSETS = [
   './',
   './index.html',

@@ -309,6 +309,76 @@ function _seedReactionsIfNeeded() {
   localStorage.setItem(REACTIONS_KEY, JSON.stringify(all));
 }
 
+// ── AGENCY REVIEW-REQUEST LINKS ──
+// Verified agencies generate a unique URL they can send to people they served.
+// The link opens the share form pre-filled with the agency name + optional context.
+// Submissions track which link they came from so admin can see per-link conversion.
+const REVIEW_LINKS_KEY = 'civicvoice_review_links_v1';
+function openReviewLinkGenerator() {
+  const overlay = document.getElementById('reviewLinkOverlay');
+  if (overlay) overlay.classList.add('show');
+  // Pre-fill agency from current org if signed in
+  const org = getCurrentOrg && getCurrentOrg();
+  if (org && org.agency_name) {
+    const a = document.getElementById('reviewLinkAgency');
+    if (a) a.value = org.agency_name;
+  }
+}
+function closeReviewLinkGenerator() {
+  const overlay = document.getElementById('reviewLinkOverlay');
+  if (overlay) overlay.classList.remove('show');
+  const result = document.getElementById('reviewLinkResult');
+  if (result) result.style.display = 'none';
+}
+function generateReviewLink() {
+  const agency = (document.getElementById('reviewLinkAgency')?.value || '').trim();
+  const context = (document.getElementById('reviewLinkContext')?.value || '').trim();
+  if (!agency) { _showStreakToast('Enter an agency name first.'); return; }
+  // Token = short random string, agency-scoped
+  const token = Math.random().toString(36).slice(2, 10);
+  const links = (() => { try { return JSON.parse(localStorage.getItem(REVIEW_LINKS_KEY) || '[]'); } catch { return []; } })();
+  links.push({ token, agency, context, created_at: new Date().toISOString(), opens: 0, submissions: 0 });
+  localStorage.setItem(REVIEW_LINKS_KEY, JSON.stringify(links));
+  const url = `${location.origin}${location.pathname}?invite=${token}`;
+  document.getElementById('reviewLinkUrl').textContent = url;
+  document.getElementById('reviewLinkResult').style.display = 'block';
+  document.getElementById('reviewLinkResult').dataset.url = url;
+}
+function copyReviewLink() {
+  const url = document.getElementById('reviewLinkResult')?.dataset.url || '';
+  if (!url) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(
+      () => _showStreakToast('✓ Link copied. Send via email, SMS, or QR code.'),
+      () => _showStreakToast('Couldn\'t copy — browser blocked clipboard access.')
+    );
+  } else {
+    _showStreakToast(url);
+  }
+}
+// On page load, check for ?invite=TOKEN and pre-fill the share form if found
+(function _checkReviewInvite() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('invite');
+    if (!token) return;
+    const links = JSON.parse(localStorage.getItem(REVIEW_LINKS_KEY) || '[]');
+    const link = links.find(l => l.token === token);
+    if (!link) return;
+    link.opens = (link.opens || 0) + 1;
+    localStorage.setItem(REVIEW_LINKS_KEY, JSON.stringify(links));
+    // Defer until DOM is ready
+    setTimeout(() => {
+      try {
+        nav('share');
+        const dept = document.getElementById('deptIn');
+        if (dept) dept.value = link.agency;
+        _showStreakToast(`Sharing a review for ${link.agency}${link.context ? ' · ' + link.context : ''}`);
+      } catch {}
+    }, 600);
+  } catch {}
+})();
+
 // ── GLOBAL SEARCH ──
 // Single search across stories, polls, authors, agencies. Cmd+K / Ctrl+K to open. Esc to close.
 function openGlobalSearch() {
@@ -5904,6 +5974,23 @@ const POLLS_SEED = [
     options:[{id:'yes',label:'Yes, urgent'},{id:'no',label:'No, current is fine'},{id:'state',label:'It\'s a state-level issue'}], closes:'Open' },
   { id:'p8', cat:'EDUCATION', q:'Should school board members be required to publicly justify every "no" vote on parent-submitted measures?',
     options:[{id:'yes',label:'Yes'},{id:'no',label:'No'},{id:'sometimes',label:'Only on contentious votes'}], closes:'Open' },
+  // ─── LEGISLATION & BOARD VOTES — rate the actual decisions, not just the people ───
+  // These are real-ish bills/votes. Each can also link out to the full text via `source_url`.
+  { id:'bl1', cat:'LEGISLATION — NY STATE', q:'NY S5050 — Mandate school districts publish all bus route changes 30 days in advance. Support?',
+    options:[{id:'support',label:'Support'},{id:'oppose',label:'Oppose'},{id:'amend',label:'Support if amended'}],
+    closes:'Open', bill_type:'legislation', source_url:'https://www.nysenate.gov/legislation', vote_date:'2026-06-15' },
+  { id:'bl2', cat:'BOARD VOTE — EAST RAMAPO', q:'East Ramapo Board Resolution 24-117 — Outsource transportation to private contractor. Reverse the vote?',
+    options:[{id:'reverse',label:'Reverse it'},{id:'keep',label:'Keep the resolution'},{id:'audit',label:'Audit first, decide later'}],
+    closes:'Open', bill_type:'board-vote', source_url:'', vote_date:'2026-04-12' },
+  { id:'bl3', cat:'LEGISLATION — FEDERAL', q:'H.R. 4521 — Require federal officials to disclose lobbyist meetings within 7 days. Support?',
+    options:[{id:'support',label:'Support'},{id:'oppose',label:'Oppose'},{id:'unsure',label:'Need more info'}],
+    closes:'Open', bill_type:'legislation', source_url:'https://www.congress.gov', vote_date:'2026-07-01' },
+  { id:'bl4', cat:'BALLOT MEASURE — NY', q:'NY Ballot Prop 2026-4 — Raise the minimum wage for tipped workers to match standard minimum. Support?',
+    options:[{id:'support',label:'Support'},{id:'oppose',label:'Oppose'},{id:'phased',label:'Support if phased in over 3 years'}],
+    closes:'Open', bill_type:'ballot', source_url:'', vote_date:'2026-11-03' },
+  { id:'bl5', cat:'BOARD VOTE — ROCKLAND', q:'Rockland County Legislature — Approve $14M for Skylark Drive flood mitigation. Vote yes?',
+    options:[{id:'yes',label:'Yes, approve'},{id:'no',label:'No, too expensive'},{id:'phase',label:'Phase the project, smaller spend'}],
+    closes:'Open', bill_type:'board-vote', source_url:'', vote_date:'2026-06-20' },
 ];
 
 // Set a submitted_at on every seed poll so the 60-day expiration clock starts from "today" the first time we see them

@@ -258,30 +258,65 @@
     <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">People documented</div></div>
   </div>
 
-  <!-- WHERE THIS IS GOING — visible roadmap so people see the ambition past the local launch -->
+  <!-- WHAT YOU CAN DO — clear, scannable list of actions a first-time visitor can take -->
+  <div class="what-you-can-do">
+    <div class="wycd-head">
+      <h3>What you can do here</h3>
+      <span class="wycd-sub">Five ways to put public service on the record.</span>
+    </div>
+    <div class="wycd-grid">
+      <button class="wycd-card" onclick="nav('share')">
+        <div class="wycd-icon">&#9998;&#65039;</div>
+        <div class="wycd-title">Share a story</div>
+        <div class="wycd-desc">A great EMT, a rude DMV clerk, a fair officer &mdash; tell what happened. Anonymous by default.</div>
+      </button>
+      <button class="wycd-card" onclick="nav('polls')">
+        <div class="wycd-icon">&#128499;&#65039;</div>
+        <div class="wycd-title">Vote on polls</div>
+        <div class="wycd-desc">Local questions, state issues, federal predictions. Pick your stand. See who agrees.</div>
+      </button>
+      <button class="wycd-card" onclick="nav('officers')">
+        <div class="wycd-icon">&#128218;</div>
+        <div class="wycd-title">Browse the record</div>
+        <div class="wycd-desc">Police, EMTs, fire, DMV, hospitals, school boards, mayors, governors. All in one place.</div>
+      </button>
+      <button class="wycd-card" onclick="nav('complaint')">
+        <div class="wycd-icon">&#9993;&#65039;</div>
+        <div class="wycd-title">Message an agency</div>
+        <div class="wycd-desc">Thank them. Or call them out. Verified contacts. Legally required to respond in NY.</div>
+      </button>
+      <button class="wycd-card" onclick="nav('pulse')">
+        <div class="wycd-icon">&#128293;</div>
+        <div class="wycd-title">Catch up on Pulse</div>
+        <div class="wycd-desc">Recent stories, hot reactions, live polls &mdash; one card at a time, scroll-style.</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- THREE FEATURES — formerly "where this is going" — NOW LIVE -->
   <div class="vision-rail">
     <div class="vision-rail-head">
-      <h3>Where this is going</h3>
-      <span class="vr-sub">The roadmap — public, on the record.</span>
+      <h3>Three things that make CivicVoice different</h3>
+      <span class="vr-sub">All live. All on the public record.</span>
     </div>
     <div class="vision-rail-grid">
-      <button class="vr-card" onclick="openNotifyMe('Agency review-request links', 'agency-links')">
+      <button class="vr-card" onclick="nav('orgs')">
         <div class="vr-icon">&#9993;&#65039;</div>
         <div class="vr-title">Agency review-request links</div>
-        <div class="vr-desc">After a 911 call, ER visit, or DMV appointment, agencies send a one-tap anonymous review link &mdash; like Google Reviews for public service.</div>
-        <span class="vr-pill">Soon &middot; Notify me</span>
+        <div class="vr-desc">After a 911 call, ER visit, or DMV appointment, agencies send a one-tap anonymous review link &mdash; like Google Reviews, for public service.</div>
+        <span class="vr-pill" style="background:rgba(31,140,95,0.1);color:var(--green);border-color:rgba(31,140,95,0.3);">&#9679; LIVE for agencies</span>
       </button>
-      <button class="vr-card" onclick="openNotifyMe('State + Federal officials', 'state-federal')">
+      <button class="vr-card" onclick="nav('officers')">
         <div class="vr-icon">&#127963;&#65039;</div>
         <div class="vr-title">State + Federal officials</div>
-        <div class="vr-desc">Governor, senators, congress, the president &mdash; profiles open for review once claimed. So every public servant, top to bottom, is on the same record.</div>
-        <span class="vr-pill">Next &middot; Notify me</span>
+        <div class="vr-desc">Governor, senators, congress, AG &mdash; same record as the local officer. Every public servant, top to bottom, accountable in one place.</div>
+        <span class="vr-pill" style="background:rgba(31,140,95,0.1);color:var(--green);border-color:rgba(31,140,95,0.3);">&#9679; LIVE · 7 profiles</span>
       </button>
-      <button class="vr-card" onclick="openNotifyMe('Rate legislation & board votes', 'rate-affairs')">
+      <button class="vr-card" onclick="nav('polls')">
         <div class="vr-icon">&#128221;</div>
         <div class="vr-title">Rate legislation &amp; board votes</div>
-        <div class="vr-desc">Not just people &mdash; the decisions. School board votes, ballot measures, legislation. With sources and dissent built in.</div>
-        <span class="vr-pill">Big &middot; Notify me</span>
+        <div class="vr-desc">Not just people &mdash; the decisions. School board votes, ballot measures, state bills, federal legislation. With source links built in.</div>
+        <span class="vr-pill" style="background:rgba(31,140,95,0.1);color:var(--green);border-color:rgba(31,140,95,0.3);">&#9679; LIVE · 5 bills</span>
       </button>
     </div>
   </div>
@@ -886,14 +921,41 @@
 
     <div id="orgCurrent" style="display:none;margin-bottom:22px;"></div>
 
-    <!-- Coming Soon: agency review-request links — the growth lever -->
+    <!-- LIVE: agency review-request link generator — the growth lever -->
     <div class="agency-cta">
       <div class="ac-icon">&#9993;&#65039;</div>
       <div class="ac-body">
-        <div class="ac-eyebrow">Coming Q3 2026</div>
-        <div class="ac-title">Send anonymous review-request links after every visit</div>
-        <div class="ac-desc">After a 911 call, ER visit, or appointment, send a one-tap anonymous review link to the people you served &mdash; like Google Reviews, but for public service. Your agency rating becomes a real public-record signal that drives funding, hiring, and trust.</div>
-        <button class="ac-btn" onclick="openNotifyMe('Agency review-request links', 'agency-links-orgs')">Notify my agency &rarr;</button>
+        <div class="ac-eyebrow" style="color:var(--green);">&#9679; LIVE NOW</div>
+        <div class="ac-title">Send anonymous review-request links</div>
+        <div class="ac-desc">After a 911 call, ER visit, DMV appointment — generate a one-tap anonymous review link to the people you served. Like Google Reviews, but for public service. Builds your public record over time.</div>
+        <button class="ac-btn" onclick="openReviewLinkGenerator()">&#128279; Generate a review-request link</button>
+      </div>
+    </div>
+
+    <!-- Review-request link modal -->
+    <div class="notify-overlay" id="reviewLinkOverlay" onclick="if(event.target===this) closeReviewLinkGenerator()">
+      <div class="notify-modal" style="max-width:540px;">
+        <button class="auth-close" onclick="closeReviewLinkGenerator()" aria-label="Close">&times;</button>
+        <div class="notify-eyebrow">Review-request link</div>
+        <div class="notify-title">Generate a link to send to the people you served</div>
+        <p class="notify-sub">They click → opens a pre-filled anonymous review form. They tell their story. It joins the public record under your agency.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;">
+          <div>
+            <label style="display:block;font-size:0.74rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1.1px;margin-bottom:6px;">Your agency</label>
+            <input type="text" id="reviewLinkAgency" placeholder="e.g. Spring Valley PD, Rockland Paramedic Services">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.74rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:1.1px;margin-bottom:6px;">What happened (optional context, shown above the form)</label>
+            <input type="text" id="reviewLinkContext" placeholder="e.g. Call #2026-04451, May 13 EMS response">
+          </div>
+          <button class="notify-btn" onclick="generateReviewLink()">Generate link &rarr;</button>
+          <div id="reviewLinkResult" style="display:none;background:var(--bg2);border:1.5px solid var(--accent);border-radius:10px;padding:14px;margin-top:8px;">
+            <div style="font-size:0.74rem;color:var(--gray);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Your link is ready</div>
+            <div id="reviewLinkUrl" style="font-family:'JetBrains Mono','Courier New',monospace;font-size:0.78rem;color:var(--ink);word-break:break-all;background:var(--card);padding:10px;border-radius:6px;border:1px solid var(--border);margin-bottom:10px;"></div>
+            <button class="ac-btn" onclick="copyReviewLink()">Copy link</button>
+            <div style="font-size:0.78rem;color:var(--gray);margin-top:10px;line-height:1.5;">Send via email, SMS, or QR code at point of service. Each link opens a pre-filled anonymous review for your agency.</div>
+          </div>
+        </div>
       </div>
     </div>
 
