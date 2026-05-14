@@ -101,8 +101,30 @@ function playReactionSound() {
 }
 
 // ── REACTIONS STORE ── per-story counts visible to everyone (localStorage stand-in for backend)
-function _readReactions() { try { return JSON.parse(localStorage.getItem(REACTIONS_KEY) || '{}'); } catch { return {}; } }
-function _readMyReactions() { try { return JSON.parse(localStorage.getItem(MY_REACTIONS_KEY) || '{}'); } catch { return {}; } }
+// Reads are cached for one render pass to avoid 100+ JSON.parse calls per Pulse render.
+// _setRenderCache is called at the top of renderPulse; _clearRenderCache is called at the end.
+let _readCacheReactions = null;
+let _readCacheMyReactions = null;
+let _readCacheCustom = null;
+let _readCacheMyCustom = null;
+function _setRenderCache() {
+  _readCacheReactions   = (() => { try { return JSON.parse(localStorage.getItem(REACTIONS_KEY) || '{}'); } catch { return {}; } })();
+  _readCacheMyReactions = (() => { try { return JSON.parse(localStorage.getItem(MY_REACTIONS_KEY) || '{}'); } catch { return {}; } })();
+  _readCacheCustom      = (() => { try { return JSON.parse(localStorage.getItem(CUSTOM_REACTIONS_KEY) || '{}'); } catch { return {}; } })();
+  _readCacheMyCustom    = (() => { try { return JSON.parse(localStorage.getItem(CUSTOM_MY_REACTIONS_KEY) || '{}'); } catch { return {}; } })();
+}
+function _clearRenderCache() {
+  _readCacheReactions = null; _readCacheMyReactions = null;
+  _readCacheCustom = null; _readCacheMyCustom = null;
+}
+function _readReactions() {
+  if (_readCacheReactions) return _readCacheReactions;
+  try { return JSON.parse(localStorage.getItem(REACTIONS_KEY) || '{}'); } catch { return {}; }
+}
+function _readMyReactions() {
+  if (_readCacheMyReactions) return _readCacheMyReactions;
+  try { return JSON.parse(localStorage.getItem(MY_REACTIONS_KEY) || '{}'); } catch { return {}; }
+}
 function getReactionCounts(officerId, reviewId) {
   const all = _readReactions();
   return all[`${officerId}:${reviewId}`] || { up:0, down:0, thanks:0, strong:0, curious:0 };
@@ -124,8 +146,14 @@ function _bumpReactionCount(officerId, reviewId, kind) {
 // Stored in civicvoice_custom_reactions_v1 = { storyKey: { emoji: count } }
 const CUSTOM_REACTIONS_KEY = 'civicvoice_custom_reactions_v1';
 const CUSTOM_MY_REACTIONS_KEY = 'civicvoice_my_custom_reactions_v1';
-function _readCustomReactions()   { try { return JSON.parse(localStorage.getItem(CUSTOM_REACTIONS_KEY) || '{}'); } catch { return {}; } }
-function _readMyCustomReactions() { try { return JSON.parse(localStorage.getItem(CUSTOM_MY_REACTIONS_KEY) || '{}'); } catch { return {}; } }
+function _readCustomReactions() {
+  if (_readCacheCustom) return _readCacheCustom;
+  try { return JSON.parse(localStorage.getItem(CUSTOM_REACTIONS_KEY) || '{}'); } catch { return {}; }
+}
+function _readMyCustomReactions() {
+  if (_readCacheMyCustom) return _readCacheMyCustom;
+  try { return JSON.parse(localStorage.getItem(CUSTOM_MY_REACTIONS_KEY) || '{}'); } catch { return {}; }
+}
 const EXTRA_EMOJI_PALETTE = ['❤️','😢','😡','😂','🤯','👏','🫶','🙄','🔥','💯','😱','🤝'];
 function openEmojiPicker(officerId, reviewId, anchorBtn, evt) {
   if (evt) evt.stopPropagation();
@@ -1612,6 +1640,7 @@ function renderPulse() {
       }
     } finally {
       _pulseRendering = false;
+      _clearRenderCache();  // ensure cache never stays set across renders even on error
     }
   }, 30);  // ~2 frames — enough for browser to paint Loading, before we slam in cards
 }
@@ -1630,6 +1659,8 @@ function _renderPulseInternal() {
   console.log('[renderPulse] start');
   const stage = document.getElementById('pulseStage');
   if (!stage) { console.warn('[renderPulse] no #pulseStage element found!'); return; }
+  const _t0 = performance.now();
+  _setRenderCache();  // one JSON.parse pass instead of 180+ during card rendering
   _refreshPulsePrefCache();
   // Gather all reviews
   const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
@@ -1738,6 +1769,8 @@ function _renderPulseInternal() {
     }
   }).join('');
   stage.innerHTML = (topRail || '') + cardsHtml + loadMore;
+  _clearRenderCache();
+  console.log(`[renderPulse] done in ${Math.round(performance.now() - _t0)}ms · ${items.length} cards`);
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
