@@ -674,7 +674,7 @@ function nav(id) {
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
-  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); }
+  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); renderHomeFeed(); }
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')     renderRankings();
   if (id === 'orgs')         renderOrgState();
@@ -5858,6 +5858,46 @@ function openStreakModal() {
 }
 function closeStreakModal() {
   document.getElementById('streakOverlay').classList.remove('show');
+}
+
+// Render a compact preview of the feed on the home page — shows what the site IS immediately
+function renderHomeFeed() {
+  const wrap = document.getElementById('homeFeed');
+  if (!wrap) return;
+  _setRenderCache();
+  try {
+    const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+    const approved = getApprovedAsOfficers();
+    const all = [...approved, ...officers];
+    const items = [];
+    for (const o of all) for (const r of (o.reviews || [])) items.push({ officer: o, review: r, role: inferRole(o) });
+    // Sort by created_at descending, take top 4
+    items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
+    const top = items.slice(0, 4);
+    if (!top.length) { wrap.innerHTML = '<div style="text-align:center;padding:30px 16px;color:var(--gray);">No stories yet. Be the first.</div>'; return; }
+    wrap.innerHTML = top.map(it => {
+      const r = it.review;
+      const isPos = r.verdict === 'fair';
+      const story = (r.story || '').slice(0, 140) + ((r.story || '').length > 140 ? '…' : '');
+      return `
+        <article class="home-card" onclick="openStoryDetail(${it.officer.id}, ${r.id})">
+          <div class="home-card-head">
+            <span class="home-card-icon">${ROLE_ICON[it.role] || '👤'}</span>
+            <div class="home-card-meta">
+              <div class="home-card-name">${escapeHtml(it.officer.name || 'Unknown')}</div>
+              <div class="home-card-agency">${escapeHtml(it.officer.department || '')}</div>
+            </div>
+            <span class="home-card-tag ${isPos ? 'pos' : 'neg'}">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
+          </div>
+          <div class="home-card-body">${escapeHtml(story)}</div>
+        </article>`;
+    }).join('');
+  } catch (e) {
+    console.warn('renderHomeFeed:', e);
+    wrap.innerHTML = '';
+  } finally {
+    _clearRenderCache();
+  }
 }
 
 // Home page consistency banner — hidden until user hits 3+ active days. No panic, just recognition.
