@@ -616,6 +616,10 @@ function getAuthorDisplay() {
 const MORE_SECTIONS = ['contributors', 'rankings', 'orgs', 'deck'];
 
 function nav(id) {
+  console.log('[nav] →', id);
+  // Pause bot simulation briefly during navigation so localStorage thrashing doesn't slow paint
+  _navPaused = true;
+  setTimeout(() => { _navPaused = false; }, 800);
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
   // Highlight by matching data-section, not by index
   document.querySelectorAll('.topnav button[data-section]').forEach(b => {
@@ -1590,24 +1594,42 @@ function renderPulse() {
   // Re-entry guard so we never stack renders
   if (_pulseRendering) return;
   _pulseRendering = true;
-  try {
-    _renderPulseInternal();
-  } catch (e) {
-    console.error('[renderPulse] failed:', e);
-    const stage = document.getElementById('pulseStage');
-    if (stage) {
-      stage.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--red);font-size:0.9rem;line-height:1.6;">
-        Pulse hit an error rendering. <button onclick="window._pulsePageLimit=30; renderPulse();" style="background:var(--ink);color:#fff;border:none;border-radius:8px;padding:8px 16px;margin-top:10px;cursor:pointer;font-family:inherit;font-weight:700;">Reset Pulse</button>
-        <div style="font-size:0.74rem;color:var(--gray);margin-top:8px;">${escapeHtml(e.message || String(e))}</div>
-      </div>`;
+  // Immediate "Loading…" paint, then defer heavy work to next tick so the browser paints first.
+  // This way even if the cards-render takes 500ms, the user sees a responsive UI in 1 frame.
+  const stage = document.getElementById('pulseStage');
+  if (stage) stage.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--gray);font-size:0.9rem;">Loading Pulse…</div>';
+  setTimeout(() => {
+    try {
+      _renderPulseInternal();
+    } catch (e) {
+      console.error('[renderPulse] failed:', e);
+      const s = document.getElementById('pulseStage');
+      if (s) {
+        s.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--red);font-size:0.9rem;line-height:1.6;">
+          Pulse hit an error rendering. <button onclick="resetPulse()" style="background:var(--ink);color:#fff;border:none;border-radius:8px;padding:8px 16px;margin-top:10px;cursor:pointer;font-family:inherit;font-weight:700;">Reset Pulse</button>
+          <div style="font-size:0.74rem;color:var(--gray);margin-top:8px;">${escapeHtml(e.message || String(e))}</div>
+        </div>`;
+      }
+    } finally {
+      _pulseRendering = false;
     }
-  } finally {
-    _pulseRendering = false;
-  }
+  }, 30);  // ~2 frames — enough for browser to paint Loading, before we slam in cards
+}
+
+// Emergency reset — clears Pulse state and forces a clean re-render
+function resetPulse() {
+  window._pulsePageLimit = 30;
+  _pulseFilter = 'all';
+  _pulseRendering = false;
+  document.querySelectorAll('#pulse .pulse-filters .pill').forEach(p => {
+    p.classList.toggle('on', p.dataset.pfilter === 'all');
+  });
+  renderPulse();
 }
 function _renderPulseInternal() {
+  console.log('[renderPulse] start');
   const stage = document.getElementById('pulseStage');
-  if (!stage) return;
+  if (!stage) { console.warn('[renderPulse] no #pulseStage element found!'); return; }
   _refreshPulsePrefCache();
   // Gather all reviews
   const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
@@ -4874,10 +4896,11 @@ function generateRandomPersonas(n, affil) {
   let added = 0;
   for (let i = 0; i < n; i++) {
     const pool = LEANS_BY_AFFIL[affil] || ['up','curious','strong'];
-    // Pick 2-3 unique reactions from the pool
-    const leanCount = 2 + Math.floor(Math.random() * 2);
+    // Pick 2-3 unique reactions from the pool. Cap leanCount to pool size so we can't infinite-loop.
+    const leanCount = Math.min(pool.length, 2 + Math.floor(Math.random() * 2));
     const lean = [];
-    while (lean.length < leanCount) {
+    let safety = 50;
+    while (lean.length < leanCount && safety-- > 0) {
       const k = _pick(pool);
       if (!lean.includes(k)) lean.push(k);
     }
@@ -5485,12 +5508,18 @@ function _fakeUserAction(persona) {
 
 let _fakeUserTimer = null;
 let _fakeActionCount = 0;
+let _navPaused = false;  // bot ticks skip while user is navigating
 function _startFakeUserSim() {
   if (_fakeUserTimer) clearTimeout(_fakeUserTimer);
   if (!isFakeUsersOn()) return;
   // Fire the first action quickly (1-3s) so the user sees life immediately
   const tick = () => {
     if (!isFakeUsersOn()) return;
+    // Skip if user is mid-navigation — prevents UI jank
+    if (_navPaused) {
+      _fakeUserTimer = setTimeout(tick, 1500);
+      return;
+    }
     // Only pick from the configured-active subset of personas
     const activeN = getFakeActive();
     if (activeN === 0) { _fakeUserTimer = setTimeout(tick, 30000); return; }

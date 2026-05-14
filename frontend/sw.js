@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v54-pulse-hardened-nested-replies';
-const ASSETS_BUMP_NOTE = 'Pulse simplified to fix freeze: removed IntersectionObserver, smaller initial render (30 cards), Load More button, per-card error catch + render-failure UI. Reply-to-reply nesting (1 level deep) on story threads.';
+const CACHE = 'civicvoice-v55-pulse-deferred-paint-bot-pause-loop-fix';
+const ASSETS_BUMP_NOTE = 'Pulse: deferred paint (Loading… visible first) + bot ticks pause during nav + emergency resetPulse() + infinite-loop fix in bot generator + nav console logs.';
 const ASSETS = [
   './',
   './index.html',
