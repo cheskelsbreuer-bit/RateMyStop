@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v50-search-trending-permalinks';
-const ASSETS_BUMP_NOTE = '7 in one push: name-default signup, email gate, Cmd+K global search, story permalinks, trending Pulse filter, richer bot comments, Pulse pagination, admin bot list with delete.';
+const CACHE = 'civicvoice-v51-smart-bots-tiktok-forum';
+const ASSETS_BUMP_NOTE = 'Smarter bots (sentiment+social-proof) · bots submit polls · location+interests fields · bot editor in admin · TikTok infinite scroll · forum @mentions + sort.';
 const ASSETS = [
   './',
   './index.html',

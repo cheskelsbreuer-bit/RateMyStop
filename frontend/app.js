@@ -1649,12 +1649,11 @@ function renderPulse() {
   // Render every card stacked vertically — scroll snaps each into view. Mix of stories + polls.
   const topRail = _renderTopReactedRail();
   const moreAvailable = (window._pulseTotalAvailable || 0) > items.length;
-  const loadMoreBtn = moreAvailable ? `
-    <div style="text-align:center;padding:30px 16px 50px;scroll-snap-align:none;">
-      <button class="btn-gold" style="padding:12px 28px;font-size:0.92rem;" onclick="window._pulsePageLimit = (window._pulsePageLimit||100) + 50; renderPulse();">Load 50 more &darr;</button>
-      <div style="font-size:0.76rem;color:var(--gray);margin-top:8px;">${items.length} of ${window._pulseTotalAvailable} shown</div>
-    </div>` : '';
-  stage.innerHTML = (topRail || '') + items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('') + loadMoreBtn;
+  // TikTok-style infinite scroll — a sentinel at the bottom triggers auto-load via IntersectionObserver
+  const sentinel = moreAvailable ? `<div id="pulseInfiniteSentinel" style="height:1px;scroll-snap-align:none;"></div>` : '';
+  stage.innerHTML = (topRail || '') + items.map(it => it.kind === 'poll' ? _renderOnePulsePollCard(it.poll) : _renderOnePulseCard(it)).join('') + sentinel;
+  // Wire the infinite-scroll observer (replaces previous Load More)
+  if (moreAvailable) _attachPulseInfiniteScroll();
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
@@ -1740,6 +1739,27 @@ function _renderOnePulsePollCard(p) {
       </div>
     </article>
   `;
+}
+
+// TikTok-style infinite scroll for Pulse — sentinel at the end triggers auto-load
+let _pulseInfiniteObs = null;
+let _pulseInfiniteLoading = false;
+function _attachPulseInfiniteScroll() {
+  if (_pulseInfiniteObs) _pulseInfiniteObs.disconnect();
+  const sentinel = document.getElementById('pulseInfiniteSentinel');
+  const stage = document.getElementById('pulseStage');
+  if (!sentinel || !stage) return;
+  _pulseInfiniteObs = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting && !_pulseInfiniteLoading) {
+        _pulseInfiniteLoading = true;
+        window._pulsePageLimit = (window._pulsePageLimit || 100) + 30;
+        // Tiny defer so the user feels it briefly
+        setTimeout(() => { renderPulse(); _pulseInfiniteLoading = false; }, 120);
+      }
+    }
+  }, { root: stage, rootMargin: '400px 0px' });  // start loading 400px before sentinel hits view
+  _pulseInfiniteObs.observe(sentinel);
 }
 
 // Swipe gestures on Pulse — left = next, right = previous. Vertical scroll still works.
@@ -2273,15 +2293,39 @@ function postReply(officerId, reviewId) {
   }
 }
 
+// Sort mode for thread replies: 'newest' | 'oldest' | 'reactions'  (in-memory)
+let _replySort = 'newest';
+function setReplySort(mode, officerId, reviewId) {
+  _replySort = mode;
+  document.querySelectorAll('.reply-sort-pill').forEach(p => p.classList.toggle('on', p.dataset.sort === mode));
+  _renderReplies(officerId, reviewId);
+}
+// Render text with @Anonymous-XXX → clickable author chips
+function _linkifyMentions(text) {
+  return escapeHtml(text || '').replace(/@(\d{4}|Anonymous-\d{4})/g, (m, h) => {
+    const full = h.startsWith('Anonymous-') ? h : ('Anonymous-' + h);
+    return `<a class="mention" onclick="event.stopPropagation(); openAuthorProfile('${full}')">@${escapeHtml(h)}</a>`;
+  });
+}
 function _renderReplies(officerId, reviewId) {
   const list = document.getElementById('replyList');
   if (!list) return;
-  const replies = getReplies(officerId, reviewId);
+  let replies = getReplies(officerId, reviewId).slice();
+  if (_replySort === 'newest')    replies.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  if (_replySort === 'oldest')    replies.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+  if (_replySort === 'reactions') replies.sort((a, b) => (b._reactions || 0) - (a._reactions || 0));
+  const sortBar = `
+    <div class="reply-sort-bar">
+      <span class="reply-sort-label">Sort:</span>
+      <button class="reply-sort-pill ${_replySort==='newest'?'on':''}" data-sort="newest"    onclick="setReplySort('newest', ${officerId}, ${reviewId})">Newest</button>
+      <button class="reply-sort-pill ${_replySort==='oldest'?'on':''}" data-sort="oldest"    onclick="setReplySort('oldest', ${officerId}, ${reviewId})">Oldest</button>
+      <button class="reply-sort-pill ${_replySort==='reactions'?'on':''}" data-sort="reactions" onclick="setReplySort('reactions', ${officerId}, ${reviewId})">Top</button>
+    </div>`;
   if (!replies.length) {
-    list.innerHTML = '<div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:14px 0;">No replies yet. Be the first to add to this thread.</div>';
+    list.innerHTML = sortBar + '<div style="color:var(--gray);font-size:0.86rem;text-align:center;padding:14px 0;">No replies yet. Be the first to add to this thread.</div>';
     return;
   }
-  list.innerHTML = replies.map(r => {
+  list.innerHTML = sortBar + replies.map(r => {
     const initial = (r.author_display || 'A').charAt(0).toUpperCase();
     return `
       <div class="reply-item${r.is_agency_response ? ' is-agency' : ''}">
@@ -2293,7 +2337,7 @@ function _renderReplies(officerId, reviewId) {
           </span>
           <span class="reply-date">${formatDate(r.created_at)}</span>
         </div>
-        <div class="reply-body">${escapeHtml(r.body)}</div>
+        <div class="reply-body">${_linkifyMentions(r.body)}</div>
       </div>
     `;
   }).join('');
@@ -3957,27 +4001,35 @@ function renderAdmEngagement() {
 
         <details style="font-size:0.82rem;margin-bottom:8px;">
           <summary style="cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0;">View all ${getAllFakePersonas().length} bots in pool →</summary>
-          <div style="margin-top:10px;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <div style="margin-top:10px;max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
             <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
-              <thead style="position:sticky;top:0;background:var(--bg2);">
+              <thead style="position:sticky;top:0;background:var(--bg2);z-index:1;">
                 <tr style="border-bottom:1.5px solid var(--border);">
                   <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Handle</th>
                   <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Affil</th>
                   <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Lean</th>
-                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Stories</th>
-                  <th style="text-align:right;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Source</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Lives</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Interests</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:0.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray);">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 ${getAllFakePersonas().map((b, i) => {
                   const isCustom = i >= FAKE_PERSONAS.length;
+                  const cidx = i - FAKE_PERSONAS.length;
                   return `
                   <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:7px 10px;font-weight:600;color:var(--ink);font-family:'JetBrains Mono','Courier New',monospace;font-size:0.78rem;">${escapeHtml(b.handle)}</td>
-                    <td style="padding:7px 10px;color:${AFFIL_COLORS[b.affil] || 'var(--ink)'};font-weight:600;">${escapeHtml(b.affil)}</td>
-                    <td style="padding:7px 10px;color:var(--light);">${(b.lean||[]).map(l => REACTION_STYLES[l]?.emoji || l).join(' ')}</td>
-                    <td style="padding:7px 10px;color:var(--gray);">${escapeHtml(b.storyLean || 'neutral')}</td>
-                    <td style="padding:7px 10px;text-align:right;">${isCustom ? `<button style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:0.74rem;font-weight:700;" onclick="deleteCustomBot(${i - FAKE_PERSONAS.length}); _startFakeUserSim(); renderAdmEngagement();">delete</button>` : `<span style="color:var(--gray);font-size:0.7rem;">seed</span>`}</td>
+                    <td style="padding:7px 10px;font-weight:600;color:var(--ink);font-family:'JetBrains Mono','Courier New',monospace;font-size:0.76rem;">${escapeHtml(b.handle)}</td>
+                    <td style="padding:7px 10px;color:${AFFIL_COLORS[b.affil] || 'var(--ink)'};font-weight:600;font-size:0.76rem;">${escapeHtml(b.affil)}</td>
+                    <td style="padding:7px 10px;color:var(--light);font-size:0.86rem;">${(b.lean||[]).map(l => REACTION_STYLES[l]?.emoji || l).join(' ')}</td>
+                    <td style="padding:7px 10px;color:var(--light);font-size:0.74rem;">${escapeHtml(b.location || '—')}</td>
+                    <td style="padding:7px 10px;color:var(--light);font-size:0.74rem;">${escapeHtml((b.interests || []).join(', ') || '—')}</td>
+                    <td style="padding:7px 10px;text-align:right;">
+                      ${isCustom ? `
+                        <button style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:0.72rem;font-weight:700;margin-right:6px;" onclick="_openBotEdit(${cidx})">edit</button>
+                        <button style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:0.72rem;font-weight:700;" onclick="if(confirm('Delete ${escapeHtml(b.handle)}?')){deleteCustomBot(${cidx}); _startFakeUserSim(); renderAdmEngagement();}">delete</button>
+                      ` : `<span style="color:var(--gray);font-size:0.68rem;">seed</span>`}
+                    </td>
                   </tr>`;
                 }).join('')}
               </tbody>
@@ -3988,7 +4040,7 @@ function renderAdmEngagement() {
         <details style="font-size:0.82rem;">
           <summary style="cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0;">Add a single custom bot →</summary>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
-            <input type="text" id="custBotHandle" placeholder="Anonymous-4421 (or leave blank for auto)" style="grid-column:span 2;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
+            <input type="text" id="custBotHandle" placeholder="Handle (e.g. Anonymous-4421 — blank=auto)" style="grid-column:span 2;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
             <select id="custBotAffil" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
               <option value="democrat">🐂 Democrat</option>
               <option value="republican">🐘 Republican</option>
@@ -4002,8 +4054,10 @@ function renderAdmEngagement() {
               <option value="positive">Positive (thank-yous)</option>
               <option value="negative">Negative (concerns)</option>
             </select>
+            <input type="text" id="custBotLocation" placeholder="Lives in (e.g. 'Spring Valley')" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
+            <input type="text" id="custBotInterests" placeholder="Interests, comma-sep (e.g. 'school, fire, hospital')" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
             <input type="text" id="custBotVoice" placeholder="Voice (e.g. 'Bus driver, blunt')" style="grid-column:span 2;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
-            <button class="ac-btn" style="grid-column:span 2;" onclick="addCustomPersona({handle:document.getElementById('custBotHandle').value.trim(),affil:document.getElementById('custBotAffil').value,storyLean:document.getElementById('custBotStoryLean').value,voice:document.getElementById('custBotVoice').value.trim()}); _startFakeUserSim(); renderAdmEngagement();">Add bot</button>
+            <button class="ac-btn" style="grid-column:span 2;" onclick="addCustomPersona({handle:document.getElementById('custBotHandle').value.trim(),affil:document.getElementById('custBotAffil').value,storyLean:document.getElementById('custBotStoryLean').value,voice:document.getElementById('custBotVoice').value.trim(),location:document.getElementById('custBotLocation').value.trim(),interests:document.getElementById('custBotInterests').value.trim()}); _startFakeUserSim(); renderAdmEngagement();">Add bot</button>
           </div>
         </details>
       </div>
@@ -4568,7 +4622,7 @@ function getAllFakePersonas() {
 function _saveCustomPersonas(arr) {
   localStorage.setItem(FAKE_CUSTOM_KEY, JSON.stringify(arr));
 }
-function addCustomPersona({ handle, affil, lean, storyLean, voice }) {
+function addCustomPersona({ handle, affil, lean, storyLean, voice, location, interests }) {
   let custom = [];
   try { custom = JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'); } catch {}
   if (custom.length + FAKE_PERSONAS.length >= 100) {
@@ -4581,13 +4635,44 @@ function addCustomPersona({ handle, affil, lean, storyLean, voice }) {
     lean: (lean && lean.length) ? lean : ['up', 'curious'],
     storyLean: storyLean || 'neutral',
     voice: voice || 'Custom bot.',
+    location: location || '',
+    interests: Array.isArray(interests) ? interests : (interests ? String(interests).split(',').map(s => s.trim()).filter(Boolean) : []),
   });
+  _saveCustomPersonas(custom);
+  return true;
+}
+function updateCustomPersona(idx, patch) {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'); } catch {}
+  if (idx < 0 || idx >= custom.length) return false;
+  custom[idx] = { ...custom[idx], ...patch };
+  if (Array.isArray(patch.interests)) custom[idx].interests = patch.interests;
+  else if (typeof patch.interests === 'string') custom[idx].interests = patch.interests.split(',').map(s => s.trim()).filter(Boolean);
   _saveCustomPersonas(custom);
   return true;
 }
 function clearCustomPersonas() {
   localStorage.removeItem(FAKE_CUSTOM_KEY);
   _showStreakToast('All custom bots removed. 25 seed personas remain.');
+}
+function _openBotEdit(idx) {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'); } catch {}
+  const bot = custom[idx];
+  if (!bot) return;
+  const newLoc = prompt(`Edit location for ${bot.handle}:`, bot.location || '');
+  if (newLoc === null) return;
+  const newInt = prompt(`Edit interests (comma-separated) for ${bot.handle}:`, (bot.interests || []).join(', '));
+  if (newInt === null) return;
+  const newVoice = prompt(`Edit voice description for ${bot.handle}:`, bot.voice || '');
+  if (newVoice === null) return;
+  updateCustomPersona(idx, {
+    location: newLoc.trim(),
+    interests: newInt.split(',').map(s => s.trim()).filter(Boolean),
+    voice: newVoice.trim(),
+  });
+  _showStreakToast(`✓ Updated ${bot.handle}`);
+  renderAdmEngagement();
 }
 function deleteCustomBot(idx) {
   let custom = [];
@@ -4759,6 +4844,22 @@ const FAKE_STORY_BANK = {
   },
 };
 
+// Poll templates bots can use to seed fresh civic questions
+const FAKE_POLL_BANK = [
+  { cat:'LOCAL — SPRING VALLEY', q:'Should the village add weekly office hours for residents to meet trustees in person?', options:['Yes, monthly minimum','Yes, weekly','No, current setup is fine','Only by appointment'] },
+  { cat:'LOCAL — RAMAPO', q:'Should Ramapo town meetings be live-streamed and archived publicly?', options:['Yes, all meetings','Yes, major votes only','No, in-person is enough'] },
+  { cat:'LOCAL — SCHOOL BOARD', q:'Should school board members publish their voting records in plain English within 48 hours?', options:['Yes, full transparency','Yes, summary version','No, official minutes are enough'] },
+  { cat:'LOCAL — PUBLIC SAFETY', q:'Should our local police publish quarterly use-of-force statistics?', options:['Yes, fully','Yes, with privacy redactions','No, current reporting is fine'] },
+  { cat:'EDUCATION', q:'Should parents have a default right to opt out of standardized testing without explanation?', options:['Yes, opt-out by default','Yes, with brief reason','No, only for documented reasons'] },
+  { cat:'NEW YORK STATE', q:'Should NY require all elected officials to disclose meetings with paid lobbyists within 7 days?', options:['Yes, immediate disclosure','Yes, monthly batch','No, existing rules are enough'] },
+  { cat:'NEW YORK STATE', q:'Should the state cap rent increases at the rate of inflation in tight housing markets?', options:['Yes, statewide','Yes, only in NYC + surrounding','No, market should decide'] },
+  { cat:'FEDERAL — POLICY', q:'Should Congress require an in-person town hall once per year from every Senator?', options:['Yes, mandatory','Yes, virtual counts','No, optional is fine'] },
+  { cat:'FEDERAL — PREDICTION', q:'Will the federal government meet its stated infrastructure timelines this year?', options:['Yes, on schedule','Mostly, with some delays','No, major slippage','Total failure'] },
+  { cat:'LOCAL — TRANSPORTATION', q:'Should our local roads prioritize repair funding over new road construction?', options:['Yes, repair-first','Both equally','New construction is priority'] },
+  { cat:'LOCAL — HOUSING', q:'Should our town require new developments to include 20% affordable units?', options:['Yes, mandatory 20%+','Yes, lower percentage','Voluntary incentives only','No mandate'] },
+  { cat:'PUBLIC SAFETY', q:'Should body cameras be mandatory for every interaction with the public?', options:['Yes, no exceptions','Yes, with privacy carve-outs','Voluntary','No'] },
+];
+
 const FAKE_STORY_TAGS = {
   positive: ['professional','helpful','kind','went-above-and-beyond','calm-under-pressure','listens','accountable','responsive'],
   negative: ['rushed','dismissive','slow','disrespectful','no-follow-through','rude'],
@@ -4865,6 +4966,35 @@ function toggleFakeUsers() {
 function _readFakeState() { try { return JSON.parse(localStorage.getItem(FAKE_USERS_STATE_KEY) || '{}'); } catch { return {}; } }
 function _writeFakeState(s) { localStorage.setItem(FAKE_USERS_STATE_KEY, JSON.stringify(s)); }
 
+// Pick a story biased toward a persona's location + interests (where set).
+// If no interest hits found, fall back to random.
+function _pickRandomStoryByInterest(persona) {
+  if (!persona) return null;
+  if (!persona.location && (!persona.interests || !persona.interests.length)) return null;
+  const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+  const all = [...officers, ...getApprovedAsOfficers()];
+  const matches = [];
+  for (const o of all) {
+    const role = inferRole(o);
+    const dept = (o.department || '').toLowerCase();
+    let interestMatch = false;
+    let locMatch = false;
+    if (persona.interests && persona.interests.length) {
+      interestMatch = persona.interests.some(i => i === role || dept.includes(i.toLowerCase()));
+    }
+    if (persona.location) {
+      const loc = persona.location.toLowerCase();
+      locMatch = dept.includes(loc) || (o.reviews || []).some(r => (r.location || '').toLowerCase().includes(loc));
+    }
+    if (!persona.interests?.length && !persona.location) continue;
+    if (interestMatch || locMatch) {
+      for (const r of (o.reviews || [])) matches.push({ o, r });
+    }
+  }
+  if (!matches.length) return null;
+  return matches[Math.floor(Math.random() * matches.length)];
+}
+
 // Pick a random story to act on
 function _pickRandomStory() {
   const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
@@ -4903,19 +5033,50 @@ function _fakeAgency(role) {
 function _fakeUserAction(persona) {
   const choice = Math.random();
   if (choice < 0.45) {
-    // React on a random story
-    const pick = _pickRandomStory();
+    // ── SMARTER REACT (no LLM API) ──
+    // Pick a story, then pick a reaction kind that actually MATCHES the story:
+    //   1. positive stories (verdict=fair, stars>=4) → favor 🙋 Me too, 🙏 Thanks, 💪 Strong
+    //   2. negative stories (verdict=unfair OR stars<=2) → favor 👎 Not me, 🤔 Curious, 💪 Strong (powerful concern)
+    //   3. mixed stories (3 stars) → favor 🤔 Curious
+    // Then narrow by the persona's `lean` array, and add social-proof bias toward the most-popular reaction so far.
+    const pick = _pickRandomStoryByInterest(persona) || _pickRandomStory();
     if (!pick) return;
-    const kind = persona.lean[Math.floor(Math.random() * persona.lean.length)];
+    const r = pick.r;
+    const stars = r.stars || 3;
+    const isPositive = r.verdict === 'fair' && stars >= 4;
+    const isNegative = r.verdict === 'unfair' || stars <= 2;
+    // Story-appropriate reaction pool
+    let storyPool;
+    if (isPositive)       storyPool = ['up','thanks','strong'];
+    else if (isNegative)  storyPool = ['down','curious','strong'];
+    else                  storyPool = ['curious','up','down'];
+    // Intersect with persona's preferred reactions
+    let candidates = (persona.lean || []).filter(k => storyPool.includes(k));
+    if (!candidates.length) candidates = storyPool;  // persona has no overlap → fall back to story pool
+    // Social-proof boost: if a reaction is already leading by 2x, give it 30% higher weight
+    const counts = getReactionCounts(pick.o.id, pick.r.id);
+    const total = Object.values(counts).reduce((s, n) => s + n, 0);
+    const weighted = candidates.map(k => {
+      const share = total ? counts[k] / total : 0;
+      const weight = 1 + (share > 0.4 ? 0.3 : 0);  // popular reactions get a soft boost
+      return { kind: k, weight };
+    });
+    // Weighted random pick
+    const totalW = weighted.reduce((s, w) => s + w.weight, 0);
+    let r2 = Math.random() * totalW;
+    let kind = weighted[0].kind;
+    for (const w of weighted) { r2 -= w.weight; if (r2 <= 0) { kind = w.kind; break; } }
+    // Has this bot already done this kind on this story?
     const key = `${pick.o.id}:${pick.r.id}`;
-    // Has this fake user already done this kind on this story?
     const state = _readFakeState();
     state[persona.handle] = state[persona.handle] || { reactions: {} };
     state[persona.handle].reactions[key] = state[persona.handle].reactions[key] || {};
-    if (state[persona.handle].reactions[key][kind]) return;  // skip
+    if (state[persona.handle].reactions[key][kind]) return;
+    // Mutually exclusive up/down — don't both
+    if ((kind === 'up' && state[persona.handle].reactions[key]['down']) ||
+        (kind === 'down' && state[persona.handle].reactions[key]['up'])) return;
     state[persona.handle].reactions[key][kind] = true;
     _writeFakeState(state);
-    // Bump global count (no auth check since we're simulating)
     const all = _readReactions();
     all[key] = all[key] || { up:0, down:0, thanks:0, strong:0, curious:0 };
     all[key][kind] = (all[key][kind] || 0) + 1;
@@ -5085,13 +5246,46 @@ function _fakeUserAction(persona) {
       window.STATIC_DATA.officers.unshift(newOfficer);
     }
     return { type:'new-story', who:persona.handle, story:newOfficer };
+  } else if (choice < 0.97) {
+    // Bot submits a NEW poll — civic question from the template bank. Auto-approved.
+    const state = _readFakeState();
+    state[persona.handle] = state[persona.handle] || {};
+    state[persona.handle].submittedPolls = state[persona.handle].submittedPolls || [];
+    // Each bot submits at most 3 polls total — keep the feed varied
+    if (state[persona.handle].submittedPolls.length >= 3) return;
+    // Pick a template not yet submitted by anyone (track globally to avoid duplicates)
+    const globalUsed = new Set();
+    [...FAKE_PERSONAS, ...(JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'))].forEach(p => {
+      const ps = _readFakeState()[p.handle];
+      if (ps && ps.submittedPolls) ps.submittedPolls.forEach(idx => globalUsed.add(idx));
+    });
+    const available = FAKE_POLL_BANK.map((_, i) => i).filter(i => !globalUsed.has(i));
+    if (!available.length) return;
+    const idx = available[Math.floor(Math.random() * available.length)];
+    const tmpl = FAKE_POLL_BANK[idx];
+    state[persona.handle].submittedPolls.push(idx);
+    _writeFakeState(state);
+    const pollId = 'b' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newPoll = {
+      id: pollId,
+      cat: tmpl.cat,
+      q: tmpl.q,
+      options: tmpl.options.map((label, i) => ({ id: 'o' + (i + 1), label })),
+      closes: 'Open',
+      submitted_by: persona.handle,
+      submitted_at: new Date().toISOString(),
+      status: 'approved',
+    };
+    const approved = _readApprovedPolls();
+    approved.unshift(newPoll);
+    localStorage.setItem(POLLS_APPROVED_KEY, JSON.stringify(approved));
+    return { type:'new-poll', who: persona.handle, poll: newPoll };
   } else {
-    // Subscribe to an agency (rare action — just adds variety to the data)
+    // Subscribe to an agency
     const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
     if (!officers.length) return;
     const agency = officers[Math.floor(Math.random() * officers.length)].department;
     if (!agency) return;
-    // Subscribes here are per-persona, not the current user's subs (don't pollute the real user's subs)
     return { type:'subscribe', who:persona.handle, agency };
   }
 }
@@ -5246,6 +5440,7 @@ function _flashFakeTicker(result) {
     'poll-comment': 'commented on a poll',
     'thread-reply': 'replied in a thread',
     'new-story':    'shared a new story',
+    'new-poll':     'submitted a new poll',
     'subscribe':    'subscribed to an agency',
   };
   el.textContent = `${result.who} ${verbs[result.type] || result.type} →`;

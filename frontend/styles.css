@@ -1207,6 +1207,17 @@ section.active{display:block;}
 .ptr-indicator.refreshing .ptr-icon{animation:ptrSpin 0.8s linear infinite;}
 @keyframes ptrSpin{to{transform:rotate(360deg);}}
 
+/* @mentions inside replies — clickable chips */
+.mention{display:inline;color:var(--accent);font-weight:700;cursor:pointer;border-radius:4px;padding:0 2px;transition:background 0.12s;}
+.mention:hover{background:var(--accent-soft);}
+
+/* Reply sort bar */
+.reply-sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:0.78rem;}
+.reply-sort-label{color:var(--gray);font-weight:600;letter-spacing:-0.1px;}
+.reply-sort-pill{background:transparent;border:1px solid var(--border);color:var(--gray);font-family:'Inter','Epilogue',sans-serif;font-weight:600;font-size:0.72rem;padding:4px 10px;border-radius:999px;cursor:pointer;transition:all 0.15s;}
+.reply-sort-pill:hover{color:var(--ink);}
+.reply-sort-pill.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+
 /* Global search result rows */
 .gs-item{display:flex;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;align-items:center;transition:background 0.15s;}
 .gs-item:hover{background:var(--bg2);}
