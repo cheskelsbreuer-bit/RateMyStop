@@ -38,9 +38,21 @@
     <div class="brand-name">Civic<span>Voice</span></div>
   </div>
   <nav class="topnav">
-    <button class="active" data-section="home"  onclick="nav('home')">Home</button>
-    <button                 data-section="share" onclick="nav('share')">Share a story</button>
-    <button                 data-section="polls" onclick="nav('polls')">Polls</button>
+    <button class="active" data-section="home"      onclick="nav('home')">Home</button>
+    <button                 data-section="share"     onclick="nav('share')">Share</button>
+    <button                 data-section="pulse"     onclick="nav('pulse')">Pulse</button>
+    <button                 data-section="officers"  onclick="nav('officers')">Stories</button>
+    <button                 data-section="polls"     onclick="nav('polls')">Polls</button>
+    <button                 data-section="complaint" onclick="nav('complaint')">Reach Out</button>
+    <div class="nav-more-wrap">
+      <button class="nav-more-btn" id="navMoreBtn" onclick="toggleMoreMenu(event)">More <span class="nav-more-caret">&#9662;</span></button>
+      <div class="nav-more-menu" id="navMoreMenu">
+        <button onclick="nav('contributors'); closeMoreMenu();">&#128101; Community</button>
+        <button onclick="nav('rankings'); closeMoreMenu();">&#128202; Rankings</button>
+        <button onclick="nav('orgs'); closeMoreMenu();">&#127970; For Agencies</button>
+        <button onclick="nav('deck'); closeMoreMenu();">&#128188; Sponsors</button>
+      </div>
+    </div>
   </nav>
   <div class="topbar-auth">
     <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="openMobileDrawer()" aria-label="Menu">
@@ -115,13 +127,13 @@
 <!-- Persistent escape pill (phone only, shown when on Pulse — no matter how deep you've scrolled) -->
 <button class="pulse-escape" onclick="nav('home');" aria-label="Back to home">&larr; Home</button>
 
-<!-- BOTTOM TAB BAR — phone only. 4 items. Simple. -->
+<!-- BOTTOM TAB BAR — phone only. Native-app one-tap nav between primary surfaces. -->
 <nav class="bottom-tabs" id="bottomTabs" aria-label="Primary navigation">
-  <button class="bt-tab" data-bt="home"  onclick="nav('home')"  aria-label="Home"><span class="bt-icon">&#127968;</span><span class="bt-label">Home</span></button>
-  <button class="bt-tab" data-bt="polls" onclick="nav('polls')" aria-label="Polls"><span class="bt-icon">&#128499;&#65039;</span><span class="bt-label">Polls</span></button>
+  <button class="bt-tab" data-bt="home"     onclick="nav('home')"     aria-label="Home"><span class="bt-icon">&#127968;</span><span class="bt-label">Home</span></button>
   <button class="bt-tab bt-cta" data-bt="share" onclick="nav('share')" aria-label="Share a story"><span class="bt-cta-circle">&#43;</span><span class="bt-label">Share</span></button>
-  <button class="bt-tab" data-bt="pulse" onclick="nav('pulse')" aria-label="Feed"><span class="bt-icon">&#128293;</span><span class="bt-label">Feed</span></button>
-  <button class="bt-tab" data-bt="me"    onclick="toggleUserMenu()" aria-label="Me"><span class="bt-icon">&#128100;</span><span class="bt-label">Me</span></button>
+  <button class="bt-tab" data-bt="pulse"    onclick="nav('pulse')"    aria-label="Pulse"><span class="bt-icon">&#128293;</span><span class="bt-label">Pulse</span></button>
+  <button class="bt-tab" data-bt="polls"    onclick="nav('polls')"    aria-label="Polls"><span class="bt-icon">&#128499;&#65039;</span><span class="bt-label">Polls</span></button>
+  <button class="bt-tab" data-bt="officers" onclick="nav('officers')" aria-label="Stories"><span class="bt-icon">&#128218;</span><span class="bt-label">Stories</span></button>
 </nav>
 
 <!-- GLOBAL SEARCH — Cmd+K style. Searches stories + polls + authors + agencies in one place. -->
@@ -212,25 +224,66 @@
   </div>
 </aside>
 
-<!-- HOME — radically simplified.
-     One line, one CTA, the feed.
-     Everything else (stats, roadmap, categories detail) lives in About/Sponsors/More drawer. -->
+<!-- HOME -->
 <section id="home" class="active">
-  <div class="hero hero-plain hero-simple">
-    <h1>On the record.</h1>
-    <p class="hero-lead">Recognize the good. Document the rest. Every public servant &mdash; on the record.</p>
-    <div style="text-align:center;margin:24px 0 32px;">
-      <button class="btn-gold" style="font-size:1.05rem;padding:16px 36px;border-radius:12px;" onclick="nav('share')">Share your moment &rarr;</button>
+  <div class="hero hero-plain">
+    <div class="hero-eyebrow">A public record of public service</div>
+    <h1>Recognize the good.<br>Document the rest.<br><em>On the record.</em></h1>
+    <p class="hero-lead">CivicVoice is where moments people have with public servants &mdash; police, EMTs, firefighters, DMV staff, hospital workers, government caseworkers &mdash; become a public record. Praise. Concern. Stories. One place.</p>
+    <div style="text-align:center;margin-bottom:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn-gold" style="font-size:1rem;padding:16px 32px;border-radius:12px;" onclick="nav('share')">Share a story &rarr;</button>
+      <button class="btn-ghost" style="font-size:1rem;padding:16px 28px;border-radius:12px;" onclick="nav('officers')">Read stories</button>
+    </div>
+    <div class="categories-strip">
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128657; EMT</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128658; Fire</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#129411; DMV</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#127973; Hospitals</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128104;&#8205;&#128188; Government</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#127891; School Board</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#127963;&#65039; Local Elected</span>
+      <span class="cs-item live"><span class="cs-dot live"></span>&#128499;&#65039; Polls &amp; Takes</span>
+      <span class="cs-item" onclick="openNotifyMe('Stories near me','near-me')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#128205; Stories near me &middot; <em>soon</em></span>
+      <span class="cs-item" onclick="openNotifyMe('Verified by photo / badge','verified-photo')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#128737;&#65039; Verified by photo &middot; <em>soon</em></span>
+      <span class="cs-item" onclick="openNotifyMe('Translate stories','translate')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127757; Translate stories &middot; <em>soon</em></span>
+      <span class="cs-item" onclick="openNotifyMe('Live town hall stream','town-hall')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127908; Town hall live &middot; <em>soon</em></span>
     </div>
   </div>
 
-  <!-- Live feed right on home — show what the site actually IS, immediately -->
-  <div class="home-feed-wrap">
-    <div class="home-feed-head">
-      <h2>What's on the record today</h2>
-      <button class="btn-ghost home-feed-more" onclick="nav('pulse')">See more &rarr;</button>
+  <div class="stats-strip" id="statsStrip">
+    <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Stories shared</div></div>
+    <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">Recognitions</div></div>
+    <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Agencies on record</div></div>
+    <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">People documented</div></div>
+  </div>
+
+  <!-- WHERE THIS IS GOING — visible roadmap so people see the ambition past the local launch -->
+  <div class="vision-rail">
+    <div class="vision-rail-head">
+      <h3>Where this is going</h3>
+      <span class="vr-sub">The roadmap — public, on the record.</span>
     </div>
-    <div id="homeFeed" class="home-feed-stage"></div>
+    <div class="vision-rail-grid">
+      <button class="vr-card" onclick="openNotifyMe('Agency review-request links', 'agency-links')">
+        <div class="vr-icon">&#9993;&#65039;</div>
+        <div class="vr-title">Agency review-request links</div>
+        <div class="vr-desc">After a 911 call, ER visit, or DMV appointment, agencies send a one-tap anonymous review link &mdash; like Google Reviews for public service.</div>
+        <span class="vr-pill">Soon &middot; Notify me</span>
+      </button>
+      <button class="vr-card" onclick="openNotifyMe('State + Federal officials', 'state-federal')">
+        <div class="vr-icon">&#127963;&#65039;</div>
+        <div class="vr-title">State + Federal officials</div>
+        <div class="vr-desc">Governor, senators, congress, the president &mdash; profiles open for review once claimed. So every public servant, top to bottom, is on the same record.</div>
+        <span class="vr-pill">Next &middot; Notify me</span>
+      </button>
+      <button class="vr-card" onclick="openNotifyMe('Rate legislation & board votes', 'rate-affairs')">
+        <div class="vr-icon">&#128221;</div>
+        <div class="vr-title">Rate legislation &amp; board votes</div>
+        <div class="vr-desc">Not just people &mdash; the decisions. School board votes, ballot measures, legislation. With sources and dissent built in.</div>
+        <span class="vr-pill">Big &middot; Notify me</span>
+      </button>
+    </div>
   </div>
 </section>
 
