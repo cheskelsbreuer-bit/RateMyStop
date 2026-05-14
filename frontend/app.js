@@ -1635,7 +1635,11 @@ function _renderPulseInternal() {
   items = items.slice(0, window._pulsePageLimit);
   window._pulseTotalAvailable = totalAvailable;
   // Interleave polls into the feed — every 4th slot when filter is 'all', or polls-only when filter='polls'
-  const allPolls = [..._readApprovedPolls(), ...POLLS_SEED].map(p => ({ kind: 'poll', poll: p }));
+  // Filter out admin-removed polls + apply overrides for Pulse interleave
+  const _removedSet = new Set(_readRemovedPolls());
+  const allPolls = [..._readApprovedPolls(), ...POLLS_SEED]
+    .filter(p => !_removedSet.has(p.id))
+    .map(p => ({ kind: 'poll', poll: applyPollOverrides(p) }));
   if (_pulseFilter === 'polls') {
     items = allPolls;
   } else if (_pulseFilter === 'all' && allPolls.length) {
@@ -3883,12 +3887,43 @@ function renderAdmPolls() {
         </div>
       </div>`).join('');
   }
-  if (approved.length) {
-    html += `<h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin:24px 0 12px;">Approved (${approved.length})</h3>`;
-    html += approved.map(p => `
+  // Build a unified "all live polls" list: seed + approved, with per-poll remove + edit-timeline controls
+  const removedSet = new Set(_readRemovedPolls());
+  const livePolls = [...approved, ...POLLS_SEED].map(applyPollOverrides);
+  const visiblePolls = livePolls.filter(p => !removedSet.has(p.id));
+  const removedPolls = livePolls.filter(p => removedSet.has(p.id));
+
+  if (visiblePolls.length) {
+    html += `<h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin:24px 0 12px;">Live polls (${visiblePolls.length})</h3>`;
+    html += visiblePolls.map(p => {
+      const closed = isPollClosed(p);
+      const label = pollClosesLabel(p);
+      return `
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;">
-        <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--green);font-weight:800;margin-bottom:4px;">${escapeHtml(p.cat)} &middot; LIVE</div>
-        <div style="font-size:0.94rem;font-weight:600;color:var(--ink);">${escapeHtml(p.q)}</div>
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">
+          <div style="flex:1;min-width:200px;">
+            <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1.4px;color:${closed ? 'var(--red)' : 'var(--green)'};font-weight:800;margin-bottom:4px;">${escapeHtml(p.cat)} &middot; ${closed ? 'CLOSED' : 'LIVE'} &middot; ${escapeHtml(label)}</div>
+            <div style="font-size:0.94rem;font-weight:600;color:var(--ink);line-height:1.35;">${escapeHtml(p.q)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn-ghost" style="padding:6px 12px;font-size:0.76rem;border-radius:7px;" onclick="adminSetPollTimeline('${escapeHtml(p.id)}')">&#9201;&#65039; Set days</button>
+            <button class="btn-ghost" style="padding:6px 12px;font-size:0.76rem;border-radius:7px;color:var(--red);" onclick="adminRemovePoll('${escapeHtml(p.id)}')">&#10005; Remove</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if (removedPolls.length) {
+    html += `<h3 style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:1.05rem;font-weight:800;margin:24px 0 12px;color:var(--gray);">Removed (${removedPolls.length})</h3>`;
+    html += removedPolls.map(p => `
+      <div style="background:rgba(201,52,52,0.05);border:1px dashed rgba(201,52,52,0.32);border-radius:12px;padding:12px 16px;margin-bottom:8px;opacity:0.7;">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+          <div style="flex:1;min-width:200px;">
+            <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:1.4px;color:var(--red);font-weight:800;margin-bottom:4px;">${escapeHtml(p.cat)} &middot; REMOVED</div>
+            <div style="font-size:0.9rem;font-weight:500;color:var(--light);">${escapeHtml(p.q)}</div>
+          </div>
+          <button class="btn-ghost" style="padding:6px 12px;font-size:0.76rem;border-radius:7px;" onclick="adminRestorePoll('${escapeHtml(p.id)}')">&#8635; Restore</button>
+        </div>
       </div>`).join('');
   }
   wrap.innerHTML = html;
@@ -5952,6 +5987,50 @@ function votePoll(pollId, optionId) {
 // User-submitted polls (pending moderation)
 const POLLS_PENDING_KEY  = 'civicvoice_polls_pending_v1';
 const POLLS_APPROVED_KEY = 'civicvoice_polls_approved_v1';
+const POLLS_REMOVED_KEY  = 'civicvoice_polls_removed_v1';   // soft-delete list of poll IDs (admin)
+const POLLS_OVERRIDES_KEY= 'civicvoice_polls_overrides_v1'; // admin overrides per poll (e.g. closes_at)
+
+function _readRemovedPolls()    { try { return JSON.parse(localStorage.getItem(POLLS_REMOVED_KEY) || '[]'); } catch { return []; } }
+function _readPollOverrides()   { try { return JSON.parse(localStorage.getItem(POLLS_OVERRIDES_KEY) || '{}'); } catch { return {}; } }
+function isPollRemoved(pollId)  { return _readRemovedPolls().includes(pollId); }
+function applyPollOverrides(p) {
+  const ov = _readPollOverrides()[p.id];
+  return ov ? { ...p, ...ov } : p;
+}
+function adminRemovePoll(pollId) {
+  if (!confirm('Remove this poll? It disappears from the public list. (You can re-add a removed poll only by clearing admin overrides.)')) return;
+  const removed = _readRemovedPolls();
+  if (!removed.includes(pollId)) removed.push(pollId);
+  localStorage.setItem(POLLS_REMOVED_KEY, JSON.stringify(removed));
+  _showStreakToast('Poll removed from public list.');
+  renderAdmPolls();
+  if (typeof renderPolls === 'function') renderPolls();
+}
+function adminRestorePoll(pollId) {
+  const removed = _readRemovedPolls().filter(id => id !== pollId);
+  localStorage.setItem(POLLS_REMOVED_KEY, JSON.stringify(removed));
+  _showStreakToast('Poll restored.');
+  renderAdmPolls();
+  if (typeof renderPolls === 'function') renderPolls();
+}
+function adminSetPollTimeline(pollId) {
+  const all = [...POLLS_SEED, ..._readApprovedPolls()];
+  const p = all.find(x => x.id === pollId);
+  if (!p) return;
+  const cur = applyPollOverrides(p);
+  const curClosesAt = pollClosesAt(cur);
+  const curLabel = curClosesAt ? curClosesAt.toLocaleDateString() : 'never set';
+  const input = prompt(`Set new closing date for poll:\n"${p.q.slice(0, 80)}"\n\nEnter number of days from now (1–365). Currently closes: ${curLabel}.`, '30');
+  if (input === null) return;
+  const days = Math.max(1, Math.min(365, parseInt(input, 10) || 30));
+  const overrides = _readPollOverrides();
+  overrides[pollId] = overrides[pollId] || {};
+  overrides[pollId].closes_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  localStorage.setItem(POLLS_OVERRIDES_KEY, JSON.stringify(overrides));
+  _showStreakToast(`✓ Poll closes ${new Date(overrides[pollId].closes_at).toLocaleDateString()} (${days} days).`);
+  renderAdmPolls();
+  if (typeof renderPolls === 'function') renderPolls();
+}
 const POLLS_COMMENTS_KEY = 'civicvoice_polls_comments_v1';   // { pollId: [{handle, optionId, text, ts}] }
 function _readPollComments() { try { return JSON.parse(localStorage.getItem(POLLS_COMMENTS_KEY) || '{}'); } catch { return {}; } }
 // In-memory set of poll IDs whose comments are currently expanded (default: collapsed to last 3)
@@ -5998,28 +6077,34 @@ function submitPoll() {
   const q = (document.getElementById('spQuestion').value || '').trim();
   const optsRaw = (document.getElementById('spOptions').value || '').trim();
   const opts = optsRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  const daysRaw = parseInt(document.getElementById('spDays')?.value || '30', 10);
+  const days = Math.max(1, Math.min(90, isNaN(daysRaw) ? 30 : daysRaw));
   const status = document.getElementById('spStatus');
   if (q.length < 12) { status.style.color = 'var(--red)'; status.textContent = 'Question is too short. Make it specific.'; return; }
   if (opts.length < 2 || opts.length > 4) { status.style.color = 'var(--red)'; status.textContent = 'Need 2–4 options. One per line.'; return; }
   const u = getCurrentUser();
   const author = u ? (u.anonymous ? u.handle : (u.displayName || u.handle)) : 'Anonymous';
   const id = 'u' + Date.now();
+  const now = new Date();
+  const closesAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   const poll = {
     id, cat, q,
     options: opts.map((label, i) => ({ id: 'o' + (i + 1), label })),
-    closes: 'Open',
     submitted_by: author,
-    submitted_at: new Date().toISOString(),
+    submitted_at: now.toISOString(),
+    closes_at: closesAt.toISOString(),
+    runs_days: days,
     status: 'pending',
   };
   const pending = _readPendingPolls();
   pending.push(poll);
   localStorage.setItem(POLLS_PENDING_KEY, JSON.stringify(pending));
   status.style.color = 'var(--green)';
-  status.innerHTML = '✓ Your poll is in moderation. Once approved, it joins the public list. <button onclick="closeSubmitPoll()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;">Close</button>';
+  status.innerHTML = `✓ Your poll is in moderation. Once approved it runs for ${days} ${days===1?'day':'days'} (closes ${closesAt.toLocaleDateString()}). <button onclick="closeSubmitPoll()" style="background:none;border:none;color:var(--accent);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;">Close</button>`;
   document.getElementById('spQuestion').value = '';
   document.getElementById('spOptions').value = '';
-  // Linger 60s like story submit — gives the submitter time to read confirmation, share, or close
+  if (document.getElementById('spDays')) document.getElementById('spDays').value = 30;
+  // Linger 60s like story submit
   setTimeout(() => { closeSubmitPoll(); }, 60000);
 }
 
@@ -6029,9 +6114,13 @@ function renderPolls() {
   const list = document.getElementById('pollsList');
   if (!list) return;
   const my = _readPollsMy();
-  // Combine seeded + approved user-submitted polls (newest first)
+  // Combine seeded + approved user-submitted polls (newest first).
+  // Apply admin overrides (e.g. custom closes_at) and filter out admin-removed polls.
+  const removed = new Set(_readRemovedPolls());
   const approved = _readApprovedPolls();
-  const allPolls = [...approved, ...POLLS_SEED];
+  const allPolls = [...approved, ...POLLS_SEED]
+    .filter(p => !removed.has(p.id))
+    .map(applyPollOverrides);
   list.innerHTML = allPolls.map(p => {
     const counts = _readPollsVotes()[p.id] || _seedPollCounts(p.id);
     const total = Object.values(counts).reduce((s, n) => s + n, 0) || 1;

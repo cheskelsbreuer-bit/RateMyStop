@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v52-freeze-fix-poll-expiration-rich-bots';
-const ASSETS_BUMP_NOTE = 'CRITICAL: Pulse-freeze fix (observer root + re-entry guard). Custom emoji shows live. Polls expire after 60 days. Generated bots get full profiles.';
+const CACHE = 'civicvoice-v53-poll-admin-controls';
+const ASSETS_BUMP_NOTE = 'Submit-poll has Days input (1-90). Admin can remove/restore + set timeline on any poll (seed or user). Stayed focused — forum/campaigns/photos deferred.';
 const ASSETS = [
   './',
   './index.html',
