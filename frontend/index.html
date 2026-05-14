@@ -43,10 +43,10 @@
     <button                 data-section="pulse"     onclick="nav('pulse')">Pulse</button>
     <button                 data-section="officers"  onclick="nav('officers')">Stories</button>
     <button                 data-section="polls"     onclick="nav('polls')">Polls</button>
-    <button                 data-section="complaint" onclick="nav('complaint')">Reach Out</button>
     <div class="nav-more-wrap">
       <button class="nav-more-btn" id="navMoreBtn" onclick="toggleMoreMenu(event)">More <span class="nav-more-caret">&#9662;</span></button>
       <div class="nav-more-menu" id="navMoreMenu">
+        <button onclick="nav('complaint'); closeMoreMenu();">&#9993;&#65039; Reach Out</button>
         <button onclick="nav('contributors'); closeMoreMenu();">&#128101; Community</button>
         <button onclick="nav('rankings'); closeMoreMenu();">&#128202; Rankings</button>
         <button onclick="nav('orgs'); closeMoreMenu();">&#127970; For Agencies</button>
