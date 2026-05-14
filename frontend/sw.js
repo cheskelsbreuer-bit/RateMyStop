@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v51-smart-bots-tiktok-forum';
-const ASSETS_BUMP_NOTE = 'Smarter bots (sentiment+social-proof) · bots submit polls · location+interests fields · bot editor in admin · TikTok infinite scroll · forum @mentions + sort.';
+const CACHE = 'civicvoice-v52-freeze-fix-poll-expiration-rich-bots';
+const ASSETS_BUMP_NOTE = 'CRITICAL: Pulse-freeze fix (observer root + re-entry guard). Custom emoji shows live. Polls expire after 60 days. Generated bots get full profiles.';
 const ASSETS = [
   './',
   './index.html',

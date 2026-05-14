@@ -170,9 +170,36 @@ function pickCustomReaction(officerId, reviewId, emoji, btn) {
   playReactionSound();
   _emojiBurst(btn, emoji);
   document.querySelectorAll('.emoji-picker').forEach(p => p.remove());
-  // Update visible card summary
-  const anchor = document.querySelector(`[data-officer-id="${officerId}"][data-review-id="${reviewId}"]`);
-  if (anchor) _refreshReactionSummary(anchor);
+  // Update EVERY visible card for this story (Pulse, Stream, Officer modal, Story detail)
+  document.querySelectorAll(`[data-officer-id="${officerId}"][data-review-id="${reviewId}"]`).forEach(card => {
+    const summary = card.querySelector('.reaction-summary');
+    const fresh = reactionTotalsHtml(officerId, reviewId);
+    if (summary && fresh) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = fresh;
+      const newSummary = tmp.firstElementChild;
+      summary.replaceWith(newSummary);
+      newSummary.classList.add('flash-update');
+      setTimeout(() => newSummary.classList.remove('flash-update'), 1200);
+    } else if (fresh) {
+      const actions = card.querySelector('.pulse-actions, .sp-foot, .mr-actions');
+      if (actions) {
+        actions.insertAdjacentHTML('beforebegin', fresh);
+        const just = actions.previousElementSibling;
+        if (just) { just.classList.add('flash-update'); setTimeout(() => just.classList.remove('flash-update'), 1200); }
+      }
+    }
+  });
+  // Story-detail modal also has a reaction-summary outside any data-attributed wrapper
+  const sdSummary = document.querySelector('.story-detail .reaction-summary');
+  if (sdSummary) {
+    const fresh = reactionTotalsHtml(officerId, reviewId);
+    if (fresh) {
+      const tmp = document.createElement('div'); tmp.innerHTML = fresh;
+      const ns = tmp.firstElementChild; sdSummary.replaceWith(ns);
+      ns.classList.add('flash-update'); setTimeout(() => ns.classList.remove('flash-update'), 1200);
+    }
+  }
 }
 
 // Build a reaction button with "already reacted" visual state if this user has tapped it before.
@@ -1558,7 +1585,15 @@ function _renderOnePulseCard(it) {
   `;
 }
 
+let _pulseRendering = false;
 function renderPulse() {
+  // Re-entry guard — if a bot tick fires renderPulse while we're mid-render, ignore.
+  // Without this, bot activity + infinite scroll + nav can stack renders and freeze the page.
+  if (_pulseRendering) return;
+  _pulseRendering = true;
+  try { _renderPulseInternal(); } finally { _pulseRendering = false; }
+}
+function _renderPulseInternal() {
   const stage = document.getElementById('pulseStage');
   if (!stage) return;
   _refreshPulsePrefCache();
@@ -1745,20 +1780,21 @@ function _renderOnePulsePollCard(p) {
 let _pulseInfiniteObs = null;
 let _pulseInfiniteLoading = false;
 function _attachPulseInfiniteScroll() {
-  if (_pulseInfiniteObs) _pulseInfiniteObs.disconnect();
+  if (_pulseInfiniteObs) { _pulseInfiniteObs.disconnect(); _pulseInfiniteObs = null; }
   const sentinel = document.getElementById('pulseInfiniteSentinel');
-  const stage = document.getElementById('pulseStage');
-  if (!sentinel || !stage) return;
+  if (!sentinel) return;
+  // Use viewport as root (not stage). On phone the stage has height:auto + no internal scroll,
+  // so root:stage was reporting the sentinel as always-intersecting → infinite render loop = freeze.
+  // root:null (viewport) means it only fires when the sentinel actually scrolls into view.
   _pulseInfiniteObs = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (e.isIntersecting && !_pulseInfiniteLoading) {
         _pulseInfiniteLoading = true;
         window._pulsePageLimit = (window._pulsePageLimit || 100) + 30;
-        // Tiny defer so the user feels it briefly
-        setTimeout(() => { renderPulse(); _pulseInfiniteLoading = false; }, 120);
+        setTimeout(() => { try { renderPulse(); } finally { _pulseInfiniteLoading = false; } }, 200);
       }
     }
-  }, { root: stage, rootMargin: '400px 0px' });  // start loading 400px before sentinel hits view
+  }, { root: null, rootMargin: '600px 0px' });
   _pulseInfiniteObs.observe(sentinel);
 }
 
@@ -4682,25 +4718,72 @@ function deleteCustomBot(idx) {
   _saveCustomPersonas(custom);
   _showStreakToast(`Removed ${removed?.handle || 'bot'}.`);
 }
-// Generate N random bots of a given category (affiliation)
+// Pools for generating full bot profiles — each new bot gets a unique mix.
+const FAKE_LOCATIONS = ['Spring Valley','Monsey','Suffern','Pearl River','Nyack','New City','Nanuet','Pomona','Stony Point','Haverstraw','Sloatsburg','Garnerville','Hillcrest','Chestnut Ridge','Airmont','Wesley Hills','Yonkers','Manhattan','Bronx','Brooklyn','Queens','New Hempstead'];
+const FAKE_INTERESTS_BY_AFFIL = {
+  democrat:     [['school','hospital'], ['emt','fire'], ['elected','school'], ['hospital','gov']],
+  republican:   [['police','elected'], ['gov','dmv'], ['police','fire'], ['elected','dmv']],
+  independent:  [['fire','hospital','dmv'], ['school','police'], ['emt','school'], ['hospital','elected']],
+  progressive:  [['school','hospital','gov'], ['elected','school'], ['emt','hospital']],
+  conservative: [['police','fire'], ['elected','gov'], ['police','dmv','fire']],
+  libertarian:  [['gov','dmv'], ['police','dmv'], ['gov','elected']],
+};
+const FAKE_VOICES_BY_AFFIL = {
+  democrat:     ['Caring, brief.','Grateful, names good public servants.','Parent of school-age kids, sharp.','Healthcare worker, grateful for colleagues.','Renter, frustrated with housing.','Senior, careful with words.'],
+  republican:   ['Direct, skeptical.','Veteran, respects service.','Small-business owner, blunt.','Old-school, civic pride.','Retired LEO, respects the work.'],
+  independent:  ['Even-keeled, asks questions.','Long-time local, civic-minded.','Public-school teacher, balanced.','College student, evidence-driven.','New parent, appreciates good service.'],
+  progressive:  ['Calls out injustice, supports good work.','Organizer, names problems clearly.','Social worker, sees both sides.','Journalist, asks pointed questions.'],
+  conservative: ['Practical, asks for specifics.','Old-school, civic pride.','Long-time resident, fed up.'],
+  libertarian:  ['Pro-individual, anti-bureaucracy.','Tech worker, anti-overreach.','Skeptical of all sides.'],
+};
+const STORY_LEAN_BY_AFFIL = {
+  democrat:'positive', republican:'negative', independent:'neutral',
+  progressive:'positive', conservative:'negative', libertarian:'negative',
+};
+const LEANS_BY_AFFIL = {
+  democrat:     ['thanks','strong','up','curious'],
+  republican:   ['down','strong','up','curious'],
+  independent:  ['curious','up','strong','thanks'],
+  progressive:  ['strong','thanks','up','down'],
+  conservative: ['up','curious','strong','down'],
+  libertarian:  ['curious','down','strong'],
+};
+
+function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function _uniqueHandle() {
+  const existing = new Set(getAllFakePersonas().map(b => b.handle));
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const h = `Anonymous-${1000 + Math.floor(Math.random() * 8999)}`;
+    if (!existing.has(h)) return h;
+  }
+  return `Anonymous-${Date.now() % 10000}`;  // fallback if 200 attempts collide
+}
+
+// Generate N random bots of a given affiliation — each one gets a complete unique profile
 function generateRandomPersonas(n, affil) {
   let added = 0;
   for (let i = 0; i < n; i++) {
-    const handle = `Anonymous-${1000 + Math.floor(Math.random() * 8999)}`;
-    const leansByAffil = {
-      democrat:     ['thanks','strong','up','curious'],
-      republican:   ['down','strong','up','curious'],
-      independent:  ['curious','up','strong','thanks'],
-      progressive:  ['strong','thanks','up','down'],
-      conservative: ['up','curious','strong','down'],
-      libertarian:  ['curious','down','strong'],
+    const pool = LEANS_BY_AFFIL[affil] || ['up','curious','strong'];
+    // Pick 2-3 unique reactions from the pool
+    const leanCount = 2 + Math.floor(Math.random() * 2);
+    const lean = [];
+    while (lean.length < leanCount) {
+      const k = _pick(pool);
+      if (!lean.includes(k)) lean.push(k);
+    }
+    const interestsOptions = FAKE_INTERESTS_BY_AFFIL[affil] || [['police'],['gov']];
+    const profile = {
+      handle: _uniqueHandle(),
+      affil,
+      lean,
+      storyLean: STORY_LEAN_BY_AFFIL[affil] || (['positive','negative','neutral'][Math.floor(Math.random() * 3)]),
+      voice: _pick(FAKE_VOICES_BY_AFFIL[affil] || ['Local voter.']),
+      location: _pick(FAKE_LOCATIONS),
+      interests: _pick(interestsOptions),
     };
-    const pool = leansByAffil[affil] || ['up','curious','strong'];
-    const lean = [pool[Math.floor(Math.random() * pool.length)], pool[Math.floor(Math.random() * pool.length)]];
-    const storyLean = ['positive','negative','neutral'][Math.floor(Math.random() * 3)];
-    if (addCustomPersona({ handle, affil, lean, storyLean, voice:`Auto-generated ${affil}.` })) added++;
+    if (addCustomPersona(profile)) added++;
   }
-  _showStreakToast(`✓ Added ${added} ${affil} bots. Total pool: ${getAllFakePersonas().length}.`);
+  _showStreakToast(`✓ Added ${added} ${affil} bots — each with location, interests, voice. Total: ${getAllFakePersonas().length}.`);
   return added;
 }
 
@@ -5315,8 +5398,12 @@ function _startFakeUserSim() {
     // For reactions/votes/comments/replies, the in-place updates are fine.
     const id = document.querySelector('section.active')?.id;
     if (result && result.type === 'new-story') {
-      if (id === 'pulse')    setTimeout(() => { try { renderPulse(); } catch {} }, 250);
-      if (id === 'officers') setTimeout(() => { try { applyFilters(); } catch {} }, 250);
+      // Throttle: don't rerender Pulse/Stories more than once every 3s when bots fire new stories
+      if (!window._lastBotFeedRerender || Date.now() - window._lastBotFeedRerender > 3000) {
+        window._lastBotFeedRerender = Date.now();
+        if (id === 'pulse')    setTimeout(() => { try { renderPulse(); } catch {} }, 400);
+        if (id === 'officers') setTimeout(() => { try { applyFilters(); } catch {} }, 400);
+      }
     }
     // Polls always rerender lightly because vote bars + breakdown depend on it
     if (id === 'polls' && (result?.type === 'vote' || result?.type === 'poll-comment')) {
@@ -5631,6 +5718,14 @@ const POLLS_SEED = [
     options:[{id:'yes',label:'Yes'},{id:'no',label:'No'},{id:'sometimes',label:'Only on contentious votes'}], closes:'Open' },
 ];
 
+// Set a submitted_at on every seed poll so the 60-day expiration clock starts from "today" the first time we see them
+(function () {
+  const now = new Date().toISOString();
+  for (const p of POLLS_SEED) {
+    if (!p.submitted_at) p.submitted_at = now;
+  }
+})();
+
 function _readPollsVotes()     { try { return JSON.parse(localStorage.getItem(POLLS_VOTES_KEY) || '{}'); } catch { return {}; } }
 function _readPollsMy()        { try { return JSON.parse(localStorage.getItem(POLLS_MY_KEY) || '{}'); } catch { return {}; } }
 function _readPollsBreakdown() { try { return JSON.parse(localStorage.getItem(POLLS_BREAKDOWN_KEY) || '{}'); } catch { return {}; } }
@@ -5796,7 +5891,39 @@ function renderPollBreakdown(p) {
     </div>`;
 }
 
+// Default: a poll runs 60 days from when it was created. Old polls without closes_at default to "never expires".
+const POLL_DEFAULT_DAYS = 60;
+function pollClosesAt(p) {
+  if (p.closes_at) return new Date(p.closes_at);
+  if (p.submitted_at) {
+    const d = new Date(p.submitted_at);
+    d.setDate(d.getDate() + POLL_DEFAULT_DAYS);
+    return d;
+  }
+  return null;  // legacy seed polls without dates
+}
+function isPollClosed(p) {
+  const c = pollClosesAt(p);
+  return !!c && c.getTime() < Date.now();
+}
+function pollClosesLabel(p) {
+  const c = pollClosesAt(p);
+  if (!c) return 'Open';
+  const days = Math.ceil((c.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) {
+    const ago = Math.abs(days);
+    return `Closed ${ago === 0 ? 'today' : ago === 1 ? 'yesterday' : `${ago} days ago`}`;
+  }
+  if (days === 1) return 'Closes today';
+  if (days <= 7)  return `Closes in ${days} days`;
+  if (days <= 30) return `Closes in ${Math.ceil(days / 7)} weeks`;
+  return `Closes in ${Math.ceil(days / 30)} months`;
+}
+
 function votePoll(pollId, optionId) {
+  // Check expiration first
+  const poll = [...POLLS_SEED, ..._readApprovedPolls()].find(x => x.id === pollId);
+  if (poll && isPollClosed(poll)) { _showStreakToast('This poll has closed. Results are final.'); return; }
   // Sign-in required to vote (results are public, voting is not)
   if (!requireAuth(() => votePoll(pollId, optionId), 'Sign in to vote — your affiliation will be locked for 7 days to keep polling fair')) return;
   // Affiliation required — locks for 7 days after first set
@@ -5948,7 +6075,7 @@ function renderPolls() {
       <article class="poll-card">
         <div class="pc-cat">${escapeHtml(p.cat)}</div>
         <div class="pc-q">${escapeHtml(p.q)}</div>
-        <div class="pc-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${allComments.length} ${allComments.length === 1 ? 'comment' : 'comments'} &middot; ${p.closes}</div>
+        <div class="pc-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${allComments.length} ${allComments.length === 1 ? 'comment' : 'comments'} &middot; <span style="${isPollClosed(p) ? 'color:var(--red);font-weight:700;' : ''}">${pollClosesLabel(p)}</span></div>
         <div class="poll-options">${optionsHtml}</div>
         ${breakdownHtml}
         ${commentsHtml}
