@@ -1451,14 +1451,17 @@ function renderPulse() {
   if (_pulseFilter === 'polls') {
     items = allPolls;
   } else if (_pulseFilter === 'all' && allPolls.length) {
+    // Interleave polls every other card so users see polls more often — pushes them to vote
     const mixed = [];
     let polli = 0;
     items.forEach((it, i) => {
       mixed.push({ kind: 'story', ...it });
-      if ((i + 1) % 3 === 0 && polli < allPolls.length) {
+      if ((i + 1) % 2 === 0 && polli < allPolls.length) {
         mixed.push(allPolls[polli++]);
       }
     });
+    // Append any remaining polls at the end
+    while (polli < allPolls.length) mixed.push(allPolls[polli++]);
     items = mixed;
   } else {
     items = items.map(it => ({ kind: 'story', ...it }));
@@ -3723,7 +3726,7 @@ function renderAdmEngagement() {
         <button class="ac-btn" onclick="toggleFakeUsers(); setTimeout(()=>renderAdmEngagement(),200);">${fakeOn ? 'Pause all' : 'Resume'}</button>
       </div>
 
-      <!-- RATE CONTROL -->
+      <!-- RATE + ACTIVE CONTROL -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;">
         <div>
           <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;display:block;margin-bottom:6px;">Rate (actions)</label>
@@ -3737,10 +3740,48 @@ function renderAdmEngagement() {
           <div style="font-size:0.72rem;color:var(--gray);margin-top:5px;">Current: ~${(60 / getFakeRate()).toFixed(getFakeRate() >= 10 ? 0 : 1)}s between actions</div>
         </div>
         <div>
-          <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;display:block;margin-bottom:6px;">Active bots (of 25)</label>
-          <input type="number" id="admFakeActive" value="${getFakeActive()}" min="0" max="25" step="1" style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:0.9rem;font-weight:700;outline:none;" onchange="setFakeActive(this.value); _startFakeUserSim(); renderAdmEngagement();">
+          <label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--gray);font-weight:700;display:block;margin-bottom:6px;">Active bots (of ${getAllFakePersonas().length})</label>
+          <input type="number" id="admFakeActive" value="${getFakeActive()}" min="0" max="${getAllFakePersonas().length}" step="1" style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:0.9rem;font-weight:700;outline:none;" onchange="setFakeActive(this.value); _startFakeUserSim(); renderAdmEngagement();">
           <div style="font-size:0.72rem;color:var(--gray);margin-top:5px;">Set to 0 to silence all bots</div>
         </div>
+      </div>
+
+      <!-- BOT POOL GENERATOR (cap 100) -->
+      <div style="padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;">
+        <div style="font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.92rem;color:var(--ink);margin-bottom:8px;">Bot pool · ${getAllFakePersonas().length} of 100 max</div>
+        <div style="font-size:0.78rem;color:var(--gray);margin-bottom:10px;line-height:1.5;">Generate batches of bots by affiliation, or add one manually. Custom bots persist across sessions.</div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;" onclick="generateRandomPersonas(10,'democrat'); _startFakeUserSim(); renderAdmEngagement();">+10 🐂 Democrat</button>
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;" onclick="generateRandomPersonas(10,'republican'); _startFakeUserSim(); renderAdmEngagement();">+10 🐘 Republican</button>
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;" onclick="generateRandomPersonas(10,'independent'); _startFakeUserSim(); renderAdmEngagement();">+10 🏛️ Independent</button>
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;" onclick="generateRandomPersonas(5,'progressive'); _startFakeUserSim(); renderAdmEngagement();">+5 Progressive</button>
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;" onclick="generateRandomPersonas(5,'conservative'); _startFakeUserSim(); renderAdmEngagement();">+5 Conservative</button>
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;" onclick="generateRandomPersonas(5,'libertarian'); _startFakeUserSim(); renderAdmEngagement();">+5 Libertarian</button>
+          <button class="btn-ghost" style="padding:6px 11px;font-size:0.76rem;border-radius:7px;color:var(--red);" onclick="if(confirm('Clear all custom bots? Seed 25 stay.')){ clearCustomPersonas(); _startFakeUserSim(); renderAdmEngagement(); }">⌫ Clear customs</button>
+        </div>
+
+        <details style="font-size:0.82rem;">
+          <summary style="cursor:pointer;color:var(--accent);font-weight:700;padding:4px 0;">Add a single custom bot →</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+            <input type="text" id="custBotHandle" placeholder="Anonymous-4421 (or leave blank for auto)" style="grid-column:span 2;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
+            <select id="custBotAffil" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
+              <option value="democrat">🐂 Democrat</option>
+              <option value="republican">🐘 Republican</option>
+              <option value="independent" selected>🏛️ Independent</option>
+              <option value="progressive">Progressive</option>
+              <option value="conservative">Conservative</option>
+              <option value="libertarian">Libertarian</option>
+            </select>
+            <select id="custBotStoryLean" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
+              <option value="neutral">Neutral story lean</option>
+              <option value="positive">Positive (thank-yous)</option>
+              <option value="negative">Negative (concerns)</option>
+            </select>
+            <input type="text" id="custBotVoice" placeholder="Voice (e.g. 'Bus driver, blunt')" style="grid-column:span 2;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.86rem;outline:none;">
+            <button class="ac-btn" style="grid-column:span 2;" onclick="addCustomPersona({handle:document.getElementById('custBotHandle').value.trim(),affil:document.getElementById('custBotAffil').value,storyLean:document.getElementById('custBotStoryLean').value,voice:document.getElementById('custBotVoice').value.trim()}); _startFakeUserSim(); renderAdmEngagement();">Add bot</button>
+          </div>
+        </details>
       </div>
 
       <!-- PRESETS -->
@@ -4291,7 +4332,60 @@ if (window.api && window.api.isStatic && window.api.isStatic()) {
 const FAKE_USERS_KEY = 'civicvoice_fake_users_v1';     // 'on' (default) | 'off'
 const FAKE_USERS_STATE_KEY = 'civicvoice_fake_users_state_v1';  // per-user last-action timestamps
 const FAKE_RATE_KEY = 'civicvoice_fake_rate_v1';       // { perMin: number }  default 6/min ≈ 10s avg
-const FAKE_ACTIVE_KEY = 'civicvoice_fake_active_v1';   // how many personas are active (1..25)
+const FAKE_ACTIVE_KEY = 'civicvoice_fake_active_v1';   // how many personas are active (1..MAX)
+const FAKE_CUSTOM_KEY = 'civicvoice_fake_custom_v1';   // user-added custom personas
+
+// Get full pool — seed 25 + any custom added in admin (up to 100 total)
+function getAllFakePersonas() {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'); } catch {}
+  return [...FAKE_PERSONAS, ...custom].slice(0, 100);
+}
+function _saveCustomPersonas(arr) {
+  localStorage.setItem(FAKE_CUSTOM_KEY, JSON.stringify(arr));
+}
+function addCustomPersona({ handle, affil, lean, storyLean, voice }) {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem(FAKE_CUSTOM_KEY) || '[]'); } catch {}
+  if (custom.length + FAKE_PERSONAS.length >= 100) {
+    _showStreakToast('Cap reached: 100 bots total.');
+    return false;
+  }
+  custom.push({
+    handle: handle || `Anonymous-${1000 + Math.floor(Math.random() * 8999)}`,
+    affil: affil || 'independent',
+    lean: (lean && lean.length) ? lean : ['up', 'curious'],
+    storyLean: storyLean || 'neutral',
+    voice: voice || 'Custom bot.',
+  });
+  _saveCustomPersonas(custom);
+  return true;
+}
+function clearCustomPersonas() {
+  localStorage.removeItem(FAKE_CUSTOM_KEY);
+  _showStreakToast('All custom bots removed. 25 seed personas remain.');
+}
+// Generate N random bots of a given category (affiliation)
+function generateRandomPersonas(n, affil) {
+  let added = 0;
+  for (let i = 0; i < n; i++) {
+    const handle = `Anonymous-${1000 + Math.floor(Math.random() * 8999)}`;
+    const leansByAffil = {
+      democrat:     ['thanks','strong','up','curious'],
+      republican:   ['down','strong','up','curious'],
+      independent:  ['curious','up','strong','thanks'],
+      progressive:  ['strong','thanks','up','down'],
+      conservative: ['up','curious','strong','down'],
+      libertarian:  ['curious','down','strong'],
+    };
+    const pool = leansByAffil[affil] || ['up','curious','strong'];
+    const lean = [pool[Math.floor(Math.random() * pool.length)], pool[Math.floor(Math.random() * pool.length)]];
+    const storyLean = ['positive','negative','neutral'][Math.floor(Math.random() * 3)];
+    if (addCustomPersona({ handle, affil, lean, storyLean, voice:`Auto-generated ${affil}.` })) added++;
+  }
+  _showStreakToast(`✓ Added ${added} ${affil} bots. Total pool: ${getAllFakePersonas().length}.`);
+  return added;
+}
 
 function getFakeRate() {
   try { const v = JSON.parse(localStorage.getItem(FAKE_RATE_KEY) || 'null'); return (v && typeof v.perMin === 'number') ? v.perMin : 6; }
@@ -4304,10 +4398,12 @@ function setFakeRate(perMin) {
 }
 function getFakeActive() {
   const v = parseInt(localStorage.getItem(FAKE_ACTIVE_KEY) || '25', 10);
-  return Math.max(1, Math.min(25, isNaN(v) ? 25 : v));
+  const max = getAllFakePersonas().length;
+  return Math.max(0, Math.min(max, isNaN(v) ? 25 : v));
 }
 function setFakeActive(n) {
-  n = Math.max(0, Math.min(25, parseInt(n, 10) || 25));
+  const max = getAllFakePersonas().length;
+  n = Math.max(0, Math.min(max, parseInt(n, 10) || max));
   localStorage.setItem(FAKE_ACTIVE_KEY, String(n));
 }
 // Admin helper: read the input + unit dropdown, convert to per-min, apply
@@ -4756,7 +4852,7 @@ function _startFakeUserSim() {
     // Only pick from the configured-active subset of personas
     const activeN = getFakeActive();
     if (activeN === 0) { _fakeUserTimer = setTimeout(tick, 30000); return; }
-    const activePool = FAKE_PERSONAS.slice(0, activeN);
+    const activePool = getAllFakePersonas().slice(0, activeN);
     const persona = activePool[Math.floor(Math.random() * activePool.length)];
     let result;
     try { result = _fakeUserAction(persona); } catch (e) { console.warn('fake-user action error:', e); }
@@ -4829,7 +4925,7 @@ function _startFakeUserSim() {
     _fakeUserTimer = setTimeout(tick, nextDelay);
   };
   _fakeUserTimer = setTimeout(tick, 1500 + Math.random() * 2000);
-  console.log(`[CivicVoice] 🟢 Fake user sim started — ${getFakeActive()}/25 personas, ${getFakeRate()}/min`);
+  console.log(`[CivicVoice] 🟢 Fake user sim started — ${getFakeActive()}/${getAllFakePersonas().length} personas, ${getFakeRate()}/min`);
 }
 function _stopFakeUserSim() {
   if (_fakeUserTimer) { clearTimeout(_fakeUserTimer); _fakeUserTimer = null; }
@@ -4880,7 +4976,7 @@ function _floatReactionBump(card, kind) {
   setTimeout(() => bump.remove(), 1500);
 }
 
-// Small floating ticker that flashes when a fake action fires — visible "site is alive" signal
+// Small floating ticker that flashes when a fake action fires. Tap to jump to that story/poll.
 function _flashFakeTicker(result) {
   let el = document.getElementById('fakeTicker');
   if (!el) {
@@ -4897,9 +4993,30 @@ function _flashFakeTicker(result) {
     'new-story':    'shared a new story',
     'subscribe':    'subscribed to an agency',
   };
-  el.textContent = `${result.who} ${verbs[result.type] || result.type}`;
+  el.textContent = `${result.who} ${verbs[result.type] || result.type} →`;
+  // Remember the target so a tap navigates there
+  el.onclick = null;
+  if (result.story && result.story.o && result.story.r) {
+    el.dataset.targetType = 'story';
+    el.dataset.targetOfficer = result.story.o.id;
+    el.dataset.targetReview = result.story.r.id;
+    el.onclick = () => { try { openStoryDetail(result.story.o.id, result.story.r.id); } catch {} };
+    el.style.cursor = 'pointer';
+  } else if (result.story && result.story.id && result.story.reviews) {
+    // new-story format: result.story IS the officer
+    el.dataset.targetType = 'officer';
+    el.dataset.targetOfficer = result.story.id;
+    el.onclick = () => { try { openOfficer(result.story.id); } catch {} };
+    el.style.cursor = 'pointer';
+  } else if (result.poll) {
+    el.dataset.targetType = 'poll';
+    el.onclick = () => { nav('polls'); };
+    el.style.cursor = 'pointer';
+  } else {
+    el.style.cursor = 'default';
+  }
   el.classList.remove('show');
-  void el.offsetWidth;  // force reflow to restart animation
+  void el.offsetWidth;
   el.classList.add('show');
 }
 
@@ -5068,9 +5185,51 @@ function _readPollsVotes()     { try { return JSON.parse(localStorage.getItem(PO
 function _readPollsMy()        { try { return JSON.parse(localStorage.getItem(POLLS_MY_KEY) || '{}'); } catch { return {}; } }
 function _readPollsBreakdown() { try { return JSON.parse(localStorage.getItem(POLLS_BREAKDOWN_KEY) || '{}'); } catch { return {}; } }
 function getAffiliation()      { return localStorage.getItem(POLLS_AFFIL_KEY) || ''; }
+const POLLS_AFFIL_LOCK_KEY = 'civicvoice_polls_affil_lock_v1';  // ISO timestamp when affil lock expires
+function getAffiliationLockUntil() {
+  return localStorage.getItem(POLLS_AFFIL_LOCK_KEY) || '';
+}
+// Open the affiliation picker — required before first vote
+let _affilCallback = null;
+function _promptForAffiliation(onPicked) {
+  _affilCallback = onPicked;
+  // Scroll the affilPicker into view + add a temporary highlight so user knows what to do
+  nav('polls');
+  setTimeout(() => {
+    const picker = document.getElementById('affilPicker');
+    if (picker) {
+      picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      picker.classList.add('affil-required-flash');
+      setTimeout(() => picker.classList.remove('affil-required-flash'), 2400);
+    }
+    _showStreakToast('Pick your affiliation to vote. Locked for 7 days after — keeps the data honest.');
+  }, 250);
+}
+function isAffiliationLocked() {
+  const t = getAffiliationLockUntil();
+  return !!t && new Date(t).getTime() > Date.now();
+}
 function setAffiliation(a) {
+  // First-time set OR changing AFTER lock expired — set + start a fresh 7-day lock
+  const cur = getAffiliation();
+  if (cur && cur === a) return;  // no change
+  if (cur && isAffiliationLocked()) {
+    const lockUntil = new Date(getAffiliationLockUntil());
+    _showStreakToast(`Your affiliation is locked until ${lockUntil.toLocaleDateString()} — keeps polling fair.`);
+    return;
+  }
   localStorage.setItem(POLLS_AFFIL_KEY, a);
+  // 7-day lock from now
+  const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  localStorage.setItem(POLLS_AFFIL_LOCK_KEY, until);
   document.querySelectorAll('#affilChips span').forEach(s => s.classList.toggle('selected', s.dataset.affil === a));
+  _showStreakToast(`✓ Affiliation set: ${a}. Locked until ${new Date(until).toLocaleDateString()}.`);
+  // If there's a pending vote that triggered this picker, fire it now
+  if (_affilCallback) {
+    const cb = _affilCallback; _affilCallback = null;
+    setTimeout(() => { try { cb(); } catch {} }, 200);
+  }
+  if (typeof renderPolls === 'function') renderPolls();
 }
 
 function _seedPollCounts(pollId) {
@@ -5188,7 +5347,13 @@ function renderPollBreakdown(p) {
 }
 
 function votePoll(pollId, optionId) {
-  if (!requireAuth(() => votePoll(pollId, optionId), 'Sign in to vote')) return;
+  // Sign-in required to vote (results are public, voting is not)
+  if (!requireAuth(() => votePoll(pollId, optionId), 'Sign in to vote — your affiliation will be locked for 7 days to keep polling fair')) return;
+  // Affiliation required — locks for 7 days after first set
+  if (!getAffiliation()) {
+    _promptForAffiliation(() => votePoll(pollId, optionId));
+    return;
+  }
   const my = _readPollsMy();
   if (my[pollId]) return;
   recordEngagement('poll-vote');
@@ -5339,7 +5504,12 @@ function renderPolls() {
         ${commentsHtml}
         <div class="pc-foot">
           <span>${myVote ? 'You voted.' : 'Tap an option to take your stand.'}</span>
-          <span>${affil ? `Voting as: <strong style="color:var(--ink);">${escapeHtml(affil)}</strong>` : '<span style="color:var(--accent);cursor:pointer;" onclick="document.getElementById(\'affilPicker\').scrollIntoView({behavior:\'smooth\'});">Set affiliation &uarr;</span>'}</span>
+          <span>${(() => {
+            if (!affil) return '<span style="color:var(--accent);cursor:pointer;" onclick="document.getElementById(\'affilPicker\').scrollIntoView({behavior:\'smooth\',block:\'center\'});">Set affiliation to vote &uarr;</span>';
+            const locked = isAffiliationLocked();
+            const lockNote = locked ? ` <span style="font-size:0.66rem;color:var(--gray);">🔒 until ${new Date(getAffiliationLockUntil()).toLocaleDateString()}</span>` : '';
+            return `Voting as: <strong style="color:var(--ink);">${escapeHtml(affil)}</strong>${lockNote}`;
+          })()}</span>
         </div>
       </article>`;
   }).join('');
@@ -5353,13 +5523,19 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
       .then(reg => {
         // When the SW finds an update, install it; when the new SW becomes active,
-        // reload the page once so the user sees the new version immediately.
+        // reload the page once. Session-guard so the user is never reloaded
+        // more than once per 60 seconds — was causing "click Stories → bounce back to Home"
+        // when a fresh deploy + a click race-conditioned.
         reg.addEventListener('updatefound', () => {
           const newSW = reg.installing;
           if (!newSW) return;
           newSW.addEventListener('statechange', () => {
             if (newSW.state === 'activated' && navigator.serviceWorker.controller) {
-              // Guard against an infinite reload loop
+              try {
+                const lastReload = parseInt(sessionStorage.getItem('cv_last_sw_reload') || '0', 10);
+                if (Date.now() - lastReload < 60000) return;  // recent reload — skip
+                sessionStorage.setItem('cv_last_sw_reload', String(Date.now()));
+              } catch {}
               if (!window.__cv_reloaded) {
                 window.__cv_reloaded = true;
                 window.location.reload();

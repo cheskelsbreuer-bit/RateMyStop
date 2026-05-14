@@ -1092,6 +1092,10 @@ section.active{display:block;}
 .sp-action.emoji-plus{font-weight:800;font-size:1rem;padding:6px 11px;color:var(--gray);}
 .sp-action.emoji-plus:hover{color:var(--accent);border-color:rgba(184,148,30,0.4);background:var(--accent-soft);}
 
+/* Affiliation picker highlight when required for voting */
+@keyframes affilRequired{0%,100%{box-shadow:0 0 0 0 rgba(184,148,30,0);}50%{box-shadow:0 0 0 8px rgba(184,148,30,0.35);}}
+.affil-required-flash{animation:affilRequired 0.8s ease-in-out 3;border-color:var(--accent) !important;}
+
 /* ─── Poll breakdown — per-option view (who picked what) ─── */
 .poll-breakdown{margin:14px 0;padding:14px 16px;background:linear-gradient(160deg, rgba(184,148,30,0.05), var(--bg2));border:1px solid var(--border);border-radius:12px;}
 .pbd-head{font-family:'Bricolage Grotesque','Syne',sans-serif;font-size:0.86rem;font-weight:800;letter-spacing:-0.2px;color:var(--ink);margin-bottom:10px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;}

@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v48-admin-rate-controls';
-const ASSETS_BUMP_NOTE = 'Admin → Engagement: configure bot rate (X per min or hour) + active bot count (0-25). Quick presets included.';
+const CACHE = 'civicvoice-v49-bot-pool-affil-lock-ticker-link';
+const ASSETS_BUMP_NOTE = 'Streak chip gone. Ticker clickable. Reload bounce fixed. More polls in Pulse. Voting locks affiliation 7 days. Bot pool up to 100 with admin generator.';
 const ASSETS = [
   './',
   './index.html',

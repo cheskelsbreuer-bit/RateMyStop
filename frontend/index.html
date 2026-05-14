@@ -60,11 +60,6 @@
       <span class="mmb-line"></span>
       <span class="mmb-line"></span>
     </button>
-    <!-- Streak chip — tap to see daily / weekly / all-time engagement -->
-    <button class="streak-chip" id="streakChip" onclick="openStreakModal()" aria-label="Your engagement streak" title="Your engagement streak" style="display:none;">
-      <span class="streak-flame">&#128293;</span>
-      <span class="streak-num" id="streakNum">0</span>
-    </button>
     <button class="bell-btn" id="bellBtn" onclick="toggleBellDropdown()" aria-label="Notifications" style="display:none;">
       &#128276;
       <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
@@ -240,11 +235,6 @@
       <span class="cs-item" onclick="openNotifyMe('Translate stories','translate')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127757; Translate stories &middot; <em>soon</em></span>
       <span class="cs-item" onclick="openNotifyMe('Live town hall stream','town-hall')" style="cursor:pointer;opacity:0.7;"><span class="cs-dot"></span>&#127908; Town hall live &middot; <em>soon</em></span>
     </div>
-  </div>
-  <!-- Consistency banner — only appears after 3+ active days. Civic framing, no panic. -->
-  <div class="consistency-banner" id="consistencyBanner" style="display:none;">
-    <span class="cb-icon">&#10024;</span>
-    <span class="cb-text"><strong>You've shown up <span id="cbDays">5</span> days.</strong> <span id="cbMsg">That's the kind of attention communities run on.</span></span>
   </div>
 
   <div class="stats-strip" id="statsStrip">
