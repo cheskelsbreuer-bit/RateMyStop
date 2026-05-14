@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v61-home-trim';
-const ASSETS_BUMP_NOTE = 'Removed per user: Coming Soon chips (Stories near me/Verified by photo/Translate/Town hall) and Three-things-that-make-CivicVoice-different rail. Features still accessible via What You Can Do cards above.';
+const CACHE = 'civicvoice-v62-bottom-tabs-reorder';
+const ASSETS_BUMP_NOTE = 'Phone bottom tabs reordered: Home · Stories · [+ Share] · Polls · Pulse. Share now centered with 2 tabs each side.';
 const ASSETS = [
   './',
   './index.html',

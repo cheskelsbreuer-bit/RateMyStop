@@ -127,13 +127,13 @@
 <!-- Persistent escape pill (phone only, shown when on Pulse — no matter how deep you've scrolled) -->
 <button class="pulse-escape" onclick="nav('home');" aria-label="Back to home">&larr; Home</button>
 
-<!-- BOTTOM TAB BAR — phone only. Native-app one-tap nav between primary surfaces. -->
+<!-- BOTTOM TAB BAR — phone only. Share (+) centered, 2 tabs each side. -->
 <nav class="bottom-tabs" id="bottomTabs" aria-label="Primary navigation">
   <button class="bt-tab" data-bt="home"     onclick="nav('home')"     aria-label="Home"><span class="bt-icon">&#127968;</span><span class="bt-label">Home</span></button>
-  <button class="bt-tab bt-cta" data-bt="share" onclick="nav('share')" aria-label="Share a story"><span class="bt-cta-circle">&#43;</span><span class="bt-label">Share</span></button>
-  <button class="bt-tab" data-bt="pulse"    onclick="nav('pulse')"    aria-label="Pulse"><span class="bt-icon">&#128293;</span><span class="bt-label">Pulse</span></button>
-  <button class="bt-tab" data-bt="polls"    onclick="nav('polls')"    aria-label="Polls"><span class="bt-icon">&#128499;&#65039;</span><span class="bt-label">Polls</span></button>
   <button class="bt-tab" data-bt="officers" onclick="nav('officers')" aria-label="Stories"><span class="bt-icon">&#128218;</span><span class="bt-label">Stories</span></button>
+  <button class="bt-tab bt-cta" data-bt="share" onclick="nav('share')" aria-label="Share a story"><span class="bt-cta-circle">&#43;</span><span class="bt-label">Share</span></button>
+  <button class="bt-tab" data-bt="polls"    onclick="nav('polls')"    aria-label="Polls"><span class="bt-icon">&#128499;&#65039;</span><span class="bt-label">Polls</span></button>
+  <button class="bt-tab" data-bt="pulse"    onclick="nav('pulse')"    aria-label="Pulse"><span class="bt-icon">&#128293;</span><span class="bt-label">Pulse</span></button>
 </nav>
 
 <!-- GLOBAL SEARCH — Cmd+K style. Searches stories + polls + authors + agencies in one place. -->
