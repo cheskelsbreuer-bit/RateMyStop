@@ -100,22 +100,29 @@ function playReactionSound() {
   } catch {}
 }
 
-// ── REACTIONS STORE ── per-story counts visible to everyone (localStorage stand-in for backend)
-// Reads are cached for one render pass to avoid 100+ JSON.parse calls per Pulse render.
-// _setRenderCache is called at the top of renderPulse; _clearRenderCache is called at the end.
+// ── RENDER CACHE ── one JSON.parse pass per render instead of hundreds.
+// Each card renders calls many helpers that each parsed localStorage independently. With 51 cards and
+// 4+ helpers per card doing parses, we were doing ~200+ JSON.parse calls per render = the bottleneck.
 let _readCacheReactions = null;
 let _readCacheMyReactions = null;
 let _readCacheCustom = null;
 let _readCacheMyCustom = null;
+let _readCacheReplies = null;
+let _readCacheResolutions = null;
 function _setRenderCache() {
-  _readCacheReactions   = (() => { try { return JSON.parse(localStorage.getItem(REACTIONS_KEY) || '{}'); } catch { return {}; } })();
-  _readCacheMyReactions = (() => { try { return JSON.parse(localStorage.getItem(MY_REACTIONS_KEY) || '{}'); } catch { return {}; } })();
-  _readCacheCustom      = (() => { try { return JSON.parse(localStorage.getItem(CUSTOM_REACTIONS_KEY) || '{}'); } catch { return {}; } })();
-  _readCacheMyCustom    = (() => { try { return JSON.parse(localStorage.getItem(CUSTOM_MY_REACTIONS_KEY) || '{}'); } catch { return {}; } })();
+  const safe = (k, dflt) => { try { return JSON.parse(localStorage.getItem(k) || dflt); } catch { return JSON.parse(dflt); } };
+  _readCacheReactions   = safe(REACTIONS_KEY,         '{}');
+  _readCacheMyReactions = safe(MY_REACTIONS_KEY,      '{}');
+  _readCacheCustom      = safe(CUSTOM_REACTIONS_KEY,  '{}');
+  _readCacheMyCustom    = safe(CUSTOM_MY_REACTIONS_KEY,'{}');
+  _readCacheReplies     = safe(REPLIES_KEY,           '{}');
+  _readCacheResolutions = safe(RESOLUTIONS_KEY,       '{}');
 }
 function _clearRenderCache() {
   _readCacheReactions = null; _readCacheMyReactions = null;
   _readCacheCustom = null; _readCacheMyCustom = null;
+  _readCacheReplies = null; _readCacheResolutions = null;
+  _readCacheApprovedOfficers = null;
 }
 function _readReactions() {
   if (_readCacheReactions) return _readCacheReactions;
@@ -1768,9 +1775,11 @@ function _renderPulseInternal() {
       return '';
     }
   }).join('');
+  const _tCards = performance.now();
   stage.innerHTML = (topRail || '') + cardsHtml + loadMore;
-  _clearRenderCache();
-  console.log(`[renderPulse] done in ${Math.round(performance.now() - _t0)}ms · ${items.length} cards`);
+  const _tInject = performance.now();
+  console.log(`[renderPulse] ${items.length} cards: build=${Math.round(_tCards - _t0)}ms · DOM-inject=${Math.round(_tInject - _tCards)}ms · total=${Math.round(_tInject - _t0)}ms`);
+  // _clearRenderCache happens in the outer renderPulse finally — don't clear here
   document.getElementById('pulseTotal').textContent = items.length;
   document.getElementById('pulsePos').textContent = 1;
   // Track which card is on-screen for the position counter
@@ -2335,6 +2344,7 @@ function closeStoryDetail() {
 
 // ── REPLIES (forum threads under each story) ──
 function _readAllReplies() {
+  if (_readCacheReplies) return _readCacheReplies;
   try { return JSON.parse(localStorage.getItem(REPLIES_KEY) || '{}'); }
   catch { return {}; }
 }
@@ -2621,6 +2631,7 @@ function closeAuthorProfile() {
 // ── RESOLUTION TRACKING ──
 // Each story carries a status: open | acknowledged | resolved | no_response (auto after 30d open)
 function _readResolutions() {
+  if (_readCacheResolutions) return _readCacheResolutions;
   try { return JSON.parse(localStorage.getItem(RESOLUTIONS_KEY) || '{}'); } catch { return {}; }
 }
 function _writeResolutions(m) { localStorage.setItem(RESOLUTIONS_KEY, JSON.stringify(m)); }
@@ -3815,11 +3826,13 @@ function _addToPendingQueue(payload) {
 // Approved user submissions get folded into the stories feed (alongside seed data).
 // We return them as synthetic "officers" with one review each, so the existing render
 // code Just Works without changes.
+let _readCacheApprovedOfficers = null;
 function getApprovedAsOfficers() {
+  if (_readCacheApprovedOfficers) return _readCacheApprovedOfficers;
   const approved = _readApproved();
-  return approved.map((a, idx) => {
+  const result = approved.map((a, idx) => {
     const p = a.payload;
-    const id = 1000000 + idx;  // synthetic ID — won't collide with seed
+    const id = 1000000 + idx;
     return {
       id,
       name: p.officer_name || (p.role === 'police' ? 'Unknown Officer' : 'Unknown'),
@@ -3846,6 +3859,9 @@ function getApprovedAsOfficers() {
       }],
     };
   });
+  // Only memoize while a render cache is active (so we don't serve stale data outside renders)
+  if (_readCacheReactions) _readCacheApprovedOfficers = result;
+  return result;
 }
 
 // ─── MODERATION DASHBOARD (admin only — access via ?admin=1) ───
