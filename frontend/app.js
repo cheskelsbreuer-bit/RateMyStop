@@ -744,7 +744,7 @@ function nav(id) {
   closeMoreMenu();
   window.scrollTo(0, 0);
   if (id === 'officers')  loadOfficers();
-  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); }
+  if (id === 'home')      { loadStats(); _refreshConsistencyBanner(); renderHomeRecent(); renderHomeTrendingPolls(); renderHomeVoices(); }
   if (id === 'complaint') renderDepartments();
   if (id === 'rankings')     renderRankings();
   if (id === 'orgs')         renderOrgState();
@@ -5929,6 +5929,139 @@ function openStreakModal() {
 function closeStreakModal() {
   document.getElementById('streakOverlay').classList.remove('show');
 }
+
+// ── HOMEPAGE: LIVE RECENT STORIES ──
+// Headline content for the homepage. Shows 6 most recent stories with full reaction summary + reply count.
+// Tap any → opens the story detail modal with the thread.
+function renderHomeRecent() {
+  const wrap = document.getElementById('homeRecentList');
+  if (!wrap) return;
+  _setRenderCache();
+  try {
+    const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+    const approved = getApprovedAsOfficers();
+    const all = [...approved, ...officers];
+    const items = [];
+    for (const o of all) for (const r of (o.reviews || [])) items.push({ officer: o, review: r, role: inferRole(o) });
+    items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
+    const top = items.slice(0, 6);
+    if (!top.length) { wrap.innerHTML = '<div style="color:var(--gray);padding:30px;text-align:center;">No stories yet.</div>'; return; }
+    wrap.innerHTML = top.map(it => {
+      const r = it.review;
+      const isPos = r.verdict === 'fair';
+      const stars = r.stars || 3;
+      const story = (r.story || '').slice(0, 180) + ((r.story || '').length > 180 ? '…' : '');
+      const author = r.author_display || _legacyAuthor(it.officer.id, r.id);
+      const c = getReactionCounts(it.officer.id, r.id);
+      const totalReacts = c.up + c.down + c.thanks + c.strong + c.curious;
+      const replies = getReplyCount(it.officer.id, r.id);
+      return `
+        <article class="hr-card" onclick="openStoryDetail(${it.officer.id}, ${r.id})">
+          <div class="hr-card-top">
+            <span class="hr-card-icon">${ROLE_ICON[it.role] || '👤'}</span>
+            <span class="hr-card-tag ${isPos ? 'pos' : 'neg'}">${isPos ? '★ Recognition' : '⚠ Concern'}</span>
+            <span class="hr-card-stars">${'★'.repeat(Math.round(stars))}${'☆'.repeat(5 - Math.round(stars))}</span>
+          </div>
+          <div class="hr-card-name">${escapeHtml(it.officer.name || 'Unknown')}</div>
+          <div class="hr-card-agency">${escapeHtml(it.officer.department || '')}${r.location ? ' &middot; ' + escapeHtml(r.location) : ''}</div>
+          <div class="hr-card-body">${escapeHtml(story)}</div>
+          <div class="hr-card-foot">
+            <span class="hr-card-author">${escapeHtml(author)}</span>
+            <span class="hr-card-meta">
+              ${totalReacts > 0 ? `<span title="Total reactions">💬 ${totalReacts}</span>` : ''}
+              ${replies > 0 ? `<span title="Thread replies">↳ ${replies}</span>` : ''}
+              <span>${formatDate(r.created_at)}</span>
+            </span>
+          </div>
+        </article>`;
+    }).join('');
+  } catch (e) {
+    console.warn('renderHomeRecent:', e);
+    wrap.innerHTML = '';
+  } finally {
+    _clearRenderCache();
+  }
+}
+
+// ── HOMEPAGE: TRENDING POLLS ──
+function renderHomeTrendingPolls() {
+  const wrap = document.getElementById('homeTrendingPolls');
+  if (!wrap) return;
+  _setRenderCache();
+  try {
+    const removed = new Set(_readRemovedPolls());
+    const allPolls = [..._readApprovedPolls(), ...POLLS_SEED]
+      .filter(p => !removed.has(p.id))
+      .map(applyPollOverrides);
+    // Sort by total votes desc, take top 3
+    const withTotals = allPolls.map(p => {
+      const counts = _readPollsVotes()[p.id] || {};
+      const total = Object.values(counts).reduce((s, n) => s + n, 0);
+      return { p, total };
+    }).sort((a, b) => b.total - a.total).slice(0, 3);
+    if (!withTotals.length) { wrap.innerHTML = '<div style="color:var(--gray);padding:30px;text-align:center;">No polls yet.</div>'; return; }
+    wrap.innerHTML = withTotals.map(({ p, total }) => {
+      return `
+        <article class="hp-card" onclick="nav('polls')">
+          <div class="hp-card-cat">${escapeHtml(p.cat)}</div>
+          <div class="hp-card-q">${escapeHtml(p.q)}</div>
+          <div class="hp-card-foot">
+            <span class="hp-card-meta">${total.toLocaleString()} ${total === 1 ? 'take' : 'takes'} &middot; ${escapeHtml(pollClosesLabel(p))}</span>
+            <span class="hp-card-cta">Take your stand &rarr;</span>
+          </div>
+        </article>`;
+    }).join('');
+  } catch (e) {
+    console.warn('renderHomeTrendingPolls:', e);
+    wrap.innerHTML = '';
+  } finally {
+    _clearRenderCache();
+  }
+}
+
+// ── HOMEPAGE: TOP CONTRIBUTORS ──
+function renderHomeVoices() {
+  const wrap = document.getElementById('homeVoicesList');
+  if (!wrap) return;
+  _setRenderCache();
+  try {
+    const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || [];
+    const approved = getApprovedAsOfficers();
+    const all = [...approved, ...officers];
+    // Count stories per author
+    const counts = new Map();
+    for (const o of all) for (const r of (o.reviews || [])) {
+      const author = r.author_display || _legacyAuthor(o.id, r.id);
+      if (!author) continue;
+      counts.set(author, (counts.get(author) || 0) + 1);
+    }
+    const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    if (!top.length) { wrap.innerHTML = '<div style="color:var(--gray);padding:30px;text-align:center;">No voices yet.</div>'; return; }
+    wrap.innerHTML = top.map(([handle, n]) => {
+      const trust = computeTrustScore(handle);
+      const initial = (handle || 'A').charAt(0).toUpperCase();
+      return `
+        <article class="hv-card" onclick="openAuthorProfile('${escapeHtml(handle).replace(/'/g, "\\'")}');">
+          <div class="hv-avatar">${escapeHtml(initial)}</div>
+          <div class="hv-body">
+            <div class="hv-handle">${escapeHtml(handle)}</div>
+            <div class="hv-stats">${n} ${n === 1 ? 'story' : 'stories'} &middot; Trust ${trust.score}</div>
+            <div class="hv-tier" style="color:${trust.tier.color};">${escapeHtml(trust.tier.label)}</div>
+          </div>
+        </article>`;
+    }).join('');
+  } catch (e) {
+    console.warn('renderHomeVoices:', e);
+    wrap.innerHTML = '';
+  } finally {
+    _clearRenderCache();
+  }
+}
+
+// Initial home render — also fires on first page load
+setTimeout(() => {
+  try { renderHomeRecent(); renderHomeTrendingPolls(); renderHomeVoices(); } catch {}
+}, 400);
 
 // Home page consistency banner — hidden until user hits 3+ active days. No panic, just recognition.
 function _refreshConsistencyBanner() {

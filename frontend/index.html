@@ -289,6 +289,128 @@
     </div>
   </div>
 
+  <!-- LIVE: stories landing right now. The headline content of the site, on the homepage. -->
+  <div class="home-section home-recent">
+    <div class="home-section-head">
+      <div>
+        <div class="hs-eyebrow"><span class="live-dot"></span>ON THE RECORD RIGHT NOW</div>
+        <h2 class="hs-title">Stories landing this week</h2>
+        <p class="hs-sub">Real moments, real names, real agencies. Tap any story to open the full thread &mdash; reactions, replies, the whole record.</p>
+      </div>
+      <button class="hs-see-all" onclick="nav('pulse')">See all in Pulse &rarr;</button>
+    </div>
+    <div id="homeRecentList" class="home-recent-grid"></div>
+  </div>
+
+  <!-- HOW IT WORKS — 3 simple steps, plain English -->
+  <div class="home-section home-how">
+    <div class="home-section-head center">
+      <div class="hs-eyebrow">HOW IT WORKS</div>
+      <h2 class="hs-title">Three steps. That's it.</h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-step">1</div>
+        <div class="how-icon">&#9998;&#65039;</div>
+        <div class="how-title">Tell what happened</div>
+        <div class="how-desc">A great EMT at 2am. A rude DMV clerk. A school board member who actually called you back. Pick the category, write a few sentences. Two minutes.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-step">2</div>
+        <div class="how-icon">&#128737;&#65039;</div>
+        <div class="how-title">Anonymous by default</div>
+        <div class="how-desc">You get a stable handle like <strong>Anonymous-4471</strong>. You can post the truth without exposing yourself. Show your real name later if you want &mdash; up to you.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-step">3</div>
+        <div class="how-icon">&#128218;</div>
+        <div class="how-title">On the record forever</div>
+        <div class="how-desc">Moderators check it. It joins the public record under that agency and that person. Others react. The agency can respond. Patterns become visible.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE TRENDING POLLS — preview from the Polls section -->
+  <div class="home-section home-trending-polls">
+    <div class="home-section-head">
+      <div>
+        <div class="hs-eyebrow"><span class="live-dot"></span>WHAT'S BEING DEBATED</div>
+        <h2 class="hs-title">Trending polls right now</h2>
+        <p class="hs-sub">Local questions, state issues, federal predictions. Take your stand &mdash; see where the country falls.</p>
+      </div>
+      <button class="hs-see-all" onclick="nav('polls')">All polls &rarr;</button>
+    </div>
+    <div id="homeTrendingPolls" class="home-polls-grid"></div>
+  </div>
+
+  <!-- VOICES — top contributors -->
+  <div class="home-section home-voices">
+    <div class="home-section-head">
+      <div>
+        <div class="hs-eyebrow">VOICES ON THE RECORD</div>
+        <h2 class="hs-title">Who's contributing</h2>
+        <p class="hs-sub">Trust scores are earned through consistent, balanced reporting. Tap any handle to see their full history.</p>
+      </div>
+      <button class="hs-see-all" onclick="nav('contributors')">Browse community &rarr;</button>
+    </div>
+    <div id="homeVoicesList" class="home-voices-grid"></div>
+  </div>
+
+  <!-- WHY CIVICVOICE — manifesto / explainer -->
+  <div class="home-section home-manifesto">
+    <div class="manifesto-inner">
+      <div class="hs-eyebrow center">WHY CIVICVOICE</div>
+      <h2 class="manifesto-title">Public service is the foundation of every community. Yet there is no public record.</h2>
+      <p class="manifesto-body">
+        We rate restaurants. We rate Ubers. We rate every business interaction we've ever had &mdash; with reviews that influence whether anyone else uses them.
+      </p>
+      <p class="manifesto-body">
+        But the people who actually keep your community running &mdash; the police officer who pulled you over, the EMT who got there at 2am, the DMV clerk who held your place, the school board member who voted on your kid's bus route &mdash; you have no way to recognize them, document them, or hold them accountable.
+      </p>
+      <p class="manifesto-body">
+        <strong>CivicVoice is the public record of public service.</strong> Every interaction, every story, every vote &mdash; one place. Anonymous if you want. Verified if it matters. Permanent either way.
+      </p>
+      <p class="manifesto-body">
+        Recognize the good. Document the rest. <em>On the record.</em>
+      </p>
+    </div>
+  </div>
+
+  <!-- WHAT MAKES IT DIFFERENT — the three live features, now as narrative not a rail -->
+  <div class="home-section home-features">
+    <div class="home-section-head center">
+      <div class="hs-eyebrow">WHAT MAKES IT DIFFERENT</div>
+      <h2 class="hs-title">Built for the people, not the institutions.</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-block">
+        <div class="feature-icon">&#9993;&#65039;</div>
+        <h3 class="feature-title">Agencies send their own review links</h3>
+        <p class="feature-body">After a 911 call, ER visit, or DMV appointment, the agency itself generates a one-tap anonymous review link &mdash; like Google Reviews for public service. People share what happened while it's fresh. Reviews come in honestly because they're anonymous. <button class="feature-link" onclick="nav('orgs')">See how agencies use it &rarr;</button></p>
+      </div>
+      <div class="feature-block">
+        <div class="feature-icon">&#127963;&#65039;</div>
+        <h3 class="feature-title">Top-to-bottom accountability</h3>
+        <p class="feature-body">Same record for the bus driver and the governor. Hochul, Schumer, Gillibrand, AG James &mdash; all reviewable. School board members. Local council. Every public servant on the same ledger, by the same people who actually deal with them. <button class="feature-link" onclick="nav('officers')">Browse profiles &rarr;</button></p>
+      </div>
+      <div class="feature-block">
+        <div class="feature-icon">&#128221;</div>
+        <h3 class="feature-title">Rate the decisions, not just the people</h3>
+        <p class="feature-body">School board votes. Ballot measures. State bills. Federal legislation. Vote your stand, see the breakdown by Republican / Democrat / Independent. Real source links built in &mdash; no spin, just the document. <button class="feature-link" onclick="nav('polls')">Rate a bill &rarr;</button></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINAL CTA — biggest button on the page -->
+  <div class="home-section home-final-cta">
+    <div class="final-cta-inner">
+      <h2 class="final-cta-title">Got a moment that should be on the record?</h2>
+      <p class="final-cta-sub">A 30-second story changes what other people in your community know about a public servant. Right now, today.</p>
+      <button class="final-cta-btn" onclick="nav('share')">Share your story &rarr;</button>
+      <div class="final-cta-meta">Anonymous by default &middot; moderation in 24h &middot; on the public record forever</div>
+    </div>
+  </div>
+
 </section>
 
 <!-- SHARE A MOMENT — story-first, role-adaptive civic record -->
