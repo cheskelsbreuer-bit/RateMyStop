@@ -3508,10 +3508,20 @@ async function loadStats() {
     const s = await api.stats();
     const approvedExtra = _readApproved().length;
     const moments = (s.total_reviews || 0) + approvedExtra;
-    document.getElementById('statMoments').textContent      = moments.toLocaleString() + (moments >= 100 ? '+' : '');
-    document.getElementById('statRecognized').textContent   = (recognizedCount + _readApproved().filter(a => a.payload.verdict === 'fair').length).toLocaleString();
-    document.getElementById('statDepartments').textContent  = deptCount.toLocaleString();
-    document.getElementById('statOfficers').textContent     = ((s.officer_count || 0) + approvedExtra).toLocaleString();
+    const recognitions = (recognizedCount + _readApproved().filter(a => a.payload.verdict === 'fair').length);
+    const peopleOnRecord = (s.officer_count || 0) + approvedExtra;
+    // Main stats strip (below How It Works)
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('statMoments',     moments.toLocaleString() + (moments >= 100 ? '+' : ''));
+    set('statRecognized',  recognitions.toLocaleString());
+    set('statDepartments', deptCount.toLocaleString());
+    set('statOfficers',    peopleOnRecord.toLocaleString());
+    // Hero mini-stats (above the fold) — same numbers, no hardcoding
+    set('heroStat1', moments.toLocaleString());
+    set('heroStat2', recognitions.toLocaleString());
+    set('heroStat3', deptCount.toLocaleString());
+    set('heroStat4', peopleOnRecord.toLocaleString());
+    set('heroLiveCount', moments.toLocaleString());
   } catch (err) {
     console.warn('Stats unavailable:', err.message);
   }

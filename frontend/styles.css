@@ -1053,8 +1053,7 @@ body.on-home .home-float-share{display:inline-flex;}
 .hs-see-all{background:transparent;border:1px solid var(--border);color:var(--ink);font-family:inherit;font-weight:600;font-size:0.86rem;padding:9px 16px;border-radius:10px;cursor:pointer;transition:all 0.18s;white-space:nowrap;}
 .hs-see-all:hover{background:var(--accent-soft);border-color:rgba(184,148,30,0.5);color:var(--accent);}
 
-/* RECENT STORIES — 2-col grid on desktop, 1-col on phone */
-.home-recent-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+/* RECENT STORIES — base card styles (grid columns set in the override block above + responsive blocks) */
 .hr-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;cursor:pointer;transition:all 0.22s;display:flex;flex-direction:column;gap:8px;}
 .hr-card:hover{border-color:rgba(184,148,30,0.4);transform:translateY(-2px);box-shadow:0 14px 36px rgba(15,15,19,0.08);}
 .hr-card-top{display:flex;align-items:center;gap:8px;}
@@ -1126,9 +1125,9 @@ body.on-home .home-float-share{display:inline-flex;}
 .final-cta-btn:hover{background:#d4ab2c;transform:translateY(-2px);box-shadow:0 12px 32px rgba(184,148,30,0.4);}
 .final-cta-meta{font-size:0.82rem;color:rgba(255,255,255,0.55);margin-top:18px;}
 
-/* RESPONSIVE — collapse to 1-col on phone, 2-col on tablet */
+/* RESPONSIVE — polls + voices collapse; recent-grid handled above */
 @media(max-width:1024px){
-  .home-recent-grid,.home-polls-grid,.home-voices-grid{grid-template-columns:repeat(2,1fr);}
+  .home-polls-grid,.home-voices-grid{grid-template-columns:repeat(2,1fr);}
   .how-grid,.features-grid{grid-template-columns:1fr;gap:24px;}
 }
 @media(max-width:700px){
@@ -1136,9 +1135,8 @@ body.on-home .home-float-share{display:inline-flex;}
   .home-section-head{margin-bottom:16px;}
   .hs-title{font-size:1.4rem;}
   .hs-sub{font-size:0.9rem;}
-  .home-recent-grid,.home-polls-grid,.home-voices-grid{grid-template-columns:1fr;gap:10px;}
-  .hr-card,.hp-card{padding:14px 16px;border-radius:12px;}
-  .hr-card-name{font-size:0.98rem;}
+  .home-polls-grid,.home-voices-grid{grid-template-columns:1fr;gap:10px;}
+  .hp-card{padding:14px 16px;border-radius:12px;}
   .home-how{padding:30px 16px;border-radius:18px;}
   .how-card{padding:24px 18px;}
   .home-manifesto{padding:40px 16px;}

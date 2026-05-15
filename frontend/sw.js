@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v66-stories-actually-compact';
-const ASSETS_BUMP_NOTE = 'Fixed v65 mistake: recent stories cards were forced into giant 1:1 squares with empty space. Now content-sized, 4-col desktop, 2-col tablet+phone. Small dense cards.';
+const CACHE = 'civicvoice-v67-audit-fixes';
+const ASSETS_BUMP_NOTE = 'Audit pass: hero mini-stats now dynamic (was hardcoded fake numbers), conflicting CSS rules cleaned up so home-recent-grid actually shows 4-col desktop / 2-col phone as intended.';
 const ASSETS = [
   './',
   './index.html',
