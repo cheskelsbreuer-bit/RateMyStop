@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v63-long-scroll-home';
-const ASSETS_BUMP_NOTE = 'Real homepage: 7 sections, scrollable, content-rich. Live recent stories, How it works, Trending polls, Voices, Manifesto, Features narrative, Final CTA. Not an app shell anymore — a real site.';
+const CACHE = 'civicvoice-v64-emotional-rewrite';
+const ASSETS_BUMP_NOTE = 'Hero + How-it-works + features + manifesto rewritten with concrete emotional language. What-you-can-do removed (duplicate). Stats moved below How It Works. Trust score now starts at 90. Floating Share pill on home only.';
 const ASSETS = [
   './',
   './index.html',

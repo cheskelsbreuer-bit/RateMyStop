@@ -737,6 +737,8 @@ function nav(id) {
   if (section) section.classList.add('active');
   // Body class lets CSS show the persistent "back to home" escape pill on Pulse
   document.body.classList.toggle('on-pulse', id === 'pulse');
+  // Body class for the floating "Share your story" pill — only on home
+  document.body.classList.toggle('on-home', id === 'home');
   // Phone bottom-tab active state
   document.querySelectorAll('.bottom-tabs .bt-tab').forEach(b => b.classList.toggle('active', b.dataset.bt === id));
   // Document-level scroll-snap turns on only when on Pulse — filters scroll away first, then one card at a time
@@ -2970,8 +2972,11 @@ function toggleSubscribe(agencyName, btn) {
 
 // ── TRUST SCORE — compute author trustworthiness from existing data ──
 function computeTrustScore(handle) {
+  // Score starts at 90 (good faith by default — you signed up, you matter).
+  // Moves up with engagement + verified stories + balanced sentiment.
+  // Moves down if user has admin-confirmed flags (currently no signal — placeholder for moderation queue).
   const officers = (window.STATIC_DATA && window.STATIC_DATA.officers) || officerCache || [];
-  let total = 0, verified = 0, fair = 0;
+  let total = 0, verified = 0, fair = 0, unfair = 0;
   for (const o of officers) {
     for (const r of (o.reviews || [])) {
       const a = r.author_display || _legacyAuthor(o.id, r.id);
@@ -2979,28 +2984,49 @@ function computeTrustScore(handle) {
         total++;
         if (r.upload_url) verified++;
         if (r.verdict === 'fair') fair++;
+        if (r.verdict === 'unfair') unfair++;
       }
     }
   }
+  // Reactions placed by this user (proxy for engagement)
+  let myReactions = 0;
+  try {
+    const mine = _readMyReactions();
+    Object.values(mine).forEach(byKind => {
+      myReactions += Object.values(byKind).filter(Boolean).length;
+    });
+  } catch {}
+  // Flags / bans count against trust
+  let flags = 0;
+  try {
+    const banned = JSON.parse(localStorage.getItem('civicvoice_admin_banned_v1') || '[]');
+    if (banned.includes(handle)) flags = 30;  // banned = -30
+  } catch {}
+
   // Score formula:
-  //   30 base (has account)
-  //   +2 per story posted, cap +40 (20 stories)
-  //   +5 per verified story, cap +20 (4 verified)
-  //   +10 for balanced sentiment (fair % between 30-70)
-  let score = 30;
-  score += Math.min(total * 2, 40);
-  score += Math.min(verified * 5, 20);
-  if (total >= 3) {
+  //   90 base — good faith
+  //   +1 per story posted, cap +6 (6 stories)
+  //   +2 per verified story (uploaded evidence), cap +6 (3 verified)
+  //   +1 per reaction placed, cap +3
+  //   −5 if a clear bias (>90% same verdict over 5+ stories)
+  //   −flags (admin moderation)
+  let score = 90;
+  score += Math.min(total, 6);
+  score += Math.min(verified * 2, 6);
+  score += Math.min(myReactions, 3);
+  if (total >= 5) {
     const fairPct = fair / total;
-    if (fairPct >= 0.3 && fairPct <= 0.7) score += 10;
+    if (fairPct > 0.9 || fairPct < 0.1) score -= 5;  // pure cheerleader or pure complainer
   }
+  score -= flags;
   score = Math.min(100, Math.max(0, score));
   const tier =
-    score >= 85 ? { label: 'Expert',   color: 'var(--green)' } :
-    score >= 60 ? { label: 'Trusted',  color: 'var(--accent)' } :
-    score >= 30 ? { label: 'Active',   color: 'var(--blue)' } :
-                  { label: 'New',      color: 'var(--gray)' };
-  return { score, tier, total, verified, fair };
+    score >= 95 ? { label: 'Pillar',   color: 'var(--green)' } :
+    score >= 85 ? { label: 'Trusted',  color: 'var(--green)' } :
+    score >= 70 ? { label: 'Active',   color: 'var(--blue)' } :
+    score >= 40 ? { label: 'Watch',    color: 'var(--accent)' } :
+                  { label: 'Flagged',  color: 'var(--red)' };
+  return { score, tier, total, verified, fair, unfair };
 }
 
 // ── TRANSLATE — opens Google Translate with the story text ──
@@ -3514,6 +3540,8 @@ try { updateStreakChip(); }             catch (e) { console.warn('updateStreakCh
 try { _attachPulseSwipe(); }            catch (e) { console.warn('_attachPulseSwipe init:', e); }
 try { _seedReactionsIfNeeded(); }       catch (e) { console.warn('_seedReactionsIfNeeded init:', e); }
 try { _initSoundToggle(); }             catch (e) { console.warn('_initSoundToggle init:', e); }
+// Initial: home is the active section, so set the body class for the floating Share pill
+try { document.body.classList.add('on-home'); } catch {}
 // Defer fake-user sim start to AFTER all module-level let/const declarations have initialized.
 // Direct call here hits TDZ on `let _fakeUserTimer = null` which is declared further down in the file.
 setTimeout(() => { try { _startFakeUserSim(); } catch (e) { console.warn('_startFakeUserSim deferred:', e); } }, 50);

@@ -953,6 +953,20 @@ section.active{display:block;}
 .oc-claim-note{font-size:0.8rem;color:var(--light);line-height:1.5;padding:10px 12px;background:var(--bg2);border-radius:10px;margin-top:4px;}
 .oc-claim-note strong{color:var(--accent);}
 
+/* ─── Floating "Share your story" pill (home page only, follows user while they scroll) ─── */
+.home-float-share{display:none;position:fixed;bottom:24px;right:24px;z-index:540;background:linear-gradient(135deg, var(--accent), #d4ab2c);color:#fff;border:none;border-radius:999px;padding:14px 22px 14px 18px;font-family:'Bricolage Grotesque','Syne',sans-serif;font-weight:800;font-size:0.94rem;cursor:pointer;align-items:center;gap:10px;box-shadow:0 14px 40px rgba(184,148,30,0.45), 0 4px 12px rgba(15,15,19,0.18);transition:transform 0.2s, box-shadow 0.2s;letter-spacing:-0.2px;}
+.home-float-share:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 20px 50px rgba(184,148,30,0.55), 0 6px 16px rgba(15,15,19,0.22);}
+.home-float-share .hfs-plus{font-size:1.4rem;line-height:1;font-weight:400;}
+body.on-home .home-float-share{display:inline-flex;}
+@media(max-width:700px){
+  .home-float-share{bottom:96px;right:18px;padding:12px 18px 12px 14px;font-size:0.86rem;}
+  .home-float-share .hfs-plus{font-size:1.2rem;}
+}
+
+/* Stats now sit inside a home-section wrapper — center + give breathing room */
+.home-stats-wrap{max-width:1100px;margin:30px auto 0;padding:0 20px;}
+.home-stats-wrap .stats-strip{border-radius:14px;}
+
 /* ─── Long-scroll homepage sections — magazine-style ─── */
 
 /* Shared section frame */

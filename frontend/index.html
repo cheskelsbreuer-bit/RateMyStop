@@ -127,6 +127,12 @@
 <!-- Persistent escape pill (phone only, shown when on Pulse — no matter how deep you've scrolled) -->
 <button class="pulse-escape" onclick="nav('home');" aria-label="Back to home">&larr; Home</button>
 
+<!-- Floating "Share your story" pill — appears only on home page, follows the user while they scroll -->
+<button class="home-float-share" onclick="nav('share');" aria-label="Share your story">
+  <span class="hfs-plus">&#43;</span>
+  <span class="hfs-label">Share your story</span>
+</button>
+
 <!-- BOTTOM TAB BAR — phone only. Share (+) centered, 2 tabs each side. -->
 <nav class="bottom-tabs" id="bottomTabs" aria-label="Primary navigation">
   <button class="bt-tab" data-bt="home"     onclick="nav('home')"     aria-label="Home"><span class="bt-icon">&#127968;</span><span class="bt-label">Home</span></button>
@@ -228,11 +234,11 @@
 <section id="home" class="active">
   <div class="hero hero-plain">
     <div class="hero-eyebrow">A public record of public service</div>
-    <h1>Recognize the good.<br>Document the rest.<br><em>On the record.</em></h1>
-    <p class="hero-lead">CivicVoice is where moments people have with public servants &mdash; police, EMTs, firefighters, DMV staff, hospital workers, government caseworkers &mdash; become a public record. Praise. Concern. Stories. One place.</p>
+    <h1>The EMT who saved your dad.<br>The DMV clerk who lost your form.<br><em>On the record.</em></h1>
+    <p class="hero-lead">Every cop, EMT, firefighter, DMV worker, hospital nurse, school board member, mayor, governor &mdash; reviewable by the people they serve. The truth, written by you. Anonymous if you want. Permanent either way.</p>
     <div style="text-align:center;margin-bottom:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn-gold" style="font-size:1rem;padding:16px 32px;border-radius:12px;" onclick="nav('share')">Share a story &rarr;</button>
-      <button class="btn-ghost" style="font-size:1rem;padding:16px 28px;border-radius:12px;" onclick="nav('officers')">Read stories</button>
+      <button class="btn-gold" style="font-size:1rem;padding:16px 32px;border-radius:12px;" onclick="nav('share')">&#9998;&#65039; Put it on the record &rarr;</button>
+      <button class="btn-ghost" style="font-size:1rem;padding:16px 28px;border-radius:12px;" onclick="nav('pulse')">See what's happening today</button>
     </div>
     <div class="categories-strip">
       <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police</span>
@@ -247,47 +253,6 @@
     </div>
   </div>
 
-  <div class="stats-strip" id="statsStrip">
-    <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Stories shared</div></div>
-    <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">Recognitions</div></div>
-    <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Agencies on record</div></div>
-    <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">People documented</div></div>
-  </div>
-
-  <!-- WHAT YOU CAN DO — clear, scannable list of actions a first-time visitor can take -->
-  <div class="what-you-can-do">
-    <div class="wycd-head">
-      <h3>What you can do here</h3>
-      <span class="wycd-sub">Five ways to put public service on the record.</span>
-    </div>
-    <div class="wycd-grid">
-      <button class="wycd-card" onclick="nav('share')">
-        <div class="wycd-icon">&#9998;&#65039;</div>
-        <div class="wycd-title">Share a story</div>
-        <div class="wycd-desc">A great EMT, a rude DMV clerk, a fair officer &mdash; tell what happened. Anonymous by default.</div>
-      </button>
-      <button class="wycd-card" onclick="nav('polls')">
-        <div class="wycd-icon">&#128499;&#65039;</div>
-        <div class="wycd-title">Vote on polls</div>
-        <div class="wycd-desc">Local questions, state issues, federal predictions. Pick your stand. See who agrees.</div>
-      </button>
-      <button class="wycd-card" onclick="nav('officers')">
-        <div class="wycd-icon">&#128218;</div>
-        <div class="wycd-title">Browse the record</div>
-        <div class="wycd-desc">Police, EMTs, fire, DMV, hospitals, school boards, mayors, governors. All in one place.</div>
-      </button>
-      <button class="wycd-card" onclick="nav('complaint')">
-        <div class="wycd-icon">&#9993;&#65039;</div>
-        <div class="wycd-title">Message an agency</div>
-        <div class="wycd-desc">Thank them. Or call them out. Verified contacts. Legally required to respond in NY.</div>
-      </button>
-      <button class="wycd-card" onclick="nav('pulse')">
-        <div class="wycd-icon">&#128293;</div>
-        <div class="wycd-title">Catch up on Pulse</div>
-        <div class="wycd-desc">Recent stories, hot reactions, live polls &mdash; one card at a time, scroll-style.</div>
-      </button>
-    </div>
-  </div>
 
   <!-- LIVE: stories landing right now. The headline content of the site, on the homepage. -->
   <div class="home-section home-recent">
@@ -302,31 +267,41 @@
     <div id="homeRecentList" class="home-recent-grid"></div>
   </div>
 
-  <!-- HOW IT WORKS — 3 simple steps, plain English -->
+  <!-- HOW IT WORKS — emotional, concrete, real moments -->
   <div class="home-section home-how">
     <div class="home-section-head center">
-      <div class="hs-eyebrow">HOW IT WORKS</div>
-      <h2 class="hs-title">Three steps. That's it.</h2>
+      <div class="hs-eyebrow center">HOW IT WORKS</div>
+      <h2 class="hs-title">Three steps. The whole thing.</h2>
     </div>
     <div class="how-grid">
       <div class="how-card">
         <div class="how-step">1</div>
-        <div class="how-icon">&#9998;&#65039;</div>
-        <div class="how-title">Tell what happened</div>
-        <div class="how-desc">A great EMT at 2am. A rude DMV clerk. A school board member who actually called you back. Pick the category, write a few sentences. Two minutes.</div>
+        <div class="how-icon">&#10084;&#65039;</div>
+        <div class="how-title">You had a moment with a public servant.</div>
+        <div class="how-desc">Maybe the EMT held your mom's hand at 2am. Maybe the DMV clerk made you come back three times for a form their website didn't even mention. Maybe the school board voted no on the bus route your kid needed. <strong>Write what happened.</strong> Two minutes.</div>
       </div>
       <div class="how-card">
         <div class="how-step">2</div>
         <div class="how-icon">&#128737;&#65039;</div>
-        <div class="how-title">Anonymous by default</div>
-        <div class="how-desc">You get a stable handle like <strong>Anonymous-4471</strong>. You can post the truth without exposing yourself. Show your real name later if you want &mdash; up to you.</div>
+        <div class="how-title">You stay anonymous if you want.</div>
+        <div class="how-desc">Default is anonymous &mdash; you get a private handle like <strong>Anonymous-4471</strong>. Speak the truth without exposing yourself. Add your real name later if you decide it's safer than silence. Your call, always.</div>
       </div>
       <div class="how-card">
         <div class="how-step">3</div>
         <div class="how-icon">&#128218;</div>
-        <div class="how-title">On the record forever</div>
-        <div class="how-desc">Moderators check it. It joins the public record under that agency and that person. Others react. The agency can respond. Patterns become visible.</div>
+        <div class="how-title">It stays on the record. Forever.</div>
+        <div class="how-desc">Moderators review it. It joins the public record under that person's name. Your neighbors find it when they search. Patterns become visible. Agencies can respond. <strong>Communities change &mdash; because someone finally said it out loud.</strong></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Stats — moved here, after How It Works (credibility AFTER the emotional pitch) -->
+  <div class="home-section home-stats-wrap">
+    <div class="stats-strip" id="statsStrip">
+      <div class="ss"><div class="ss-n" id="statMoments">&mdash;</div><div class="ss-l">Stories shared</div></div>
+      <div class="ss"><div class="ss-n" id="statRecognized">&mdash;</div><div class="ss-l">Recognitions</div></div>
+      <div class="ss"><div class="ss-n" id="statDepartments">&mdash;</div><div class="ss-l">Agencies on record</div></div>
+      <div class="ss"><div class="ss-n" id="statOfficers">&mdash;</div><div class="ss-l">People documented</div></div>
     </div>
   </div>
 
@@ -356,47 +331,44 @@
     <div id="homeVoicesList" class="home-voices-grid"></div>
   </div>
 
-  <!-- WHY CIVICVOICE — manifesto / explainer -->
+  <!-- WHY CIVICVOICE — tightened, more emotional, less corporate -->
   <div class="home-section home-manifesto">
     <div class="manifesto-inner">
-      <div class="hs-eyebrow center">WHY CIVICVOICE</div>
-      <h2 class="manifesto-title">Public service is the foundation of every community. Yet there is no public record.</h2>
+      <div class="hs-eyebrow center">WHY THIS HAS TO EXIST</div>
+      <h2 class="manifesto-title">You have 47 reviews for the pizza place down the street. Zero for the cop who pulled you over last month.</h2>
       <p class="manifesto-body">
-        We rate restaurants. We rate Ubers. We rate every business interaction we've ever had &mdash; with reviews that influence whether anyone else uses them.
+        We review restaurants. We review Ubers. We review dentists, plumbers, hair salons. We trust those reviews so much that they change which businesses live and die.
       </p>
       <p class="manifesto-body">
-        But the people who actually keep your community running &mdash; the police officer who pulled you over, the EMT who got there at 2am, the DMV clerk who held your place, the school board member who voted on your kid's bus route &mdash; you have no way to recognize them, document them, or hold them accountable.
+        But the people who actually run your community &mdash; the cop, the EMT, the DMV clerk, the school board member, the mayor &mdash; you have no place to say <em>"this person saved me"</em> or <em>"this person treated me like dirt and got away with it."</em>
       </p>
       <p class="manifesto-body">
-        <strong>CivicVoice is the public record of public service.</strong> Every interaction, every story, every vote &mdash; one place. Anonymous if you want. Verified if it matters. Permanent either way.
-      </p>
-      <p class="manifesto-body">
-        Recognize the good. Document the rest. <em>On the record.</em>
+        <strong>That's what CivicVoice is.</strong> One public record, by the people, for the people, of the people who serve them. Recognize the good. Document the rest. <em>On the record. Forever.</em>
       </p>
     </div>
   </div>
 
-  <!-- WHAT MAKES IT DIFFERENT — the three live features, now as narrative not a rail -->
+  <!-- WHAT MAKES IT DIFFERENT — concrete, no platitudes -->
   <div class="home-section home-features">
     <div class="home-section-head center">
-      <div class="hs-eyebrow">WHAT MAKES IT DIFFERENT</div>
-      <h2 class="hs-title">Built for the people, not the institutions.</h2>
+      <div class="hs-eyebrow center">WHAT MAKES IT DIFFERENT</div>
+      <h2 class="hs-title">Three things no other site does.</h2>
     </div>
     <div class="features-grid">
       <div class="feature-block">
         <div class="feature-icon">&#9993;&#65039;</div>
-        <h3 class="feature-title">Agencies send their own review links</h3>
-        <p class="feature-body">After a 911 call, ER visit, or DMV appointment, the agency itself generates a one-tap anonymous review link &mdash; like Google Reviews for public service. People share what happened while it's fresh. Reviews come in honestly because they're anonymous. <button class="feature-link" onclick="nav('orgs')">See how agencies use it &rarr;</button></p>
+        <h3 class="feature-title">The EMT crew sends you the link themselves.</h3>
+        <p class="feature-body">After a 911 call, the ambulance crew can text you a one-tap link to write what happened &mdash; while it's still fresh. Same for the DMV after your appointment. Same for the hospital after discharge. <strong>Like a Google review, but for the people you trusted with your life.</strong> <button class="feature-link" onclick="nav('orgs')">See how agencies use it &rarr;</button></p>
       </div>
       <div class="feature-block">
         <div class="feature-icon">&#127963;&#65039;</div>
-        <h3 class="feature-title">Top-to-bottom accountability</h3>
-        <p class="feature-body">Same record for the bus driver and the governor. Hochul, Schumer, Gillibrand, AG James &mdash; all reviewable. School board members. Local council. Every public servant on the same ledger, by the same people who actually deal with them. <button class="feature-link" onclick="nav('officers')">Browse profiles &rarr;</button></p>
+        <h3 class="feature-title">The bus driver and the governor are on the same ledger.</h3>
+        <p class="feature-body">Officer K. Williams in Spring Valley. Sen. Schumer in DC. Mayor Simon at village hall. Hochul at the state capital. <strong>One record. Same rules.</strong> The rude DMV clerk and the AG of New York both get reviewed by the same people who actually deal with them. <button class="feature-link" onclick="nav('officers')">Browse every profile &rarr;</button></p>
       </div>
       <div class="feature-block">
         <div class="feature-icon">&#128221;</div>
-        <h3 class="feature-title">Rate the decisions, not just the people</h3>
-        <p class="feature-body">School board votes. Ballot measures. State bills. Federal legislation. Vote your stand, see the breakdown by Republican / Democrat / Independent. Real source links built in &mdash; no spin, just the document. <button class="feature-link" onclick="nav('polls')">Rate a bill &rarr;</button></p>
+        <h3 class="feature-title">It's not just people. It's the decisions.</h3>
+        <p class="feature-body">"Should East Ramapo reverse the busing change?" "Should NY require lobbyist disclosures?" "Should our village hold weekly office hours?" <strong>Vote yes or no, see the breakdown by party.</strong> Source documents one tap away &mdash; no spin, just the bill. <button class="feature-link" onclick="nav('polls')">Rate a bill or board vote &rarr;</button></p>
       </div>
     </div>
   </div>
