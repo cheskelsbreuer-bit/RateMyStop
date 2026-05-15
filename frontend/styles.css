@@ -985,17 +985,24 @@ section.active{display:block;}
   .hms-l{font-size:0.62rem;}
 }
 
-/* Recent stories: 2x2 square grid now (was 2x3 rectangle) */
-.home-recent-grid{display:grid !important;grid-template-columns:repeat(2,1fr) !important;gap:14px;}
-.hr-card{aspect-ratio:1.15/1;display:flex !important;flex-direction:column !important;justify-content:space-between !important;padding:18px 20px;}
-.hr-card .hr-card-body{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}
+/* Recent stories: 4 SMALL compact cards. 4-col on desktop, 2-col tablet, 2-col phone. */
+.home-recent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.hr-card{padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-height:0;}
+.hr-card .hr-card-body{font-size:0.85rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.hr-card .hr-card-name{font-size:0.95rem;}
+.hr-card .hr-card-agency{font-size:0.72rem;}
+.hr-card-stars{font-size:0.75rem;letter-spacing:1px;}
+.hr-card-foot{font-size:0.68rem;padding-top:7px;}
+@media(max-width:1024px){
+  .home-recent-grid{grid-template-columns:repeat(2,1fr);}
+}
 @media(max-width:700px){
-  .home-recent-grid{grid-template-columns:repeat(2,1fr) !important;gap:8px;}
-  .hr-card{aspect-ratio:1/1;padding:12px 13px;border-radius:11px;}
-  .hr-card-name{font-size:0.86rem;}
-  .hr-card-agency{font-size:0.68rem;}
-  .hr-card-body{font-size:0.78rem;line-height:1.4;-webkit-line-clamp:3;}
-  .hr-card-foot{font-size:0.66rem;padding-top:5px;}
+  .home-recent-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .hr-card{padding:11px 12px;border-radius:11px;}
+  .hr-card-name{font-size:0.85rem;}
+  .hr-card-agency{font-size:0.66rem;}
+  .hr-card-body{font-size:0.74rem;line-height:1.4;-webkit-line-clamp:3;}
+  .hr-card-foot{font-size:0.64rem;}
 }
 
 /* ─── Phone UI: compact every "big box" so 1 card !== 1 screen ─── */
