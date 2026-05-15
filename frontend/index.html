@@ -232,13 +232,19 @@
 
 <!-- HOME -->
 <section id="home" class="active">
-  <div class="hero hero-plain">
-    <div class="hero-eyebrow">A public record of public service</div>
+  <div class="hero hero-bold">
+    <div class="hero-eyebrow"><span class="live-dot"></span>LIVE — <span id="heroLiveCount">211</span> STORIES ON THE RECORD</div>
     <h1>The EMT who saved your dad.<br>The DMV clerk who lost your form.<br><em>On the record.</em></h1>
-    <p class="hero-lead">Every cop, EMT, firefighter, DMV worker, hospital nurse, school board member, mayor, governor &mdash; reviewable by the people they serve. The truth, written by you. Anonymous if you want. Permanent either way.</p>
-    <div style="text-align:center;margin-bottom:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn-gold" style="font-size:1rem;padding:16px 32px;border-radius:12px;" onclick="nav('share')">&#9998;&#65039; Put it on the record &rarr;</button>
-      <button class="btn-ghost" style="font-size:1rem;padding:16px 28px;border-radius:12px;" onclick="nav('pulse')">See what's happening today</button>
+    <p class="hero-lead">A public record of every cop, EMT, firefighter, DMV worker, hospital nurse, school board member, mayor, and governor &mdash; written by the people they serve. <strong>Anonymous if you want. Public forever either way.</strong></p>
+    <div class="hero-cta-row">
+      <button class="hero-cta-primary" onclick="nav('share')">&#9998;&#65039; Put your story on the record &rarr;</button>
+      <button class="hero-cta-secondary" onclick="nav('pulse')">&#128293; See today's stories</button>
+    </div>
+    <div class="hero-mini-stats">
+      <div class="hms"><span class="hms-n" id="heroStat1">854</span><span class="hms-l">stories shared</span></div>
+      <div class="hms"><span class="hms-n" id="heroStat2">213</span><span class="hms-l">recognitions</span></div>
+      <div class="hms"><span class="hms-n" id="heroStat3">59</span><span class="hms-l">agencies</span></div>
+      <div class="hms"><span class="hms-n" id="heroStat4">47</span><span class="hms-l">people on record</span></div>
     </div>
     <div class="categories-strip">
       <span class="cs-item live"><span class="cs-dot live"></span>&#128659; Police</span>
@@ -288,9 +294,9 @@
       </div>
       <div class="how-card">
         <div class="how-step">3</div>
-        <div class="how-icon">&#128218;</div>
-        <div class="how-title">It stays on the record. Forever.</div>
-        <div class="how-desc">Moderators review it. It joins the public record under that person's name. Your neighbors find it when they search. Patterns become visible. Agencies can respond. <strong>Communities change &mdash; because someone finally said it out loud.</strong></div>
+        <div class="how-icon">&#128064;</div>
+        <div class="how-title">Everyone in your town sees it.</div>
+        <div class="how-desc">Your story joins the public record under that person's name. <strong>Neighbors searching that officer find it. Reporters covering that agency find it. The mayor running for re-election finds it.</strong> Patterns become impossible to ignore &mdash; and agencies are forced to actually respond, because the whole community is now watching.</div>
       </div>
     </div>
   </div>
@@ -348,30 +354,6 @@
     </div>
   </div>
 
-  <!-- WHAT MAKES IT DIFFERENT — concrete, no platitudes -->
-  <div class="home-section home-features">
-    <div class="home-section-head center">
-      <div class="hs-eyebrow center">WHAT MAKES IT DIFFERENT</div>
-      <h2 class="hs-title">Three things no other site does.</h2>
-    </div>
-    <div class="features-grid">
-      <div class="feature-block">
-        <div class="feature-icon">&#9993;&#65039;</div>
-        <h3 class="feature-title">The EMT crew sends you the link themselves.</h3>
-        <p class="feature-body">After a 911 call, the ambulance crew can text you a one-tap link to write what happened &mdash; while it's still fresh. Same for the DMV after your appointment. Same for the hospital after discharge. <strong>Like a Google review, but for the people you trusted with your life.</strong> <button class="feature-link" onclick="nav('orgs')">See how agencies use it &rarr;</button></p>
-      </div>
-      <div class="feature-block">
-        <div class="feature-icon">&#127963;&#65039;</div>
-        <h3 class="feature-title">The bus driver and the governor are on the same ledger.</h3>
-        <p class="feature-body">Officer K. Williams in Spring Valley. Sen. Schumer in DC. Mayor Simon at village hall. Hochul at the state capital. <strong>One record. Same rules.</strong> The rude DMV clerk and the AG of New York both get reviewed by the same people who actually deal with them. <button class="feature-link" onclick="nav('officers')">Browse every profile &rarr;</button></p>
-      </div>
-      <div class="feature-block">
-        <div class="feature-icon">&#128221;</div>
-        <h3 class="feature-title">It's not just people. It's the decisions.</h3>
-        <p class="feature-body">"Should East Ramapo reverse the busing change?" "Should NY require lobbyist disclosures?" "Should our village hold weekly office hours?" <strong>Vote yes or no, see the breakdown by party.</strong> Source documents one tap away &mdash; no spin, just the bill. <button class="feature-link" onclick="nav('polls')">Rate a bill or board vote &rarr;</button></p>
-      </div>
-    </div>
-  </div>
 
   <!-- FINAL CTA — biggest button on the page -->
   <div class="home-section home-final-cta">

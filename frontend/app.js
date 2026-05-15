@@ -5738,15 +5738,15 @@ function _startFakeUserSim() {
         }
       }
     }
-    // Cadence is computed from the configured rate (actions per minute)
-    // perMin=6 → 10s avg · perMin=2 → 30s avg · perMin=60 → 1s avg · perMin=0.5 → 2min avg
+    // Cadence is computed from the configured rate (actions per minute).
+    // Wider jitter (±70%) so the pattern doesn't feel robotic — user noticed it ticked too regularly.
+    // Default 6/min → 5-25s range. perMin=12 → 2.5-12s · perMin=2 → 15-75s
     const perMin = getFakeRate();
     const avgMs = 60000 / perMin;
-    // Add ±25% jitter so it doesn't feel robotic
-    const nextDelay = avgMs * (0.75 + Math.random() * 0.5);
+    const nextDelay = avgMs * (0.3 + Math.random() * 1.4);
     _fakeUserTimer = setTimeout(tick, nextDelay);
   };
-  _fakeUserTimer = setTimeout(tick, 1500 + Math.random() * 2000);
+  _fakeUserTimer = setTimeout(tick, 2000 + Math.random() * 4000);
   console.log(`[CivicVoice] 🟢 Fake user sim started — ${getFakeActive()}/${getAllFakePersonas().length} personas, ${getFakeRate()}/min`);
 }
 function _stopFakeUserSim() {
@@ -5972,13 +5972,13 @@ function renderHomeRecent() {
     const items = [];
     for (const o of all) for (const r of (o.reviews || [])) items.push({ officer: o, review: r, role: inferRole(o) });
     items.sort((a, b) => new Date(b.review.created_at || 0) - new Date(a.review.created_at || 0));
-    const top = items.slice(0, 6);
+    const top = items.slice(0, 4);  // 4 square cards (2x2) — smaller, denser, scannable
     if (!top.length) { wrap.innerHTML = '<div style="color:var(--gray);padding:30px;text-align:center;">No stories yet.</div>'; return; }
     wrap.innerHTML = top.map(it => {
       const r = it.review;
       const isPos = r.verdict === 'fair';
       const stars = r.stars || 3;
-      const story = (r.story || '').slice(0, 180) + ((r.story || '').length > 180 ? '…' : '');
+      const story = (r.story || '').slice(0, 110) + ((r.story || '').length > 110 ? '…' : '');
       const author = r.author_display || _legacyAuthor(it.officer.id, r.id);
       const c = getReactionCounts(it.officer.id, r.id);
       const totalReacts = c.up + c.down + c.thanks + c.strong + c.curious;

@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v64-emotional-rewrite';
-const ASSETS_BUMP_NOTE = 'Hero + How-it-works + features + manifesto rewritten with concrete emotional language. What-you-can-do removed (duplicate). Stats moved below How It Works. Trust score now starts at 90. Floating Share pill on home only.';
+const CACHE = 'civicvoice-v65-bold-hero-compact-boxes';
+const ASSETS_BUMP_NOTE = 'BOLD hero with color/gradient/live signal/inline stats. Recent stories = 4 square cards (was 6 rectangles). How-It-Works step 3 emphasizes public visibility. Features section removed. Phone UI: compact boxes across stories/polls/contributors. Bot ticker cadence: ±70% jitter for organic feel.';
 const ASSETS = [
   './',
   './index.html',
