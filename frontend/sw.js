@@ -1,7 +1,7 @@
 // RateMyStop service worker — minimal, network-first with offline fallback.
 // Lets the app install to home screen and work briefly offline.
-const CACHE = 'civicvoice-v67-audit-fixes';
-const ASSETS_BUMP_NOTE = 'Audit pass: hero mini-stats now dynamic (was hardcoded fake numbers), conflicting CSS rules cleaned up so home-recent-grid actually shows 4-col desktop / 2-col phone as intended.';
+const CACHE = 'civicvoice-v68-remove-duplicate-stats';
+const ASSETS_BUMP_NOTE = 'Removed duplicate stats strip (was sitting between How It Works and Trending Polls). The hero mini-stats above the fold are the only stats now.';
 const ASSETS = [
   './',
   './index.html',
